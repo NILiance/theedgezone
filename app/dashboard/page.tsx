@@ -8,7 +8,13 @@ import { cn } from '@/lib/utils'
 
 export const metadata = { title: 'Dashboard' }
 
-export default async function DashboardPage() {
+interface PageProps {
+  searchParams: Promise<{ checkout?: string; session_id?: string }>
+}
+
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const sp = await searchParams
+  const checkoutSuccess = sp.checkout === 'success'
   const user = await requireUser()
   const { profile, orders } = await getDashboardData(user.id)
 
@@ -23,6 +29,21 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {checkoutSuccess && (
+        <div className="rounded-[var(--radius)] border border-success/40 bg-success/10 p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">✓</span>
+            <div>
+              <p className="text-display font-bold text-foreground">Payment received</p>
+              <p className="text-sm text-muted-foreground">
+                Your new product will appear in &ldquo;My Products&rdquo; below within a few
+                seconds (provisioning runs after the Stripe webhook confirms).
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* NILiance banner */}
       {showNilianceBanner && <NilianceBanner email={user.email ?? ''} />}
 

@@ -1,11 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
+import { loadStripe, type Stripe as StripeJS } from '@stripe/stripe-js'
+import {
+  EmbeddedCheckoutProvider,
+  EmbeddedCheckout,
+} from '@stripe/react-stripe-js'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { createCheckoutSession } from '@/app/actions/checkout'
 import type { PricingTier } from '@/lib/services-rich-content'
+
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''
+
+let stripePromise: Promise<StripeJS | null> | null = null
+function getStripePromise() {
+  if (!PUBLISHABLE_KEY) return null
+  if (!stripePromise) stripePromise = loadStripe(PUBLISHABLE_KEY)
+  return stripePromise
+}
 
 interface ServicePricingCardProps {
   slug: string
@@ -13,10 +26,6 @@ interface ServicePricingCardProps {
   ctaLabel?: string
   fallbackHref?: string
   fallbackPrice?: string
-  /**
-   * When true, the user is signed in and we route through Stripe checkout.
-   * When false, the CTA points at /sign-up so unauthed users register first.
-   */
   authed?: boolean
 }
 
@@ -29,8 +38,74 @@ export function ServicePricingCard({
   authed = false,
 }: ServicePricingCardProps) {
   const [selected, setSelected] = useState(0)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // No paid tiers — Free / Custom service. Send to sign-up.
+  const fetchClientSecret = useCallback(async () => {
+    const res = await fetch('/api/checkout/create-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug,
+        tier: tiers[selected]?.label,
+      }),
+    })
+    const data = (await res.json()) as { client_secret?: string; error?: string }
+    if (!res.ok || !data.client_secret) {
+      throw new Error(data.error ?? `HTTP ${res.status}`)
+    }
+    return data.client_secret
+  }, [slug, tiers, selected])
+
+  async function startCheckout() {
+    setPending(true)
+    setError(null)
+    try {
+      const cs = await fetchClientSecret()
+      setClientSecret(cs)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start checkout')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  // ── Inline embedded checkout ────────────────────────────────────────────
+  if (clientSecret) {
+    const stripePromise = getStripePromise()
+    return (
+      <div className="rounded-[var(--radius)] border border-border bg-panel p-2 shadow-elevated">
+        <div className="flex items-center justify-between px-3 py-2">
+          <p className="text-eyebrow text-muted-foreground">Secure checkout</p>
+          <button
+            type="button"
+            onClick={() => {
+              setClientSecret(null)
+              setError(null)
+            }}
+            className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+          >
+            ← Back
+          </button>
+        </div>
+        {stripePromise ? (
+          <EmbeddedCheckoutProvider
+            stripe={stripePromise}
+            options={{ fetchClientSecret: async () => clientSecret }}
+          >
+            <EmbeddedCheckout />
+          </EmbeddedCheckoutProvider>
+        ) : (
+          <p className="p-6 text-center text-sm text-destructive">
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is missing.
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  // ── Free / Custom — no Stripe price, just send to sign-up ──────────────
   if (!tiers.length) {
     return (
       <div className="rounded-[var(--radius)] border border-border bg-panel p-8 text-center shadow-elevated">
@@ -53,7 +128,6 @@ export function ServicePricingCard({
     <div className="rounded-[var(--radius)] border border-border bg-panel p-8 shadow-elevated">
       <p className="text-eyebrow text-center text-primary">Choose Your Plan</p>
 
-      {/* Tier picker */}
       {tiers.length > 1 && (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {tiers.map((tier, i) => (
@@ -94,13 +168,20 @@ export function ServicePricingCard({
       )}
 
       {authed ? (
-        <form action={createCheckoutSession} className="mt-6">
-          <input type="hidden" name="slug" value={slug} />
-          <input type="hidden" name="tier" value={active.label} />
-          <Button type="submit" size="lg" className="w-full">
-            {ctaLabel}
+        <>
+          <Button
+            type="button"
+            size="lg"
+            className="mt-6 w-full"
+            disabled={pending}
+            onClick={startCheckout}
+          >
+            {pending ? 'Loading…' : ctaLabel}
           </Button>
-        </form>
+          {error && (
+            <p className="mt-3 text-center text-xs text-destructive">{error}</p>
+          )}
+        </>
       ) : (
         <Link href={`/sign-up?next=/services/${slug}`} className="mt-6 block">
           <Button size="lg" className="w-full">

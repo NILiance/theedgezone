@@ -19,6 +19,8 @@
     "grant:admin": "node scripts/grant-admin.mjs"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^6.6.0",
+    "@stripe/stripe-js": "^9.8.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.0",
     "clsx": "^2.1.1",
