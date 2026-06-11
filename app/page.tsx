@@ -2,14 +2,23 @@ import Link from 'next/link'
 import { MarketingNav } from '@/components/landing/marketing-nav'
 import { Footer } from '@/components/landing/footer'
 import { Faq } from '@/components/landing/faq'
+import { CountUp } from '@/components/landing/count-up'
 import { Button } from '@/components/ui/button'
 import { getCurrentUser } from '@/lib/auth'
 
-const STATS = [
-  { value: '30+', label: 'Services Available' },
-  { value: '500+', label: 'Talent & Brands' },
-  { value: '100%', label: 'Free to Join' },
-  { value: '24/7', label: 'Access Your Tools' },
+interface Stat {
+  end: number
+  suffix: string
+  label: string
+  animate?: boolean
+  literal?: string
+}
+
+const STATS: Stat[] = [
+  { end: 30, suffix: '+', label: 'Services Available' },
+  { end: 500, suffix: '+', label: 'Talent & Brands' },
+  { end: 100, suffix: '%', label: 'Free to Join' },
+  { end: 0, suffix: '', label: 'Access Your Tools', literal: '24/7', animate: false },
 ]
 
 const BUILT_FOR = [
@@ -218,7 +227,12 @@ export default async function Home() {
             {STATS.map((s) => (
               <div key={s.label} className="text-center">
                 <p className="text-display text-4xl font-black text-primary sm:text-5xl">
-                  {s.value}
+                  <CountUp
+                    end={s.end}
+                    suffix={s.suffix}
+                    animate={s.animate ?? true}
+                    literal={s.literal}
+                  />
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
                   {s.label}

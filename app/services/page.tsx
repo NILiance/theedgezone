@@ -2,8 +2,16 @@ import Link from 'next/link'
 import { MarketingNav } from '@/components/landing/marketing-nav'
 import { Footer } from '@/components/landing/footer'
 import { ServicesShowcase } from '@/components/landing/services-showcase'
+import { CountUp } from '@/components/landing/count-up'
 import { Button } from '@/components/ui/button'
-import { SERVICES, SERVICES_STATS } from '@/lib/services-data'
+import { SERVICES } from '@/lib/services-data'
+
+const HERO_STATS = [
+  { end: SERVICES.length, suffix: '', label: 'Services' },
+  { end: 15, suffix: '', label: 'Satellites' },
+  { end: 2500, suffix: '', label: 'Users Served' },
+  { end: 96, suffix: '%', label: '% Satisfaction' },
+] as const
 
 export const metadata = { title: 'Services' }
 
@@ -27,9 +35,11 @@ export default function ServicesPage() {
 
           {/* Stats */}
           <div className="mx-auto mt-12 grid max-w-3xl grid-cols-2 gap-6 sm:grid-cols-4">
-            {SERVICES_STATS.map((s) => (
+            {HERO_STATS.map((s) => (
               <div key={s.label} className="text-center">
-                <p className="text-display text-4xl font-black text-primary">{s.value}</p>
+                <p className="text-display text-4xl font-black text-primary">
+                  <CountUp end={s.end} suffix={s.suffix} />
+                </p>
                 <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                   {s.label}
                 </p>

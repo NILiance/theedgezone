@@ -75,6 +75,30 @@ export type Database = {
         }
         Relationships: []
       }
+      branding_settings: {
+        Row: {
+          id: number
+          logo_height_footer: number
+          logo_height_nav: number
+          tagline: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          logo_height_footer?: number
+          logo_height_nav?: number
+          tagline?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          logo_height_footer?: number
+          logo_height_nav?: number
+          tagline?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custom_domains: {
         Row: {
           cert_status: string
