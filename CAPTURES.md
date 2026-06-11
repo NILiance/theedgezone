@@ -418,28 +418,246 @@ This is the full domain model on the NILiance side. Edge Zone is the entry point
 
 ---
 
-## Open captures TODO (admin sub-tabs not yet walked)
+### ADMIN → Pricing (`tab=pricing`)
 
-- Pricing
-- Enrollment
-- App Defaults
-- Pages
-- Resources
-- Roadmap Builder
-- Climb Studio
-- Orders
-- Payouts
-- Brand Designs
-- Websites
-- EPKs
-- Apps
-- Podcasts
-- Stores
-- Users
-- Permissions
-- Rewards Store
-- Tickets
+Title: "Service Pricing & Tiers" + `[SAVE ALL PRICING]`.
 
-Plus profile section tabs: ATHLETIC, BRAND, STORY, SOCIAL, CONTACTS, GOALS.
+Grouped sections (each row = service with Monthly / Yearly / One-time inputs + `+ TIERS` for Basic/Pro/Premium packages):
+- Digital Presence: 5 services
+- Revenue & Monetization: 4 (incl. Affiliate Marketing brand-side)
+- Brand & Design: 4 (incl. Graphic Design Services, Digital Design Packs)
+- Events & Physical: 3 (incl. 3D Replica Event Truck)
+- Marketing & Growth: 8 (incl. Reputation & Reviews, Listings Management, Market Research, Philanthropic Support)
+- Professional Services: 11
+- Education & Development: 3
+- Career Readiness: 6
+- Health & Wellness: 3
+- **Employee Benefits**: 7 (Financial Wellness, Legal Support, Identity Theft Protection, Data Removal, Tax Services, Insurance Services, Legal Document Creation — all (Employees) variants)
 
-Plus brand-role dashboard (requires brand user — credentials need fix).
+**Brand Design Pricing section** (separate sub-block) — overrides for the design module:
+- FREE ASSET LIMIT
+- ASSET PACK SIZE
+- ASSET PACK PRICE ($)
+- REVISION PRICE ($)
+- CUSTOM GRAPHIC PRICE ($)
+- LOGO MODIFICATION PRICE ($)
+- ADDITIONAL LOGO DESIGN ($) — *"50% OFF"* note
+- CONCEPT LOGO PRICE ($)
+- EXTRA CONCEPT BATCH ($) PER 10 — *"AFTER FIRST 20 FREE"*
+
+### ADMIN → Enrollment (`tab=enrollment`)
+
+**Bulk Enrollment — CSV Upload**: columns `name, email, sport, school, programs` (programs comma-separated like `"brand-lite, personal-website"`). `[PREVIEW CSV]`.
+
+**Manual Enrollment**: form with Name, Email, Sport, School, Programs (multi-select including "Brand Design ($299)", "Brand Lite ($49)", "Personal Website", "Electronic Press Kit"). `[ENROLL USER]`.
+
+**Email Outreach**: CSV recipient list (or "USE ALL ENROLLED USERS"), subject, body with template variables `{NAME} {EMAIL} {PROGRAMS} {LOGIN_URL} {SCHOOL}`. `[SAVE TEMPLATE]` `[SEND TO LIST]`.
+
+### ADMIN → App Defaults (`tab=app_defaults`)
+
+Section: **Default Links for All Apps** — table (Title, URL, Icon, Position: Nav Grid / Links Screen / Footer) + `+ ADD LINK`. Talent can override per-app.
+
+Section: **Ad Placements** — four placement types, each with Enabled toggle + Image URL + Click URL + Label:
+- Splash Banner
+- Footer Banner (persistent footer; hidden on splash if nav hidden)
+- In-Feed Ad — with FREQUENCY (every N items)
+- Interstitial (between screen navs)
+
+Section: **Merch Defaults**
+- AUTO-ENROLL NEW APPS IN EDGE ZONE MERCH (Yes/No)
+- SHOW PLATFORM MERCH IN TALENT SHOP SCREENS (Yes/No)
+- REVENUE SHARE — TALENT % (platform receives remainder)
+
+`[SAVE APP DEFAULTS]`
+
+### ADMIN → Pages (`tab=pages`)
+
+Big table: `Title | URL/Slug | Source | Status | Updated | Actions (EDIT)`.
+
+**Source types**: `Marketplace` (the 50+ service detail pages at `?ez_view=service&slug=...`), `Ez_view` (the shortcode views — home, directory, where_to_start, roadmap, login, register), and `Wordpress` (legacy WP pages — many program flyers, registration pages, etc.).
+
+Captured **service slugs** (all 53 marketplace services, useful for the new routing):
+`personal-website, electronic-press-kit, create-a-mobile-app, create-an-online-store, digital-business-cards, start-a-podcast, personal-brand-design, brand-lite, graphic-design, custom-design-packs, promotional-items, print-products, social-media-growth, social-media-management, ppc-seo-marketing, press-media, reputation-review, listings-management, affiliate-marketing, affiliate-opportunities, tiktok-monetization, market-research, investor-assistance, financial-advisory, legal-support, legal-document-creation, insurance-services, tax-services, bookkeeping, trademark-registration, data-removal, identity-theft-protection, prep-for-nil-academy, resume-building, interview-prep, business-formation, student-loan-refinance, performance-nutrition, healthcare-wellness, performance-improvement, financial-wellness, 3d-replica-events, nil-conferences, philanthropic-support, financial-wellness-employees, legal-support-employees, identity-theft-employees, data-removal-employees, tax-services-employees, insurance-employees, legal-docs-employees, admissions-academic, job-search-suite, internship-mentorship`
+
+### ADMIN → Resources (`tab=resources`)
+
+**WPDM (WordPress Download Manager Pro)** integration with category→audience mapping. Each WPDM category gets assigned to: Everyone / Talent Only / Brands Only.
+
+Categories observed (26 entries — some doubled because of WP cat duplication):
+Advertising (3), Artificial Intelligence (3), Brand Program Flyers (29), Branding (3+1), Business Operations (4), Content Creation (3), E-Commerce (3), Entrepreneurship (3), Financial (4+4), Leadership (1+3), Marketing (1+5), Mental Wellness (1), Motivation (1), NIL Resources (6+2), Personal Development (3+3), Program Flyers (37), Sales (3), Social Media (4+1), Talent (0).
+
+Plus **Manual Resources** — admin can add resources that bypass WPDM. `+ ADD RESOURCE`.
+
+### ADMIN → Roadmap Builder (`tab=roadmap`)
+
+**Goal-based items config**. 16 goals (matches the priority list in the public Roadmap quiz). Each has a count of items shown when user selects that goal.
+
+Goals + item counts:
+- Learn about NIL (4)
+- Grow my following (6)
+- Sell products / merchandise (4)
+- Establish a digital identity (6)
+- Prepare for an NIL deal (6)
+- Enhance athletic performance (3)
+- Protect my NIL (6)
+- Financial guidance (6)
+- Sound mental & physical health (3)
+- Enhance NIL on a budget (6)
+- Attract brand partnerships (6)
+- Build a personal brand (6)
+- Create content for social media (5)
+- Help with contract negotiation (4)
+- Prepare for life after sports (6)
+- Network with other talent (5)
+
+Per-goal editor: GOAL LABEL + `+ ADD ITEM` + delete (×) per item. `[SAVE GOAL CONFIG]`.
+
+### ADMIN → Climb Studio (`tab=climb`)
+
+Title: "Climb Studio — Configure the public Path-to-the-Summit climb — narrator videos, hero images, analytics, and the marketing reel."
+
+Sub-tabs: `HEYGEN CONFIG | NARRATION | HERO IMAGES | SLIDES | PLATFORM REEL | ANALYTICS`
+
+**HeyGen Narrator Config** sub-tab content:
+- "Configured (database)" status
+- API CREDENTIALS section: HEYGEN API KEY field + `[Test key]` button (note: "Stored encrypted in wp_options; never echoed back to the page.")
+- DEFAULT AVATAR: "Selected: Violante Sport Front 2 · Violante_Sport_Front_2_public" + `Sync avatars from HeyGen`
+- DEFAULT VOICE: "Selected: Pro 40s Anchor" + `Sync voices from HeyGen`
+- `Save HeyGen Config`
+
+### ADMIN → Orders (`tab=orders`)
+
+Sort: Newest First / Oldest First / Highest $ / Lowest $.
+
+Columns: `Img | ID | Product | Customer | Plan | Amount | Status | Date | Actions`.
+
+Sample rows (14 total observed):
+- #11519 Personal Brand Design — Mike Ball <mikeball@yopmail.com> — Onetime — $150.00 — Active + CRM ✓ — 2026-06-11 12:04:48 — DEL
+- #11493 Ultimate Snapback Hat SKU: #S122DR — Mike Ramirez — Onetime — $99.99 — Paid — 2026-04-13 — DEL (this is a physical merch order, no CRM)
+- #11509 Start A Podcast — Monthly $49.00 — Active + CRM ✓
+
+Status values observed: `Active`, `Paid`. CRM checkmark appears on services (provisioned), not physical merch.
+
+### ADMIN → Payouts (`tab=payouts`)
+
+Title: "Talent Payouts — Talent earn from tips, merch, shoutouts & memberships. **Platform fee: 15%**."
+
+Four KPI tiles:
+- Gross Revenue
+- Platform Earned
+- Owed to Talent
+- Total Paid Out
+
+Outstanding balances table: `Talent | Gross | We Earned | Owed | Paid Out | Txns | Method | Action`.
+
+**Revenue Report** sub-section: date range filter + `[FILTER]` `[RESET]` `[EXPORT CSV]`, plus Period summary (Revenue / We Earned / Paid to Talent / Transactions) and transaction-level table.
+
+### ADMIN → Brand Designs (`tab=brands`)
+
+Card grid of brand designs. Each card shows:
+- Athlete name + email
+- Status badge: `COMPLETED` / `DRAFT`
+- Progress: `R1: 10`, `R2: 12` (concepts generated per round), `Kit: 15 files`
+- Created date
+- Credits: `Asset Credits: 3 / 10 used`, `Logo Concept Credits: 0`
+- Actions row: `OPEN STUDIO | PREVIEW | ASSET CREDITS | LOGO CREDITS | BUILD KIT | RESET | REGENERATE | DELETE`
+- Also: nested completed-brand section "Mike Ball / ACTIVE / Reset / Build Kit / Regen" (one logo can be active, marked Completed, with operations)
+
+### ADMIN → Websites (`tab=websites`)
+
+Simple list. Each row: athlete name, email, status (`Live • <slug>` or `Draft`), `EDIT | DELETE`.
+
+### ADMIN → EPKs (`tab=epks`)
+
+Simple list — same shape as Websites.
+
+### ADMIN → Apps (`tab=apps`)
+
+Title: "Mobile Apps" + KPI tiles: `6 TOTAL APPS | 0 PUBLISHED | 6 DRAFT | $49,900 REVENUE`.
+
+Sub-tabs: `ALL APPS | ADS & DEFAULTS | ORDERS`.
+
+Each app card: athlete name, email, `● Draft`, `5 screens` (or 7), slug (mike-ramirez, mike-ramirez-2, etc.), actions `EDIT | VIEW APP | DELETE`.
+
+### ADMIN → Podcasts (`tab=podcasts`)
+
+Each podcast: title, owner email, status (`● Live`), episode count, actions `EDIT | PREVIEW | RSS | DELETE`.
+
+**Podcast Module Settings** section (platform-wide):
+- DEFAULT APPLE CONNECT EMAIL
+- MEGAPHONE API KEY (DAI — PHASE 2)
+- ART19 API KEY (DAI — PHASE 2)
+- TRANSCRIPT PROVIDER (Whisper / Gemini / Deepgram — PHASE 2)
+- `[SAVE SETTINGS]`
+
+### ADMIN → Stores (`tab=stores`)
+
+Title: "NIL Stores" + KPI tiles: `2 TOTAL STORES | 0 PUBLISHED | 2 ORDERS | $0 REVENUE`.
+
+Sub-tabs: `ALL STORES | PLATFORM DEFAULTS | APPROVED PRODUCTS | SUPPLIERS | FULFILLMENT CONFIG | ORDERS`.
+
+**Platform Default Commission to Talent** input — "Applied to new stores. Each store can be overridden below. % of net margin (gross − supplier − shipping) paid to talent."
+
+Each store card: athlete name's "Shop", email, `● Draft`, product count, commission % override, actions `SAVE | EDIT | VIEW STORE | LOGO CREDITS | RESET DESIGN STUDIO`.
+
+### ADMIN → Users (`tab=users`)
+
+Filter tabs: `All | Talent | Brand`. Content lazy-loaded ("Loading...").
+
+### ADMIN → Permissions (`tab=permissions`)
+
+Title: "Permission System — Super Admins (WordPress `manage_options`) always have full access. This system lets you create limited admin roles and restrict user capabilities."
+
+Sub-tabs: `Role Permissions | Staff Accounts`.
+
+**Role Permissions** matrix — Talent and Brand columns, ON/OFF per capability:
+
+TALENT CAPABILITIES (9):
+- View Marketplace — Browse available services
+- Purchase Services — Buy products and subscriptions
+- Brand Design Studio — Access their brand design portal
+- Website Editor — Edit their personal website
+- EPK Editor — Edit their Electronic Press Kit
+- Free Resources — Download free resources
+- Roadmap — Access the personalized roadmap tool
+- Support Tickets — Create and manage support tickets
+- Rewards Store — View and redeem points for rewards
+
+BRAND CAPABILITIES (6):
+- View Marketplace
+- Purchase Services
+- Talent Search — Search and view talent profiles
+- Free Resources
+- Roadmap
+- Support Tickets
+
+`[SAVE PERMISSIONS]`
+
+### ADMIN → Rewards Store (`tab=rewards`)
+
+Title: "Rewards Store — Add items that members can redeem with their earned points. Items appear in the Points tab of their dashboard."
+
+`+ ADD REWARD ITEM`. Table columns: `Image | Name | Points | Stock | Status | Actions (EDIT, DELETE)`.
+
+Sample: "Edge Zone Hat — A high-end trucker hat in black and gray — 500 points — unlimited stock — Active".
+
+Plus **Recent Redemptions** section.
+
+### ADMIN → Tickets (`tab=tickets`)
+
+KPI tiles: `0 Open | 1 In Progress | 0 Resolved Today`.
+
+Filter tabs: `ALL (1) | OPEN (0) | IN PROGRESS (1) | RESOLVED`.
+
+Sample ticket row: `#11491 — I can't setup my DNS — In progress — Mike Ramirez • Product • Apr 10, 2026 7:07pm`.
+
+---
+
+## Open captures TODO
+
+- Profile section tabs (ATHLETIC, BRAND, STORY, SOCIAL, CONTACTS, GOALS) — may be in-page tabs, need to find URL pattern
+- Dashboard inner tabs (Services, Roadmap, Resources, My Products, Goals, Points, Orders, For You, Account, Support, Insights) — also in-page
+- Individual module editors (Design Studio, Site Builder, EPK editor, App editor, Podcast Studio, Store editor)
+- Service detail page (`?ez_view=service&slug=personal-website` as sample)
+- Login + Register flows
+- Brand-role dashboard (requires brand user credentials)
