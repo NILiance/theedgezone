@@ -713,6 +713,617 @@ RICH_CONTENT['start-a-podcast'] = {
   ],
 }
 
+// ── Digital Business Cards ────────────────────────────────────────────────
+RICH_CONTENT['digital-business-cards'] = {
+  intro:
+    'A professionally designed physical card featuring your custom branding, embedded with an NFC chip and printed QR code. When anyone taps the card against their smartphone (no app required — works on all modern iPhones and Android devices), your full digital profile opens instantly showing your name, title, photo, phone number, email, website link, social media profiles, EPK link, and any custom links you choose. You can update your digital profile anytime without reprinting cards. The card comes with a digital dashboard showing tap analytics — who tapped, when, and where. Cards are printed on premium PVC with a matte or glossy finish in your brand colors. For brands, team management features let you order branded cards for your entire organization with a unified company profile template.',
+  stats: [
+    { value: '500+', label: 'Users' },
+    { value: '99%', label: 'Satisfaction' },
+    { value: '5-7d', label: 'Ship Time' },
+    { value: 'No App', label: 'Required' },
+  ],
+  includes: [
+    {
+      title: 'The Card',
+      items: [
+        'NFC-enabled chip + printed QR code',
+        'Premium PVC, matte or glossy finish',
+        'Custom branded design in your colors',
+        'Multiple card design options',
+        'Works on all modern iPhones and Android devices',
+      ],
+    },
+    {
+      title: 'Digital Profile',
+      items: [
+        'Full digital profile opens on tap (name, photo, contact info)',
+        'Social media profiles + EPK link + custom links',
+        'Update your profile anytime without reprinting',
+        'Hosted at MyLinkedCard.com',
+      ],
+    },
+    {
+      title: 'Analytics & Brand Tools',
+      items: [
+        'Tap analytics dashboard (who, when, where)',
+        'Contact sharing built in',
+        'Team management for brand orders',
+        'Unified company profile template for orgs',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Choose card design', body: 'Pick a layout and your finish.' },
+    { n: 2, title: 'Upload branding', body: 'Your colors, logo, and details flow in from your profile.' },
+    { n: 3, title: 'Ship in 5-7 days', body: 'Cards arrive premium-printed, ready to use.' },
+    { n: 4, title: 'Tap to share', body: 'Tap any phone and your profile opens instantly. No app.' },
+  ],
+  faq: [
+    {
+      q: 'How does the NFC work?',
+      a: 'Recipients tap your card with their phone — no app needed. Your profile opens instantly.',
+    },
+    {
+      q: 'Can I update my profile after printing?',
+      a: 'Yes. The card points to your hosted digital profile — update info anytime without reprinting.',
+    },
+    {
+      q: 'Do I get analytics?',
+      a: 'Yes — the dashboard shows every tap including when and where, so you know which networking sessions are working.',
+    },
+  ],
+  pricing: [{ label: 'One-time', amount: '$49', period: 'one-time payment' }],
+}
+
+// ── Brand Lite ────────────────────────────────────────────────────────────
+RICH_CONTENT['brand-lite'] = {
+  intro:
+    'Already have a logo? Brand Lite takes your existing logo and builds a complete professional brand package around it in minutes. Upload your logo and our engine extracts your brand colors, generates every file format you need (PNG in multiple sizes, transparent PNG, JPG on white and black backgrounds, true SVG vector), creates a professional Brand Guide PDF with your color palette, typography system, and logo usage rules, and unlocks the full Text & Color Editor for further customization. You also get access to the Print Shop for branded merchandise and trading cards. Your original logo is always preserved.',
+  stats: [
+    { value: 'Instant', label: 'Delivery' },
+    { value: '∞', label: 'Commercial Rights' },
+    { value: '4', label: 'Logo Formats' },
+    { value: 'PNG/SVG', label: 'Upload Accepted' },
+  ],
+  includes: [
+    {
+      title: 'Upload & Extract',
+      items: [
+        'Upload your existing logo in PNG, JPG, or SVG format',
+        'Automatic color extraction to build your brand palette',
+        'Your original logo is always preserved',
+      ],
+    },
+    {
+      title: 'Complete File Package',
+      items: [
+        'PNG (1024, 512, 256, 128px)',
+        'Transparent PNG — no background',
+        'JPG — white and black backgrounds',
+        'SVG — true scalable vector',
+      ],
+    },
+    {
+      title: 'Brand Guide & Editor',
+      items: [
+        'Brand Guide PDF — color palette with hex codes, typography, usage rules',
+        'Full Text & Color Editor — adjust text, swap colors, erase elements, paint bucket, global color swap',
+        'Print Shop access — order branded merch, trading cards, and more',
+        'Full commercial rights — yours forever',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Purchase', body: 'Access your Brand Lite portal instantly.' },
+    { n: 2, title: 'Upload', body: 'PNG, JPG, or SVG accepted.' },
+    {
+      n: 3,
+      title: 'Auto-build',
+      body: 'Colors extracted, brand kit assembled in seconds.',
+    },
+    { n: 4, title: 'Download & use', body: 'Complete brand package, ready to use everywhere.' },
+  ],
+  faq: [
+    {
+      q: 'What file formats can I upload?',
+      a: 'PNG, JPG, or SVG. For best results, upload a high-resolution PNG or SVG with a transparent background.',
+    },
+    {
+      q: 'What do I get?',
+      a: 'Everything a full brand design gets except the concept generation: PNG files in multiple sizes, transparent PNG, JPGs on white/black, SVG vector, Brand Guide PDF, and Print Shop access.',
+    },
+    {
+      q: 'Can I edit my logo after uploading?',
+      a: 'Yes — the full Text & Color Editor lets you change text, swap colors, erase elements. Your original is always preserved.',
+    },
+    {
+      q: 'Can I add this to my existing Brand Design?',
+      a: 'Absolutely. If you already have a full Brand Design, Brand Lite adds your uploaded logo as an additional switchable logo in your Brand Arsenal.',
+    },
+    {
+      q: 'Do I own the rights?',
+      a: 'Yes. Your logo remains yours. All generated brand kit files are yours to use commercially, forever.',
+    },
+  ],
+  pricing: [{ label: 'One-time', amount: '$49', period: 'one-time payment' }],
+}
+
+// ── Graphic Design Services ───────────────────────────────────────────────
+RICH_CONTENT['graphic-design'] = {
+  intro:
+    'Professional graphic design services for businesses that need custom creative work. Per order: up to 5 custom design pieces created by our professional design team, tailored to your brand guidelines and specific requirements. Design types include social media graphics (posts, stories, covers, ads), marketing collateral (flyers, brochures, rack cards, postcards), event materials (banners, posters, programs, tickets, signage), digital advertisements (display ads, email headers, web banners), presentation decks, infographics, and any other visual content your brand needs. Each order includes unlimited revisions until you are 100% satisfied. You receive final files in every format needed — print-ready high-resolution PDFs, web-optimized PNGs and JPGs, and editable source files (PSD, Adobe Illustrator, or Figma). Rush delivery available for time-sensitive projects with guaranteed 24-hour turnaround.',
+  stats: [
+    { value: '80+', label: 'Brands Served' },
+    { value: '96%', label: 'Satisfaction' },
+    { value: '5', label: 'Pieces Per Order' },
+    { value: '3-5d', label: 'Turnaround' },
+  ],
+  includes: [
+    {
+      title: 'Design Types',
+      items: [
+        'Social media graphics (posts, stories, covers, ads)',
+        'Marketing collateral (flyers, brochures, rack cards, postcards)',
+        'Event materials (banners, posters, programs, tickets, signage)',
+        'Digital advertisements (display ads, email headers, web banners)',
+        'Presentation decks + infographics',
+      ],
+    },
+    {
+      title: 'Process',
+      items: [
+        'Up to 5 design pieces per order',
+        'Unlimited revisions until 100% satisfied',
+        'Brand-consistent across all pieces (colors, fonts, identity)',
+        'Rush delivery available (24-hour guarantee)',
+      ],
+    },
+    {
+      title: 'Files Delivered',
+      items: [
+        'Print-ready high-resolution PDFs',
+        'Web-optimized PNGs and JPGs',
+        'Editable source files (PSD, Adobe Illustrator, or Figma)',
+        'Brand-consistent file naming and organization',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Submit brief', body: 'Tell us what you need and share your brand guidelines.' },
+    { n: 2, title: 'Designers create concepts', body: 'Our team produces initial drafts within 3-5 days.' },
+    { n: 3, title: 'Review & revise', body: 'Request revisions until every piece is perfect.' },
+    { n: 4, title: 'Receive final files', body: 'Print-ready, web-ready, and editable source files.' },
+  ],
+  faq: [
+    {
+      q: 'How many designs per order?',
+      a: 'Each order includes up to 5 design pieces. Bundles available for larger needs.',
+    },
+    {
+      q: 'Do I get the source files?',
+      a: 'Yes — every order includes editable PSD, Adobe Illustrator, or Figma source files so your team can iterate later.',
+    },
+  ],
+  pricing: [{ label: 'One-time', amount: '$199', period: 'per order (up to 5 pieces)' }],
+}
+
+// ── Social Media Growth ───────────────────────────────────────────────────
+RICH_CONTENT['social-media-growth'] = {
+  intro:
+    'A comprehensive audit of your current social media presence across all platforms (Instagram, TikTok, Twitter/X, YouTube, LinkedIn, Facebook, Snapchat). Based on the audit, our team develops a custom growth strategy for each platform including content theme recommendations specific to your sport and personality, optimal posting schedule based on when your audience is most active, hashtag research with sport-specific and trending tags, engagement optimization tactics, audience targeting strategies, and competitor analysis showing what is working for similar talent in your space. You receive detailed monthly analytics reports covering follower growth rate, engagement rate, reach and impressions, top-performing content, audience demographics, and actionable recommendations for the next month.',
+  stats: [
+    { value: '130+', label: 'Clients' },
+    { value: '92%', label: 'Satisfaction' },
+    { value: '7', label: 'Platforms Covered' },
+    { value: 'Monthly', label: 'Reports' },
+  ],
+  includes: [
+    {
+      title: 'Strategy & Audit',
+      items: [
+        'Comprehensive audit across IG, TikTok, Twitter/X, YouTube, LinkedIn, Facebook, Snapchat',
+        'Platform-specific growth strategies',
+        'Content theme recommendations for your sport + personality',
+        'Optimal posting schedule based on audience activity',
+        'Competitor analysis (what works for similar talent)',
+      ],
+    },
+    {
+      title: 'Execution',
+      items: [
+        'Content calendar with planned posts',
+        'Hashtag research (sport-specific + trending)',
+        'Engagement optimization tactics',
+        'Audience targeting strategies',
+        'Trend identification + real-time content opportunities',
+      ],
+    },
+    {
+      title: 'Reporting',
+      items: [
+        'Monthly analytics report',
+        'Follower growth rate, engagement rate, reach, impressions',
+        'Top-performing content analysis',
+        'Audience demographics breakdown',
+        'Actionable recommendations for next month',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Audit', body: 'We analyze your current social presence in depth.' },
+    { n: 2, title: 'Strategy', body: 'Custom growth strategy tailored to your sport + goals.' },
+    { n: 3, title: 'Implementation', body: 'Execute the plan with calendar, hashtags, and tactics.' },
+    { n: 4, title: 'Optimize', body: 'Monthly reports + adjustments as algorithms shift.' },
+  ],
+  faq: [
+    {
+      q: 'Which platforms do you support?',
+      a: 'Instagram, TikTok, Twitter/X, YouTube, LinkedIn, and Facebook.',
+    },
+    {
+      q: 'How does this differ from Social Media Management?',
+      a: 'Growth is strategy + reporting — you still post. Management is full-service execution where our team posts on your behalf.',
+    },
+  ],
+  pricing: [{ label: 'Monthly', amount: '$299', period: 'per month' }],
+}
+
+// ── Social Media Management ───────────────────────────────────────────────
+RICH_CONTENT['social-media-management'] = {
+  intro:
+    'Full-service social media management where our team handles everything — content creation, posting, engagement, and strategy — so you can focus entirely on your sport and personal life. A dedicated social media manager learns your voice, brand, and goals. They create original content for all your platforms including graphics, captions, hashtags, and stories. You receive a visual content calendar for review and approval before anything is published. Your manager handles community engagement — responding to comments, DMs, and mentions in your voice. Monthly strategy calls to review performance, discuss upcoming events and opportunities, and plan content themes.',
+  stats: [
+    { value: '95+', label: 'Talent Managed' },
+    { value: '94%', label: 'Satisfaction' },
+    { value: 'Hands-off', label: 'For You' },
+    { value: '1:1', label: 'Dedicated Manager' },
+  ],
+  includes: [
+    {
+      title: 'Dedicated Manager',
+      items: [
+        'Personal social media manager learns your voice + goals',
+        'Intelligent content creation across platforms',
+        'Graphics, captions, hashtags, stories — all produced for you',
+        'Personalized coaching as you grow',
+      ],
+    },
+    {
+      title: 'Calendar & Approval',
+      items: [
+        'Visual content calendar for review',
+        'Approval flow before anything is published',
+        'Multi-platform scheduling',
+        'Trend intelligence for real-time post opportunities',
+      ],
+    },
+    {
+      title: 'Engagement + Reporting',
+      items: [
+        'Community engagement (comments, DMs, mentions) in your voice',
+        'Monthly strategy calls to review and plan',
+        'Performance monitoring with engagement, follower growth, reach analytics',
+        'Crisis monitoring with immediate alerts',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Onboarding', body: 'Brand audit + voice + goal alignment.' },
+    { n: 2, title: 'Strategy', body: 'Content strategy + calendar built for review.' },
+    { n: 3, title: 'Create + post', body: 'Smart content creation, scheduled, and posted.' },
+    { n: 4, title: 'Monitor + optimize', body: 'Engagement + analytics + monthly tuning.' },
+  ],
+  faq: [
+    {
+      q: 'Do you post on my behalf?',
+      a: 'Yes — that is the whole point. You approve a calendar; we handle creation, scheduling, posting, and engagement.',
+    },
+    {
+      q: 'What if my voice changes?',
+      a: 'Monthly strategy calls let us recalibrate. Your manager learns and adapts continuously.',
+    },
+  ],
+  pricing: [{ label: 'Monthly', amount: '$499', period: 'per month' }],
+}
+
+// ── Press & Media Services ────────────────────────────────────────────────
+RICH_CONTENT['press-media'] = {
+  intro:
+    'A dedicated PR strategist who crafts your narrative and identifies media opportunities. Services include professional press release writing and distribution to targeted journalist lists, proactive media outreach to sports reporters, business journalists, and industry publications, interview preparation coaching (talking points, message framing, media training), media monitoring tracking every mention of your name across online, print, and broadcast media, crisis communication planning and rapid response, and a comprehensive media contact database in your sport and industry. Each engagement starts with a strategy session to define your story angles, target publications, and goals.',
+  stats: [
+    { value: '55+', label: 'Stories Placed' },
+    { value: '90%', label: 'Satisfaction' },
+    { value: '1-2 wks', label: 'Per Engagement' },
+    { value: '1:1', label: 'Strategist' },
+  ],
+  includes: [
+    {
+      title: 'Press & Distribution',
+      items: [
+        'Professional press release writing',
+        'Distribution to targeted journalist lists',
+        'Proactive media outreach (sports + business + industry pubs)',
+        'Publication targeting',
+      ],
+    },
+    {
+      title: 'Coaching & Crisis',
+      items: [
+        'Interview preparation coaching',
+        'Talking points + message framing',
+        'Media training',
+        'Crisis communication planning',
+        'Rapid response support',
+      ],
+    },
+    {
+      title: 'Monitoring & Reporting',
+      items: [
+        'Media monitoring (online, print, broadcast)',
+        'Coverage tracking and reporting',
+        'Estimated media value calculations',
+        'Sport-specific journalist database',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Strategy session', body: 'Define your story angles, target pubs, and goals.' },
+    { n: 2, title: 'Press release crafted', body: 'Professional release written and reviewed.' },
+    { n: 3, title: 'Targeted distribution', body: 'Sent to the right journalists in the right outlets.' },
+    { n: 4, title: 'Track results', body: 'Coverage report with reach and media value.' },
+  ],
+  faq: [
+    {
+      q: 'What if my story isn\'t newsworthy yet?',
+      a: 'Our strategists help you find the angle. Signed a deal? Launched a business? Achieved a milestone? Compelling personal story? We know how to frame it.',
+    },
+  ],
+  pricing: [{ label: 'One-time', amount: '$199', period: 'per engagement' }],
+}
+
+// ── Legal Support Services ────────────────────────────────────────────────
+RICH_CONTENT['legal-support'] = {
+  intro:
+    'Access to qualified attorneys for contract review (NIL agreements, brand deals, endorsement contracts, licensing deals, appearance agreements), contract drafting for your own business ventures, intellectual property protection strategy, trademark guidance, entity formation for NIL income (LLC, S-Corp), compliance guidance for NCAA, state, and conference NIL regulations, dispute resolution and mediation, cease and desist letters when your rights are infringed, and general legal counsel on demand. For brands, legal services include partnership agreement drafting, regulatory compliance, employment law guidance, and business transaction support. Every engagement starts with a consultation to understand your needs, followed by a clear scope and fee quote before any work begins. No surprise bills.',
+  stats: [
+    { value: '60+', label: 'Clients' },
+    { value: '94%', label: 'Satisfaction' },
+    { value: 'NIL', label: 'Specialists' },
+    { value: 'No surprise', label: 'Fees' },
+  ],
+  includes: [
+    {
+      title: 'Contract & IP',
+      items: [
+        'NIL agreement review and drafting',
+        'Brand deal + endorsement contracts',
+        'Licensing + appearance agreements',
+        'Intellectual property protection strategy',
+        'Trademark guidance',
+      ],
+    },
+    {
+      title: 'Compliance & Disputes',
+      items: [
+        'NCAA, state, and conference NIL compliance',
+        'Dispute resolution + mediation',
+        'Cease and desist letters',
+        'Entity formation (LLC, S-Corp for NIL income)',
+      ],
+    },
+    {
+      title: 'For Brands',
+      items: [
+        'Partnership agreement drafting',
+        'Regulatory compliance',
+        'Employment law guidance',
+        'Business transaction support',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Describe your need', body: 'Brief consultation to understand the situation.' },
+    { n: 2, title: 'Attorney matched', body: 'Paired with a specialist who understands NIL law.' },
+    { n: 3, title: 'Clear scope + quote', body: 'No surprise bills. You approve before work starts.' },
+    { n: 4, title: 'Resolution', body: 'Resolved + ongoing counsel as needed.' },
+  ],
+  faq: [
+    {
+      q: 'How is this different from a regular lawyer?',
+      a: 'Our attorneys specialize in NIL — they understand NCAA, conference, and state-specific regulations that general practitioners often miss.',
+    },
+    {
+      q: 'How much does it cost?',
+      a: 'Free / Custom — pricing is based on scope. You get a clear quote before any work begins.',
+    },
+  ],
+  pricing: [],
+  ctaLabel: 'BOOK CONSULTATION →',
+}
+
+// ── Tax Services ──────────────────────────────────────────────────────────
+RICH_CONTENT['tax-services'] = {
+  intro:
+    'Proactive tax planning consultations throughout the year — not just at filing time — to minimize your tax burden through legal strategies. Annual federal and state tax return preparation, including multi-state filing for talent who compete or earn income in multiple states. Quarterly estimated tax payment calculations to avoid underpayment penalties. Income classification guidance for NIL earnings (1099 vs W-2, hobby vs business income). Business expense identification and documentation guidance (travel, equipment, training, agent fees, branding costs). Entity structure analysis to determine if an LLC or S-Corp would save you money. IRS representation if you ever receive a notice or audit inquiry. Year-end tax projection showing your expected liability before December 31 so you can take action.',
+  stats: [
+    { value: '100+', label: 'Returns Filed' },
+    { value: '96%', label: 'Satisfaction' },
+    { value: '5-10d', label: 'Turnaround' },
+    { value: 'Multi-state', label: 'Filing' },
+  ],
+  includes: [
+    {
+      title: 'Tax Preparation',
+      items: [
+        'Annual federal and state returns',
+        'Multi-state filing for travelling talent',
+        'Quarterly estimated tax payment calculations',
+        'Secure document upload portal',
+      ],
+    },
+    {
+      title: 'Planning & Strategy',
+      items: [
+        'Proactive year-round planning consultations',
+        'NIL income classification guidance (1099 vs W-2, hobby vs business)',
+        'Business expense identification + documentation',
+        'Entity structure analysis (LLC vs S-Corp)',
+        'Year-end projection before Dec 31 with action items',
+      ],
+    },
+    {
+      title: 'Protection',
+      items: [
+        'IRS notice + audit representation',
+        'Deduction optimization',
+        'Underpayment penalty avoidance',
+        'Year-round support — not just at filing time',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Upload docs', body: 'Securely upload via the document portal.' },
+    { n: 2, title: 'Specialist reviews', body: 'Tax specialist analyzes for deductions + planning opportunities.' },
+    { n: 3, title: 'Review + approve', body: 'You review the return before filing.' },
+    { n: 4, title: 'File + refund', body: 'Filed on your behalf — refund tracked to your account.' },
+  ],
+  faq: [
+    {
+      q: 'What if I have income in multiple states?',
+      a: 'We handle multi-state filing as standard — common for talent who compete or earn outside their home state.',
+    },
+    {
+      q: 'Should I have an LLC?',
+      a: 'Maybe. Our entity analysis looks at your income, expenses, and structure to figure out if LLC or S-Corp would save you real money.',
+    },
+  ],
+  pricing: [{ label: 'One-time', amount: '$249', period: 'per return' }],
+}
+
+// ── Trademark Registration ────────────────────────────────────────────────
+RICH_CONTENT['trademark-registration'] = {
+  intro:
+    'A comprehensive trademark search across the USPTO database, state registries, and common law sources to identify potential conflicts before filing. A detailed search report with our analysis and recommendation on registrability. If clear, we prepare and file your trademark application with the United States Patent and Trademark Office (USPTO), including proper identification of goods and services, specimen preparation, and class selection. We monitor the application through the entire process (typically 8-12 months), respond to any office actions or examiner questions, and navigate any opposition proceedings. Once registered, your trademark gives you nationwide priority, the right to use the registered trademark symbol, and the legal authority to enforce your brand against infringers. For talent, trademarking your name, jersey number phrase, celebration, or logo before signing NIL deals is critical.',
+  stats: [
+    { value: '30+', label: 'Filings' },
+    { value: '92%', label: 'Satisfaction' },
+    { value: '8-12mo', label: 'USPTO Process' },
+    { value: 'Federal', label: 'Protection' },
+  ],
+  includes: [
+    {
+      title: 'Search & Strategy',
+      items: [
+        'Comprehensive USPTO + state + common law search',
+        'Detailed search report with registrability analysis',
+        'Brand protection strategy',
+        'International filing options if you need broader coverage',
+      ],
+    },
+    {
+      title: 'Filing & Monitoring',
+      items: [
+        'Federal USPTO filing',
+        'Proper goods and services identification',
+        'Specimen preparation + class selection',
+        'Office action responses',
+        'Opposition proceeding navigation',
+      ],
+    },
+    {
+      title: 'After Registration',
+      items: [
+        'Registration management',
+        'Cease & desist support when infringers appear',
+        'Right to use ® symbol',
+        'Nationwide legal priority',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Comprehensive search', body: 'USPTO + state + common law conflict check.' },
+    { n: 2, title: 'File application', body: 'Filed with USPTO within 1-2 weeks of green light.' },
+    { n: 3, title: 'Monitor + respond', body: '8-12 month USPTO process, we handle examiner questions.' },
+    { n: 4, title: 'Registered', body: 'Federal registration + cease & desist support going forward.' },
+  ],
+  faq: [
+    {
+      q: 'What should I trademark?',
+      a: 'For talent: your name, jersey number phrase, signature celebration, or logo. Trademarking these before NIL deals is critical.',
+    },
+    {
+      q: 'How long does it take?',
+      a: 'Filing happens within 1-2 weeks. USPTO review and registration typically takes 8-12 months.',
+    },
+  ],
+  pricing: [{ label: 'One-time', amount: '$349', period: 'per filing' }],
+}
+
+// ── Affiliate Opportunities ───────────────────────────────────────────────
+RICH_CONTENT['affiliate-opportunities'] = {
+  intro:
+    'Access to a curated marketplace of premium, NIL-compliant brands across categories including sports nutrition, apparel, technology, fitness equipment, lifestyle products, and financial services. For each brand you choose to partner with, you receive a unique affiliate link and tracking code that credits you for every sale driven by your promotion for a full 365 days after someone clicks your link. Share links on your social media, website, EPK, or anywhere your audience engages with you. Your real-time earnings dashboard shows total clicks, conversion rate, total sales generated, commission earned, and pending payouts. Commissions are paid monthly via direct deposit. Many talent earn $500-$5,000+ per month through affiliate partnerships.',
+  stats: [
+    { value: '300+', label: 'Talent Earning' },
+    { value: '95%', label: 'Satisfaction' },
+    { value: '365d', label: 'Conversion Window' },
+    { value: 'Monthly', label: 'Payouts' },
+  ],
+  includes: [
+    {
+      title: 'Brand Marketplace',
+      items: [
+        'Curated, NIL-compliant brands across sports nutrition, apparel, tech, fitness, lifestyle, finance',
+        'Premium brand selection (no spam)',
+        'Custom storefront option',
+        'Instant link generation per brand',
+      ],
+    },
+    {
+      title: 'Tracking & Earnings',
+      items: [
+        '365-day conversion tracking on every click',
+        'Real-time earnings dashboard',
+        'Total clicks + conversion rate + sales + commission tracking',
+        'Monthly payouts via direct deposit',
+        'Pending payout visibility',
+      ],
+    },
+    {
+      title: 'Sharing Tools',
+      items: [
+        'Share on social, website, EPK, anywhere',
+        'Sport-specific brand recommendations',
+        'Social sharing tools built in',
+        'Hosted at NILAffiliates.com',
+      ],
+    },
+  ],
+  steps: [
+    { n: 1, title: 'Browse brands', body: 'Curated marketplace of NIL-compliant partners.' },
+    { n: 2, title: 'Generate links', body: 'Unique affiliate link + tracking code per brand.' },
+    { n: 3, title: 'Share with your audience', body: 'Social, website, EPK — anywhere works.' },
+    { n: 4, title: 'Earn', body: 'Commission on every sale, 365-day conversion window, paid monthly.' },
+  ],
+  faq: [
+    {
+      q: 'How much can I earn?',
+      a: 'Many talent earn $500-$5,000+ per month through affiliate partnerships. Depends on your audience size and how active you are sharing.',
+    },
+    {
+      q: 'What if someone clicks but buys later?',
+      a: 'You get credit for any sale within 365 days of the initial click — among the longest conversion windows in affiliate marketing.',
+    },
+    {
+      q: 'When do I get paid?',
+      a: 'Monthly via direct deposit. Your dashboard shows total earned, paid out, and pending.',
+    },
+  ],
+  pricing: [],
+  ctaLabel: 'BROWSE BRANDS →',
+}
+
 export function getServiceContent(slug: string): ServiceRichContent | null {
   return RICH_CONTENT[slug] ?? null
 }
