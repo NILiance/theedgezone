@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { env } from '@/lib/env'
 import { getCurrentUser } from '@/lib/auth'
 import { getServicePricing } from '@/lib/services-pricing'
 import { SERVICES } from '@/lib/services-data'
@@ -74,7 +73,9 @@ export async function POST(request: Request) {
       ],
       customer_email: user.email,
       allow_promotion_codes: true,
-      return_url: `${env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      // Derive the origin from the request so the return URL works no matter
+      // which port the dev server picked up (3000 / 3001 / production).
+      return_url: `${new URL(request.url).origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         user_id: user.id,
         product_slug: body.slug,
