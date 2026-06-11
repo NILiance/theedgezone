@@ -70,7 +70,13 @@ if (isServer) {
   })
 }
 
-const parsed = envSchema.safeParse(rawEnv)
+// Treat empty strings as unset — optional fields with default values from
+// .env templates would otherwise fail .url() / .email() validation.
+const cleanEnv = Object.fromEntries(
+  Object.entries(rawEnv).filter(([, v]) => v !== undefined && v !== '')
+)
+
+const parsed = envSchema.safeParse(cleanEnv)
 
 if (!parsed.success) {
   console.error('Invalid environment variables:', parsed.error.flatten().fieldErrors)
