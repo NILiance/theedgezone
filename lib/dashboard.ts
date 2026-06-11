@@ -88,7 +88,7 @@ export function getProductActions(slug: string): { label: string; href: string }
       ]
     case 'personal-brand-design':
     case 'brand-lite':
-      return [{ label: 'Design Studio', href: '#' }]
+      return [{ label: 'Design Studio', href: '/dashboard/brand-design' }]
     case 'start-a-podcast':
       return [{ label: 'Open Podcast Studio', href: '#' }]
     case 'create-an-online-store':

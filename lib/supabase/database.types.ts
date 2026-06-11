@@ -75,6 +75,130 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_assets: {
+        Row: {
+          asset_type: string
+          background: string | null
+          brand_design_id: string
+          created_at: string
+          drive_file_id: string | null
+          id: string
+          metadata: Json | null
+          size_px: number | null
+          url: string
+        }
+        Insert: {
+          asset_type: string
+          background?: string | null
+          brand_design_id: string
+          created_at?: string
+          drive_file_id?: string | null
+          id?: string
+          metadata?: Json | null
+          size_px?: number | null
+          url: string
+        }
+        Update: {
+          asset_type?: string
+          background?: string | null
+          brand_design_id?: string
+          created_at?: string
+          drive_file_id?: string | null
+          id?: string
+          metadata?: Json | null
+          size_px?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_assets_brand_design_id_fkey"
+            columns: ["brand_design_id"]
+            isOneToOne: false
+            referencedRelation: "brand_designs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_designs: {
+        Row: {
+          active_logo_id: string | null
+          asset_credits_total: number
+          asset_credits_used: number
+          athletic_position: string | null
+          brand_name: string | null
+          brand_tone: string | null
+          conference: string | null
+          created_at: string
+          id: string
+          jersey_number: string | null
+          logo_concept_credits: number
+          mascot: string | null
+          order_id: string | null
+          primary_color: string | null
+          school: string | null
+          secondary_color: string | null
+          sport: string | null
+          status: string
+          style_seed: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_logo_id?: string | null
+          asset_credits_total?: number
+          asset_credits_used?: number
+          athletic_position?: string | null
+          brand_name?: string | null
+          brand_tone?: string | null
+          conference?: string | null
+          created_at?: string
+          id?: string
+          jersey_number?: string | null
+          logo_concept_credits?: number
+          mascot?: string | null
+          order_id?: string | null
+          primary_color?: string | null
+          school?: string | null
+          secondary_color?: string | null
+          sport?: string | null
+          status?: string
+          style_seed?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_logo_id?: string | null
+          asset_credits_total?: number
+          asset_credits_used?: number
+          athletic_position?: string | null
+          brand_name?: string | null
+          brand_tone?: string | null
+          conference?: string | null
+          created_at?: string
+          id?: string
+          jersey_number?: string | null
+          logo_concept_credits?: number
+          mascot?: string | null
+          order_id?: string | null
+          primary_color?: string | null
+          school?: string | null
+          secondary_color?: string | null
+          sport?: string | null
+          status?: string
+          style_seed?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_designs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branding_settings: {
         Row: {
           id: number
@@ -206,6 +330,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      logo_concepts: {
+        Row: {
+          brand_design_id: string
+          created_at: string
+          id: string
+          image_url: string
+          is_selected: boolean
+          is_shortlisted: boolean
+          metadata: Json | null
+          parent_concept_id: string | null
+          prompt: string | null
+          provider: string
+          round: number
+          thumbnail_url: string | null
+        }
+        Insert: {
+          brand_design_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          is_selected?: boolean
+          is_shortlisted?: boolean
+          metadata?: Json | null
+          parent_concept_id?: string | null
+          prompt?: string | null
+          provider?: string
+          round: number
+          thumbnail_url?: string | null
+        }
+        Update: {
+          brand_design_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_selected?: boolean
+          is_shortlisted?: boolean
+          metadata?: Json | null
+          parent_concept_id?: string | null
+          prompt?: string | null
+          provider?: string
+          round?: number
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logo_concepts_brand_design_id_fkey"
+            columns: ["brand_design_id"]
+            isOneToOne: false
+            referencedRelation: "brand_designs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logo_concepts_parent_concept_id_fkey"
+            columns: ["parent_concept_id"]
+            isOneToOne: false
+            referencedRelation: "logo_concepts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       niliance_sync_events: {
         Row: {
