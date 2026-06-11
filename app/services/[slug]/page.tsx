@@ -7,6 +7,7 @@ import { ServicePricingCard } from '@/components/landing/service-pricing-card'
 import { Button } from '@/components/ui/button'
 import { CATEGORIES, SERVICES, type Service } from '@/lib/services-data'
 import { getServiceContent, type PricingTier } from '@/lib/services-rich-content'
+import { getCurrentUser } from '@/lib/auth'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -73,6 +74,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   const tiers = content?.pricing ?? inferTiersFromPrice(service.price)
   const stats = content?.stats ?? defaultStats(service)
+  const user = await getCurrentUser()
 
   return (
     <>
@@ -131,9 +133,11 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
             <aside>
               <ServicePricingCard
+                slug={slug}
                 tiers={tiers}
                 ctaLabel={content?.ctaLabel ?? 'GET STARTED →'}
                 fallbackPrice={service.price}
+                authed={!!user}
               />
             </aside>
           </div>
