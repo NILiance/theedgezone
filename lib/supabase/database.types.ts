@@ -616,6 +616,138 @@ export type Database = {
         }
         Relationships: []
       }
+      site_blocks: {
+        Row: {
+          block_type: string
+          created_at: string
+          id: string
+          page_id: string
+          position: number
+          props: Json
+          updated_at: string
+        }
+        Insert: {
+          block_type: string
+          created_at?: string
+          id?: string
+          page_id: string
+          position?: number
+          props?: Json
+          updated_at?: string
+        }
+        Update: {
+          block_type?: string
+          created_at?: string
+          id?: string
+          page_id?: string
+          position?: number
+          props?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_blocks_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "site_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_pages: {
+        Row: {
+          created_at: string
+          id: string
+          meta: Json
+          path: string
+          position: number
+          site_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meta?: Json
+          path: string
+          position?: number
+          site_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meta?: Json
+          path?: string
+          position?: number
+          site_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_pages_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sites: {
+        Row: {
+          created_at: string
+          default_meta: Json
+          display_name: string | null
+          id: string
+          order_id: string | null
+          published_at: string | null
+          slug: string
+          status: string
+          tagline: string | null
+          theme: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_meta?: Json
+          display_name?: string | null
+          id?: string
+          order_id?: string | null
+          published_at?: string | null
+          slug: string
+          status?: string
+          tagline?: string | null
+          theme?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_meta?: Json
+          display_name?: string | null
+          id?: string
+          order_id?: string | null
+          published_at?: string | null
+          slug?: string
+          status?: string
+          tagline?: string | null
+          theme?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_events: {
         Row: {
           id: string

@@ -73,8 +73,7 @@ export function getProductActions(slug: string): { label: string; href: string }
   switch (slug) {
     case 'personal-website':
       return [
-        { label: 'View Site', href: '#' },
-        { label: 'Edit Site', href: '#' },
+        { label: 'My Sites', href: '/dashboard/sites' },
       ]
     case 'electronic-press-kit':
       return [
