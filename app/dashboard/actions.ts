@@ -42,3 +42,13 @@ export async function updateProfile(
   revalidatePath('/dashboard', 'layout')
   return { success: 'Profile updated.' }
 }
+
+export async function dismissNilianceBanner() {
+  const user = await requireUser()
+  const supabase = await createClient()
+  await supabase
+    .from('profiles')
+    .update({ niliance_banner_dismissed_at: new Date().toISOString() })
+    .eq('id', user.id)
+  revalidatePath('/dashboard', 'layout')
+}

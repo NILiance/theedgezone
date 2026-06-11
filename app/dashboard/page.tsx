@@ -1,111 +1,289 @@
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { getDashboardData, getProductActions, readinessGrade } from '@/lib/dashboard'
+import { NilianceBanner } from '@/components/dashboard/niliance-banner'
+import { DashboardTabs } from '@/components/dashboard/dashboard-tabs'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export const metadata = { title: 'Dashboard' }
 
-const LIVE = [
-  { name: 'Authentication', detail: 'Email/password sign-in, session management' },
-  { name: 'User profiles', detail: 'Display name, avatar, role assignments' },
-  {
-    name: 'Subdomain routing',
-    detail: '*.mytalentsite.com, *.talentepk.com, *.podcastfortalent.com',
-  },
-  {
-    name: 'Custom domains',
-    detail: 'O(1) lookup table ready for Vercel API wiring',
-  },
-]
-
-const ROADMAP = [
-  {
-    phase: 'Phase 1',
-    name: 'Marketplace + Fulfillment',
-    detail: 'Catalog, Stripe webhooks, provisioning',
-  },
-  {
-    phase: 'Phase 2',
-    name: 'Brand Design + EPK',
-    detail: 'Ideogram, multi-logo, brand kits, press kits',
-  },
-  {
-    phase: 'Phase 3',
-    name: 'Talent Site Builder',
-    detail: 'Block editor, themes, subdomain + custom domain',
-  },
-  {
-    phase: 'Phase 4',
-    name: 'NIL Stores + Apps',
-    detail: 'POD storefronts, mobile app builder',
-  },
-  { phase: 'Phase 5', name: 'Podcast', detail: 'RSS, episodes, distribution' },
-  {
-    phase: 'Phase 6',
-    name: 'Climb',
-    detail: 'Path-to-Summit experience + Climb Studio',
-  },
-  {
-    phase: 'Phase 7',
-    name: 'NILiance bridge',
-    detail: 'Sharetribe sync, listings, opportunities',
-  },
-  {
-    phase: 'Phase 8',
-    name: 'Cutover',
-    detail: 'Data migration, DNS swap, WP sunset',
-  },
-]
-
 export default async function DashboardPage() {
   const user = await requireUser()
+  const { profile, orders } = await getDashboardData(user.id)
+
+  const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'there'
+  const userType = profile?.user_type ?? 'talent'
+  const completionPct = profile?.profile_completion_pct ?? 0
+  const readinessScore = profile?.nil_readiness_score ?? 0
+  const points = profile?.points ?? 0
+  const productCount = orders.filter((o) => o.status !== 'cancelled').length
+  const subCount = orders.filter((o) => o.plan === 'monthly' || o.plan === 'annual').length
+  const showNilianceBanner = !profile?.niliance_banner_dismissed_at
 
   return (
-    <div className="space-y-10">
-      <div>
-        <p className="text-eyebrow text-accent">Edge Zone Dashboard</p>
-        <h1 className="text-display mt-2 text-4xl font-black tracking-tight">
-          Welcome back
-        </h1>
-        <p className="mt-2 text-muted-foreground">{user.email}</p>
+    <div className="space-y-8">
+      {/* NILiance banner */}
+      {showNilianceBanner && <NilianceBanner email={user.email ?? ''} />}
+
+      {/* Heading */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-eyebrow text-accent">My Dashboard</p>
+          <h1 className="text-display mt-2 flex flex-wrap items-center gap-3 text-4xl font-black tracking-tight">
+            Welcome back, {displayName}
+            <RoleBadge userType={userType} />
+          </h1>
+        </div>
+        <Link href="/dashboard/profile">
+          <Button size="sm" variant="outline">
+            My Profile
+          </Button>
+        </Link>
       </div>
 
-      <section>
-        <h2 className="text-eyebrow mb-4 text-muted-foreground">What&apos;s live</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {LIVE.map((item) => (
-            <Card key={item.name}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <span className="inline-block h-2 w-2 rounded-full bg-success" />
-                  {item.name}
-                </CardTitle>
-                <CardDescription>{item.detail}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
+      {/* Profile completion */}
+      <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-display text-lg font-bold text-foreground">
+              Complete your profile ({completionPct}%)
+            </p>
+            <p className="mt-2 max-w-prose text-sm text-muted-foreground">
+              <span className="text-display text-xs font-bold uppercase tracking-widest text-primary">
+                Important Tip
+              </span>
+              <br />
+              Take a few minutes to update your profile to get the most from your experience.
+              Your profile powers personalized content, recommendations, and your roadmap.
+            </p>
+          </div>
+          <Link href="/dashboard/profile">
+            <Button>Update Profile</Button>
+          </Link>
         </div>
-      </section>
+        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-background">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${completionPct}%` }}
+          />
+        </div>
+      </div>
 
-      <section>
-        <h2 className="text-eyebrow mb-4 text-muted-foreground">Roadmap</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {ROADMAP.map((item) => (
-            <Card key={item.name}>
-              <CardHeader>
-                <p className="text-xs font-bold uppercase tracking-widest text-accent">
-                  {item.phase}
-                </p>
-                <CardTitle className="text-base">{item.name}</CardTitle>
-                <CardDescription>{item.detail}</CardDescription>
-              </CardHeader>
-            </Card>
+      {/* Top row: NIL Readiness + stat tiles */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        {/* NIL Readiness score */}
+        <div className="lg:col-span-2">
+          <div className="h-full rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
+            <p className="text-eyebrow text-muted-foreground">NIL Readiness</p>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-display text-6xl font-black text-primary">
+                {readinessScore}
+              </span>
+              <span className="text-display text-2xl text-muted-foreground">/ 100</span>
+            </div>
+            <p className="mt-1 text-display text-xl font-bold text-foreground">
+              Grade: {readinessGrade(readinessScore)}
+            </p>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Score increases as you complete profile sections, purchase services, and engage
+              with opportunities.
+            </p>
+          </div>
+        </div>
+
+        {/* Stat tiles */}
+        <div className="lg:col-span-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatTile
+            value={productCount.toString()}
+            label="Products"
+            sub={subCount > 0 ? `+${subCount} sub` : undefined}
+          />
+          <StatTile value={`${completionPct}%`} label="Profile" />
+          <StatTile value={points.toLocaleString('en-US')} label="Points" />
+          <StatTile value="0/0" label="Goals" sub="Set goals →" />
+        </div>
+      </div>
+
+      {/* Dashboard tabs */}
+      <DashboardTabs
+        defaultTab="My Products"
+        panels={{
+          'My Products': <MyProductsPanel orders={orders} />,
+          Orders: <OrdersPanel orders={orders} />,
+        }}
+      />
+    </div>
+  )
+}
+
+function RoleBadge({ userType }: { userType: string }) {
+  return (
+    <span className="text-display rounded-full bg-panel-elevated px-3 py-1 text-xs font-bold uppercase tracking-widest text-foreground">
+      {userType}
+    </span>
+  )
+}
+
+function StatTile({
+  value,
+  label,
+  sub,
+}: {
+  value: string
+  label: string
+  sub?: string
+}) {
+  return (
+    <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-5 text-center shadow-elevated">
+      <p className="text-display text-3xl font-black text-primary">{value}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+        {label}
+      </p>
+      {sub && (
+        <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+          {sub}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function MyProductsPanel({ orders }: { orders: Awaited<ReturnType<typeof getDashboardData>>['orders'] }) {
+  if (orders.length === 0) {
+    return (
+      <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-10 text-center">
+        <p className="text-display text-lg font-bold text-foreground">
+          You haven&apos;t purchased anything yet.
+        </p>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          Browse the services catalog to find the tools, programs, and services that fit your
+          goals.
+        </p>
+        <Link href="/services" className="mt-6 inline-block">
+          <Button size="lg">BROWSE SERVICES →</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {orders.map((order) => (
+        <ProductCard key={order.id} order={order} />
+      ))}
+    </div>
+  )
+}
+
+function ProductCard({
+  order,
+}: {
+  order: Awaited<ReturnType<typeof getDashboardData>>['orders'][number]
+}) {
+  const actions = getProductActions(order.product_slug)
+  const dateStr = new Date(order.purchased_at).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  const planLabel = order.plan === 'monthly' ? 'Monthly' : order.plan === 'annual' ? 'Annual' : 'Onetime'
+
+  return (
+    <article className="rounded-[var(--radius)] border border-border bg-panel p-6 shadow-elevated">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-display font-bold text-foreground">{order.product_title}</p>
+          <p className="text-xs text-muted-foreground">{planLabel}</p>
+        </div>
+        <StatusPill status={order.status} />
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Purchased {dateStr}</p>
+      {actions.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {actions.map((action) => (
+            <Link key={action.label} href={action.href}>
+              <Button size="sm" variant="outline">
+                {action.label}
+              </Button>
+            </Link>
           ))}
         </div>
-      </section>
+      )}
+    </article>
+  )
+}
+
+function StatusPill({ status }: { status: string }) {
+  const normalized = status.toUpperCase()
+  return (
+    <span
+      className={cn(
+        'text-display rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest',
+        normalized === 'READY' && 'bg-success/20 text-success',
+        normalized === 'ACTIVE' && 'bg-primary/20 text-primary',
+        normalized === 'PROVISIONING' && 'bg-accent/20 text-accent',
+        normalized === 'PAID' && 'bg-success/20 text-success',
+        (normalized === 'PENDING' || normalized === 'CANCELLED' || normalized === 'REFUNDED') &&
+          'bg-panel-elevated text-muted-foreground'
+      )}
+    >
+      {normalized}
+    </span>
+  )
+}
+
+function OrdersPanel({ orders }: { orders: Awaited<ReturnType<typeof getDashboardData>>['orders'] }) {
+  if (orders.length === 0) {
+    return (
+      <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-10 text-center">
+        <p className="text-sm text-muted-foreground">No orders yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel">
+      <table className="w-full text-sm">
+        <thead className="border-b border-border bg-panel-elevated">
+          <tr>
+            <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Product
+            </th>
+            <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Plan
+            </th>
+            <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Amount
+            </th>
+            <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Status
+            </th>
+            <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Date
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id} className="border-b border-border last:border-b-0">
+              <td className="px-4 py-3 text-foreground">{order.product_title}</td>
+              <td className="px-4 py-3 text-muted-foreground">{order.plan ?? 'onetime'}</td>
+              <td className="px-4 py-3 text-right font-bold text-primary">
+                {order.amount_cents != null
+                  ? `$${(order.amount_cents / 100).toFixed(2)}`
+                  : '—'}
+              </td>
+              <td className="px-4 py-3">
+                <StatusPill status={order.status} />
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {new Date(order.purchased_at).toLocaleDateString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

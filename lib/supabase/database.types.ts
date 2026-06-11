@@ -207,6 +207,57 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          amount_cents: number | null
+          created_at: string
+          crm_synced_at: string | null
+          currency: string
+          id: string
+          plan: string | null
+          product_slug: string
+          product_title: string
+          purchased_at: string
+          status: string
+          stripe_payment_intent: string | null
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          created_at?: string
+          crm_synced_at?: string | null
+          currency?: string
+          id?: string
+          plan?: string | null
+          product_slug: string
+          product_title: string
+          purchased_at?: string
+          status?: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number | null
+          created_at?: string
+          crm_synced_at?: string | null
+          currency?: string
+          id?: string
+          plan?: string | null
+          product_slug?: string
+          product_title?: string
+          purchased_at?: string
+          status?: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -215,7 +266,14 @@ export type Database = {
           display_name: string | null
           id: string
           metadata: Json
+          nil_readiness_score: number | null
+          niliance_banner_dismissed_at: string | null
+          niliance_synced_at: string | null
+          niliance_user_id: string | null
+          points: number
+          profile_completion_pct: number | null
           updated_at: string
+          user_type: Database["public"]["Enums"]["user_type"] | null
         }
         Insert: {
           avatar_url?: string | null
@@ -224,7 +282,14 @@ export type Database = {
           display_name?: string | null
           id: string
           metadata?: Json
+          nil_readiness_score?: number | null
+          niliance_banner_dismissed_at?: string | null
+          niliance_synced_at?: string | null
+          niliance_user_id?: string | null
+          points?: number
+          profile_completion_pct?: number | null
           updated_at?: string
+          user_type?: Database["public"]["Enums"]["user_type"] | null
         }
         Update: {
           avatar_url?: string | null
@@ -233,7 +298,14 @@ export type Database = {
           display_name?: string | null
           id?: string
           metadata?: Json
+          nil_readiness_score?: number | null
+          niliance_banner_dismissed_at?: string | null
+          niliance_synced_at?: string | null
+          niliance_user_id?: string | null
+          points?: number
+          profile_completion_pct?: number | null
           updated_at?: string
+          user_type?: Database["public"]["Enums"]["user_type"] | null
         }
         Relationships: []
       }
@@ -295,6 +367,14 @@ export type Database = {
     Enums: {
       app_role: "athlete" | "vendor" | "admin" | "climb_admin"
       domain_target: "site" | "epk" | "podcast" | "store" | "app"
+      user_type:
+        | "talent"
+        | "brand"
+        | "agency"
+        | "school"
+        | "parent"
+        | "fan"
+        | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -877,6 +957,15 @@ export const Constants = {
     Enums: {
       app_role: ["athlete", "vendor", "admin", "climb_admin"],
       domain_target: ["site", "epk", "podcast", "store", "app"],
+      user_type: [
+        "talent",
+        "brand",
+        "agency",
+        "school",
+        "parent",
+        "fan",
+        "staff",
+      ],
     },
   },
   storage: {
