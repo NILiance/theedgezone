@@ -4,57 +4,72 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * Edge Zone wordmark. If a logo file has been dropped at public/edgezone-logo.svg
- * (or .png), we render that. Otherwise we fall back to a styled text mark that
- * mirrors the legacy lockup: heavy gold "T" + "THE EDGE ZONE" + "Elevate Your Game"
- * tagline.
+ * Edge Zone wordmark.
+ *
+ * - If a logo image is present in public/ (full lockup with icon +
+ *   "THE EDGE ZONE" + tagline all in one), render only that image.
+ * - Otherwise fall back to a styled text mark.
  */
-function hasLogoFile() {
+function findLogoFile() {
   const pub = join(process.cwd(), 'public')
-  return ['edgezone-logo.svg', 'edgezone-logo.png', 'edgezone-logo.webp'].find((f) =>
-    existsSync(join(pub, f))
-  )
+  const candidates = [
+    'edgezone-logo.svg',
+    'edgezone-logo.png',
+    'edgezone-logo.webp',
+    'TheEdgeZoneLogo-1.png',
+    'TheEdgeZoneLogo.png',
+    'TheEdgeZoneLogo.svg',
+  ]
+  return candidates.find((f) => existsSync(join(pub, f))) ?? null
 }
 
+// Dimensions of the master logo lockup (used for aspect ratio).
+const LOGO_W = 2062
+const LOGO_H = 684
+
 const SIZES = {
-  sm: { mark: 28, title: 'text-sm', tagline: 'text-[8px]', gap: 'gap-2' },
-  md: { mark: 40, title: 'text-base', tagline: 'text-[9px]', gap: 'gap-2.5' },
-  lg: { mark: 52, title: 'text-xl', tagline: 'text-[10px]', gap: 'gap-3' },
+  sm: { textMark: 28, textTitle: 'text-sm', textTagline: 'text-[8px]', imgH: 36 },
+  md: { textMark: 40, textTitle: 'text-base', textTagline: 'text-[9px]', imgH: 52 },
+  lg: { textMark: 52, textTitle: 'text-xl', textTagline: 'text-[10px]', imgH: 72 },
 } as const
 
 export function Wordmark({ size = 'md' as keyof typeof SIZES }) {
   const s = SIZES[size]
-  const logoFile = hasLogoFile()
+  const logoFile = findLogoFile()
 
-  return (
-    <Link href="/" className={`flex items-center ${s.gap}`}>
-      {logoFile ? (
+  if (logoFile) {
+    const w = Math.round((s.imgH * LOGO_W) / LOGO_H)
+    return (
+      <Link href="/" className="block">
         <Image
           src={`/${logoFile}`}
-          alt="The Edge Zone"
-          width={s.mark}
-          height={s.mark}
-          priority
-          className="h-auto"
-          style={{ width: s.mark }}
+          alt="The Edge Zone — Elevate Your Game"
+          width={LOGO_W}
+          height={LOGO_H}
+          priority={size === 'md' || size === 'lg'}
+          style={{ height: s.imgH, width: w, display: 'block' }}
         />
-      ) : (
-        <span
-          aria-hidden
-          className="text-display flex shrink-0 items-center justify-center font-black text-primary"
-          style={{ width: s.mark, height: s.mark, fontSize: s.mark * 0.95, lineHeight: 1 }}
-        >
-          T
-        </span>
-      )}
+      </Link>
+    )
+  }
+
+  return (
+    <Link href="/" className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className="text-display flex shrink-0 items-center justify-center font-black text-primary"
+        style={{ width: s.textMark, height: s.textMark, fontSize: s.textMark * 0.95, lineHeight: 1 }}
+      >
+        T
+      </span>
       <span className="flex flex-col leading-none">
         <span
-          className={`text-display font-black uppercase tracking-tight text-foreground ${s.title}`}
+          className={`text-display font-black uppercase tracking-tight text-foreground ${s.textTitle}`}
         >
           THE EDGE ZONE
         </span>
         <span
-          className={`mt-0.5 text-display font-medium tracking-[0.05em] text-foreground/80 ${s.tagline}`}
+          className={`mt-0.5 text-display font-medium tracking-[0.05em] text-foreground/80 ${s.textTagline}`}
         >
           Elevate Your Game
         </span>
