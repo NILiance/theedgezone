@@ -1,29 +1,228 @@
+import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { ProfileForm } from '@/components/forms/profile-form'
+import { ProfileEditor, type SectionKey } from '@/components/dashboard/profile-editor'
+import { Button } from '@/components/ui/button'
 
 export const metadata = { title: 'Profile' }
 
-export default async function ProfilePage() {
+const SECTION_KEYS: SectionKey[] = [
+  'basics',
+  'athletic',
+  'brand',
+  'story',
+  'social',
+  'contacts',
+  'goals',
+]
+
+interface PageProps {
+  searchParams: Promise<{ section?: string }>
+}
+
+export default async function ProfilePage({ searchParams }: PageProps) {
+  const { section } = await searchParams
+  const initialSection: SectionKey =
+    section && SECTION_KEYS.includes(section as SectionKey)
+      ? (section as SectionKey)
+      : 'basics'
+
   const user = await requireUser()
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, avatar_url')
+    .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
+  const p = profile ?? ({} as Record<string, unknown>)
+  const socials = (p.socials as Record<string, string>) ?? {}
+  const selected_goals = (p.selected_goals as string[]) ?? []
+
+  const sectionPercents = computeSectionPercents(p, socials)
+  const overall = (p.profile_completion_pct as number | undefined) ?? 0
+
+  const ready = {
+    brandDesign: sectionPercents.brand >= 50 && sectionPercents.basics >= 50,
+    epk: sectionPercents.story >= 50 && sectionPercents.basics >= 50,
+    website: sectionPercents.basics >= 50 && sectionPercents.athletic >= 50,
+  }
+
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-        <p className="mt-2 text-muted-foreground">Update your name and avatar.</p>
+        <Link
+          href="/dashboard"
+          className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+        >
+          ← Dashboard
+        </Link>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-eyebrow text-accent">Your Profile</p>
+            <h1 className="text-display mt-1 text-3xl font-black tracking-tight">
+              Edit your details
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Changes sync to NILiance automatically.
+            </p>
+          </div>
+          <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-4 shadow-elevated">
+            <p className="text-display text-4xl font-black text-primary">{overall}%</p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Profile Complete
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <ReadinessChip label="Ready for Brand Design" active={ready.brandDesign} />
+          <ReadinessChip label="Ready for EPK" active={ready.epk} />
+          <ReadinessChip label="Ready for Website" active={ready.website} />
+        </div>
       </div>
-      <ProfileForm
-        email={user.email ?? ''}
-        defaultDisplayName={profile?.display_name ?? ''}
-        defaultAvatarUrl={profile?.avatar_url ?? ''}
+
+      <ProfileEditor
+        initialSection={initialSection}
+        sectionPercents={sectionPercents}
+        profile={{
+          display_name: (p.display_name as string | null) ?? null,
+          avatar_url: (p.avatar_url as string | null) ?? null,
+          email: user.email ?? '',
+          phone: (p.phone as string | null) ?? null,
+          street_address: (p.street_address as string | null) ?? null,
+          city: (p.city as string | null) ?? null,
+          us_state: (p.us_state as string | null) ?? null,
+          website_url: (p.website_url as string | null) ?? null,
+          weight_lbs: (p.weight_lbs as number | null) ?? null,
+          hometown: (p.hometown as string | null) ?? null,
+          height_inches: (p.height_inches as number | null) ?? null,
+          sport: (p.sport as string | null) ?? null,
+          athletic_position: (p.athletic_position as string | null) ?? null,
+          school: (p.school as string | null) ?? null,
+          conference: (p.conference as string | null) ?? null,
+          division: (p.division as string | null) ?? null,
+          jersey_number: (p.jersey_number as string | null) ?? null,
+          date_of_birth: (p.date_of_birth as string | null) ?? null,
+          brand_primary_color: (p.brand_primary_color as string | null) ?? null,
+          brand_secondary_color: (p.brand_secondary_color as string | null) ?? null,
+          brand_tagline: (p.brand_tagline as string | null) ?? null,
+          brand_voice: (p.brand_voice as string | null) ?? null,
+          bio: (p.bio as string | null) ?? null,
+          achievements: (p.achievements as string | null) ?? null,
+          socials,
+          selected_goals,
+          agency_name: (p.agency_name as string | null) ?? null,
+          agent_name: (p.agent_name as string | null) ?? null,
+          agent_email: (p.agent_email as string | null) ?? null,
+          agent_phone: (p.agent_phone as string | null) ?? null,
+        }}
       />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
+          <p className="text-eyebrow text-primary">NILiance</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {p.niliance_user_id
+              ? 'Connected — profile syncs automatically.'
+              : "Connect to manage opportunities, get paid through NILiance, and have your profile data sync automatically. Don't have an account? We'll auto-create one when you save your profile."}
+          </p>
+          {!p.niliance_user_id && (
+            <Button size="sm" className="mt-4">
+              Connect
+            </Button>
+          )}
+        </div>
+
+        <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
+          <p className="text-eyebrow text-primary">Public Profile</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Share a clean public page that aggregates your Edge Zone profile and your NILiance
+            offerings. Off by default &mdash; turn it on when you&apos;re ready to be
+            discoverable.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button size="sm" variant="outline">
+              Preview
+            </Button>
+            <Button size="sm" variant="outline">
+              Copy Link
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
+}
+
+function ReadinessChip({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span
+      className={`text-display rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+        active ? 'bg-success/20 text-success' : 'bg-panel-elevated text-muted-foreground'
+      }`}
+    >
+      {active ? '✓ ' : '○ '}
+      {label}
+    </span>
+  )
+}
+
+function computeSectionPercents(
+  p: Record<string, unknown>,
+  socials: Record<string, string>
+): Record<SectionKey, number> {
+  const basicsFields = [
+    p.display_name,
+    p.phone,
+    p.street_address,
+    p.city,
+    p.us_state,
+    p.website_url,
+    p.weight_lbs,
+    p.hometown,
+    p.height_inches,
+    p.avatar_url,
+  ]
+  const athleticFields = [
+    p.sport,
+    p.athletic_position,
+    p.school,
+    p.conference,
+    p.division,
+    p.jersey_number,
+    p.date_of_birth,
+  ]
+  const brandFields = [
+    p.brand_primary_color,
+    p.brand_secondary_color,
+    p.brand_tagline,
+    p.brand_voice,
+  ]
+  const storyFields = [p.bio, p.achievements]
+  const socialFields = ['instagram', 'tiktok', 'twitter', 'youtube'].map(
+    (k) => socials[k]
+  )
+  const contactsFields = [
+    p.agency_name,
+    p.agent_name,
+    p.agent_email,
+    p.agent_phone,
+  ]
+  const goalsFilled = ((p.selected_goals as string[]) ?? []).length
+
+  const pct = (filled: number, total: number) =>
+    total === 0 ? 0 : Math.round((filled / total) * 100)
+  const filled = (xs: unknown[]) =>
+    xs.filter((v) => v !== null && v !== undefined && v !== '').length
+
+  return {
+    basics: pct(filled(basicsFields), basicsFields.length),
+    athletic: pct(filled(athleticFields), athleticFields.length),
+    brand: pct(filled(brandFields), brandFields.length),
+    story: pct(filled(storyFields), storyFields.length),
+    social: pct(filled(socialFields), socialFields.length),
+    contacts: pct(filled(contactsFields), contactsFields.length),
+    goals: goalsFilled > 0 ? Math.min(100, goalsFilled * 20) : 0,
+  }
 }

@@ -1,0 +1,485 @@
+'use client'
+
+import { useActionState, useState } from 'react'
+import {
+  saveBasics,
+  saveAthletic,
+  saveBrand,
+  saveStory,
+  saveSocial,
+  saveContacts,
+  saveGoals,
+  type SectionState,
+} from '@/app/dashboard/profile/actions'
+import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
+
+export type SectionKey =
+  | 'basics'
+  | 'athletic'
+  | 'brand'
+  | 'story'
+  | 'social'
+  | 'contacts'
+  | 'goals'
+
+interface SectionMeta {
+  key: SectionKey
+  label: string
+  pct: number
+}
+
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
+  'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+  'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
+  'VA','WA','WV','WI','WY','DC',
+]
+
+const SPORTS = [
+  'Football','Basketball','Baseball','Softball','Soccer','Track & Field',
+  'Swimming','Tennis','Golf','Volleyball','Wrestling','Lacrosse','Hockey',
+  'Gymnastics','Cheer/Dance','Esports','Other',
+]
+
+const GOALS: { key: string; label: string; icon: string }[] = [
+  { key: 'brand_deals', icon: '🤝', label: 'Attract brand partnerships' },
+  { key: 'merch', icon: '🏪', label: 'Sell products or merchandise' },
+  { key: 'following', icon: '📈', label: 'Grow my following' },
+  { key: 'budget_nil', icon: '💡', label: 'Enhance my NIL on a budget' },
+  { key: 'personal_brand', icon: '🎨', label: 'Build a personal brand' },
+  { key: 'digital_identity', icon: '🌐', label: 'Establish a digital identity' },
+  { key: 'content', icon: '📱', label: 'Create content for social media' },
+  { key: 'learn_nil', icon: '📚', label: 'Learn about NIL' },
+  { key: 'performance', icon: '⚡', label: 'Enhance athletic performance' },
+  { key: 'health', icon: '💚', label: 'Mental and physical health' },
+  { key: 'protect_nil', icon: '🛡️', label: 'Protect my NIL' },
+  { key: 'finance', icon: '💰', label: 'Financial guidance' },
+  { key: 'contracts', icon: '📝', label: 'Help with contract negotiation' },
+  { key: 'nil_deal', icon: '📋', label: 'Prepare for an NIL deal' },
+  { key: 'after_sports', icon: '🎓', label: 'Prepare for life after sports' },
+  { key: 'network', icon: '🤝', label: 'Network with other talent' },
+]
+
+interface ProfileEditorProps {
+  initialSection: SectionKey
+  sectionPercents: Record<SectionKey, number>
+  profile: {
+    display_name: string | null
+    avatar_url: string | null
+    email: string
+    phone: string | null
+    street_address: string | null
+    city: string | null
+    us_state: string | null
+    website_url: string | null
+    weight_lbs: number | null
+    hometown: string | null
+    height_inches: number | null
+    sport: string | null
+    athletic_position: string | null
+    school: string | null
+    conference: string | null
+    division: string | null
+    jersey_number: string | null
+    date_of_birth: string | null
+    brand_primary_color: string | null
+    brand_secondary_color: string | null
+    brand_tagline: string | null
+    brand_voice: string | null
+    bio: string | null
+    achievements: string | null
+    socials: Record<string, string>
+    selected_goals: string[]
+    agency_name: string | null
+    agent_name: string | null
+    agent_email: string | null
+    agent_phone: string | null
+  }
+}
+
+export function ProfileEditor({ initialSection, sectionPercents, profile }: ProfileEditorProps) {
+  const [active, setActive] = useState<SectionKey>(initialSection)
+
+  const sections: SectionMeta[] = [
+    { key: 'basics', label: 'Basics', pct: sectionPercents.basics },
+    { key: 'athletic', label: 'Athletic', pct: sectionPercents.athletic },
+    { key: 'brand', label: 'Brand', pct: sectionPercents.brand },
+    { key: 'story', label: 'Story', pct: sectionPercents.story },
+    { key: 'social', label: 'Social', pct: sectionPercents.social },
+    { key: 'contacts', label: 'Contacts', pct: sectionPercents.contacts },
+    { key: 'goals', label: 'Goals', pct: sectionPercents.goals },
+  ]
+
+  return (
+    <div>
+      {/* Section tabs with completion % */}
+      <div className="flex flex-wrap gap-2 border-b border-border pb-4">
+        {sections.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => setActive(s.key)}
+            className={cn(
+              'text-display rounded-full px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors',
+              active === s.key
+                ? 'bg-primary text-primary-foreground'
+                : 'border border-border bg-panel/40 text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {s.label}
+            {s.pct > 0 && (
+              <span className="ml-2 opacity-70">{s.pct}%</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6">
+        {active === 'basics' && <BasicsForm profile={profile} />}
+        {active === 'athletic' && <AthleticForm profile={profile} />}
+        {active === 'brand' && <BrandForm profile={profile} />}
+        {active === 'story' && <StoryForm profile={profile} />}
+        {active === 'social' && <SocialForm profile={profile} />}
+        {active === 'contacts' && <ContactsForm profile={profile} />}
+        {active === 'goals' && <GoalsForm profile={profile} />}
+      </div>
+    </div>
+  )
+}
+
+function SectionShell({
+  state,
+  pending,
+  children,
+  saveLabel = 'Save section',
+}: {
+  state: SectionState
+  pending: boolean
+  children: React.ReactNode
+  saveLabel?: string
+}) {
+  return (
+    <div className="space-y-6 rounded-[var(--radius)] border border-border bg-panel/40 p-6">
+      {children}
+      {state?.error && <Alert variant="destructive">{state.error}</Alert>}
+      {state?.success && <Alert variant="success">{state.success}</Alert>}
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Saving...' : saveLabel}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function FormField({
+  label,
+  required,
+  children,
+}: {
+  label: string
+  required?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+        {label} {required && <span className="text-primary">*</span>}
+      </Label>
+      {children}
+    </div>
+  )
+}
+
+// ── BASICS ────────────────────────────────────────────────────────────────
+function BasicsForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
+  const [state, action, pending] = useActionState<SectionState, FormData>(saveBasics, undefined)
+  const heightFeet =
+    profile.height_inches != null ? Math.floor(profile.height_inches / 12) : ''
+  const heightInches =
+    profile.height_inches != null ? profile.height_inches % 12 : ''
+
+  return (
+    <form action={action}>
+      <SectionShell state={state} pending={pending}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Full name" required>
+            <Input name="display_name" defaultValue={profile.display_name ?? ''} required maxLength={80} />
+          </FormField>
+          <FormField label="Email">
+            <Input value={profile.email} disabled />
+          </FormField>
+          <FormField label="Phone">
+            <Input name="phone" defaultValue={profile.phone ?? ''} />
+          </FormField>
+          <FormField label="Website URL">
+            <Input name="website_url" type="url" defaultValue={profile.website_url ?? ''} placeholder="https://" />
+          </FormField>
+          <FormField label="Street address">
+            <Input name="street_address" defaultValue={profile.street_address ?? ''} />
+          </FormField>
+          <FormField label="City">
+            <Input name="city" defaultValue={profile.city ?? ''} />
+          </FormField>
+          <FormField label="State">
+            <select
+              name="us_state"
+              defaultValue={profile.us_state ?? ''}
+              className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select…</option>
+              {US_STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Hometown">
+            <Input name="hometown" defaultValue={profile.hometown ?? ''} />
+          </FormField>
+          <FormField label="Weight (lbs)">
+            <Input name="weight_lbs" type="number" min={0} max={1000} defaultValue={profile.weight_lbs ?? ''} />
+          </FormField>
+          <FormField label="Height (ft / in)">
+            <div className="flex gap-2">
+              <select
+                name="height_feet"
+                defaultValue={heightFeet}
+                className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">ft</option>
+                {[4, 5, 6, 7].map((f) => (
+                  <option key={f} value={f}>{f}&apos;</option>
+                ))}
+              </select>
+              <select
+                name="height_inches_only"
+                defaultValue={heightInches}
+                className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">in</option>
+                {Array.from({ length: 12 }, (_, i) => i).map((i) => (
+                  <option key={i} value={i}>{i}&quot;</option>
+                ))}
+              </select>
+            </div>
+          </FormField>
+          <FormField label="Profile photo URL">
+            <Input name="avatar_url" type="url" defaultValue={profile.avatar_url ?? ''} placeholder="https://" />
+          </FormField>
+        </div>
+      </SectionShell>
+    </form>
+  )
+}
+
+// ── ATHLETIC ──────────────────────────────────────────────────────────────
+function AthleticForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
+  const [state, action, pending] = useActionState<SectionState, FormData>(saveAthletic, undefined)
+  return (
+    <form action={action}>
+      <SectionShell state={state} pending={pending}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Sport">
+            <select
+              name="sport"
+              defaultValue={profile.sport ?? ''}
+              className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select…</option>
+              {SPORTS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Position">
+            <Input name="athletic_position" defaultValue={profile.athletic_position ?? ''} />
+          </FormField>
+          <FormField label="School">
+            <Input name="school" defaultValue={profile.school ?? ''} />
+          </FormField>
+          <FormField label="Conference">
+            <Input name="conference" defaultValue={profile.conference ?? ''} />
+          </FormField>
+          <FormField label="Division">
+            <Input name="division" defaultValue={profile.division ?? ''} placeholder="D1 / D2 / D3 / NAIA / NJCAA" />
+          </FormField>
+          <FormField label="Jersey number">
+            <Input name="jersey_number" defaultValue={profile.jersey_number ?? ''} />
+          </FormField>
+          <FormField label="Date of birth">
+            <Input name="date_of_birth" type="date" defaultValue={profile.date_of_birth ?? ''} />
+          </FormField>
+        </div>
+      </SectionShell>
+    </form>
+  )
+}
+
+// ── BRAND ─────────────────────────────────────────────────────────────────
+function BrandForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
+  const [state, action, pending] = useActionState<SectionState, FormData>(saveBrand, undefined)
+  return (
+    <form action={action}>
+      <SectionShell state={state} pending={pending}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Primary color (hex)">
+            <Input name="brand_primary_color" defaultValue={profile.brand_primary_color ?? ''} placeholder="#C8A84E" />
+          </FormField>
+          <FormField label="Secondary color (hex)">
+            <Input name="brand_secondary_color" defaultValue={profile.brand_secondary_color ?? ''} placeholder="#000000" />
+          </FormField>
+          <FormField label="Brand tagline">
+            <Input name="brand_tagline" defaultValue={profile.brand_tagline ?? ''} maxLength={160} />
+          </FormField>
+          <FormField label="Brand voice">
+            <textarea
+              name="brand_voice"
+              defaultValue={profile.brand_voice ?? ''}
+              rows={4}
+              maxLength={2000}
+              className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Describe your brand voice — confident, playful, technical, family-first..."
+            />
+          </FormField>
+        </div>
+      </SectionShell>
+    </form>
+  )
+}
+
+// ── STORY ─────────────────────────────────────────────────────────────────
+function StoryForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
+  const [state, action, pending] = useActionState<SectionState, FormData>(saveStory, undefined)
+  return (
+    <form action={action}>
+      <SectionShell state={state} pending={pending}>
+        <FormField label="Bio">
+          <textarea
+            name="bio"
+            defaultValue={profile.bio ?? ''}
+            rows={6}
+            maxLength={4000}
+            className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            placeholder="Tell your story — who you are, what drives you, what makes you different."
+          />
+        </FormField>
+        <FormField label="Achievements">
+          <textarea
+            name="achievements"
+            defaultValue={profile.achievements ?? ''}
+            rows={6}
+            maxLength={4000}
+            className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            placeholder="Awards, championships, recognitions, milestones."
+          />
+        </FormField>
+      </SectionShell>
+    </form>
+  )
+}
+
+// ── SOCIAL ────────────────────────────────────────────────────────────────
+function SocialForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
+  const [state, action, pending] = useActionState<SectionState, FormData>(saveSocial, undefined)
+  return (
+    <form action={action}>
+      <SectionShell state={state} pending={pending}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            { key: 'instagram', label: 'Instagram', icon: '📷' },
+            { key: 'tiktok', label: 'TikTok', icon: '🎵' },
+            { key: 'twitter', label: 'X / Twitter', icon: '🐦' },
+            { key: 'youtube', label: 'YouTube', icon: '▶️' },
+            { key: 'facebook', label: 'Facebook', icon: '📘' },
+            { key: 'linkedin', label: 'LinkedIn', icon: '💼' },
+            { key: 'snapchat', label: 'Snapchat', icon: '👻' },
+          ].map((s) => (
+            <FormField key={s.key} label={`${s.icon} ${s.label} handle`}>
+              <Input name={s.key} defaultValue={profile.socials[s.key] ?? ''} placeholder="@yourhandle" />
+            </FormField>
+          ))}
+        </div>
+      </SectionShell>
+    </form>
+  )
+}
+
+// ── CONTACTS ──────────────────────────────────────────────────────────────
+function ContactsForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
+  const [state, action, pending] = useActionState<SectionState, FormData>(saveContacts, undefined)
+  return (
+    <form action={action}>
+      <SectionShell state={state} pending={pending}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Agency name">
+            <Input name="agency_name" defaultValue={profile.agency_name ?? ''} />
+          </FormField>
+          <FormField label="Agent name">
+            <Input name="agent_name" defaultValue={profile.agent_name ?? ''} />
+          </FormField>
+          <FormField label="Agent email">
+            <Input name="agent_email" type="email" defaultValue={profile.agent_email ?? ''} />
+          </FormField>
+          <FormField label="Agent phone">
+            <Input name="agent_phone" defaultValue={profile.agent_phone ?? ''} />
+          </FormField>
+        </div>
+      </SectionShell>
+    </form>
+  )
+}
+
+// ── GOALS ─────────────────────────────────────────────────────────────────
+function GoalsForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
+  const [state, action, pending] = useActionState<SectionState, FormData>(saveGoals, undefined)
+  const [selected, setSelected] = useState<Set<string>>(new Set(profile.selected_goals))
+
+  const toggle = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  return (
+    <form action={action}>
+      <SectionShell state={state} pending={pending} saveLabel="Save goals">
+        <p className="text-sm text-muted-foreground">
+          Select all goals that apply. We use these to personalize your roadmap and
+          recommend services.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {GOALS.map((goal) => {
+            const isActive = selected.has(goal.key)
+            return (
+              <label
+                key={goal.key}
+                className={cn(
+                  'flex cursor-pointer items-center gap-3 rounded-[var(--radius-sm)] border bg-background/40 p-3 text-sm transition-colors',
+                  isActive ? 'border-primary text-foreground' : 'border-border text-muted-foreground hover:border-primary/50'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  name="goal"
+                  value={goal.key}
+                  checked={isActive}
+                  onChange={() => toggle(goal.key)}
+                  className="accent-primary"
+                />
+                <span className="text-lg">{goal.icon}</span>
+                <span>{goal.label}</span>
+              </label>
+            )
+          })}
+        </div>
+      </SectionShell>
+    </form>
+  )
+}

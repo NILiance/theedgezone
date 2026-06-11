@@ -260,52 +260,133 @@ export type Database = {
       }
       profiles: {
         Row: {
+          achievements: string | null
+          agency_name: string | null
+          agent_email: string | null
+          agent_name: string | null
+          agent_phone: string | null
+          athletic_position: string | null
           avatar_url: string | null
+          bio: string | null
+          brand_primary_color: string | null
+          brand_secondary_color: string | null
+          brand_tagline: string | null
+          brand_voice: string | null
+          city: string | null
+          conference: string | null
           created_at: string
           crm_contact_id: string | null
+          date_of_birth: string | null
           display_name: string | null
+          division: string | null
+          height_inches: number | null
+          hometown: string | null
           id: string
+          jersey_number: string | null
           metadata: Json
           nil_readiness_score: number | null
           niliance_banner_dismissed_at: string | null
           niliance_synced_at: string | null
           niliance_user_id: string | null
+          phone: string | null
           points: number
           profile_completion_pct: number | null
+          school: string | null
+          selected_goals: string[]
+          socials: Json
+          sport: string | null
+          street_address: string | null
           updated_at: string
+          us_state: string | null
           user_type: Database["public"]["Enums"]["user_type"] | null
+          website_url: string | null
+          weight_lbs: number | null
         }
         Insert: {
+          achievements?: string | null
+          agency_name?: string | null
+          agent_email?: string | null
+          agent_name?: string | null
+          agent_phone?: string | null
+          athletic_position?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          brand_primary_color?: string | null
+          brand_secondary_color?: string | null
+          brand_tagline?: string | null
+          brand_voice?: string | null
+          city?: string | null
+          conference?: string | null
           created_at?: string
           crm_contact_id?: string | null
+          date_of_birth?: string | null
           display_name?: string | null
+          division?: string | null
+          height_inches?: number | null
+          hometown?: string | null
           id: string
+          jersey_number?: string | null
           metadata?: Json
           nil_readiness_score?: number | null
           niliance_banner_dismissed_at?: string | null
           niliance_synced_at?: string | null
           niliance_user_id?: string | null
+          phone?: string | null
           points?: number
           profile_completion_pct?: number | null
+          school?: string | null
+          selected_goals?: string[]
+          socials?: Json
+          sport?: string | null
+          street_address?: string | null
           updated_at?: string
+          us_state?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
+          website_url?: string | null
+          weight_lbs?: number | null
         }
         Update: {
+          achievements?: string | null
+          agency_name?: string | null
+          agent_email?: string | null
+          agent_name?: string | null
+          agent_phone?: string | null
+          athletic_position?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          brand_primary_color?: string | null
+          brand_secondary_color?: string | null
+          brand_tagline?: string | null
+          brand_voice?: string | null
+          city?: string | null
+          conference?: string | null
           created_at?: string
           crm_contact_id?: string | null
+          date_of_birth?: string | null
           display_name?: string | null
+          division?: string | null
+          height_inches?: number | null
+          hometown?: string | null
           id?: string
+          jersey_number?: string | null
           metadata?: Json
           nil_readiness_score?: number | null
           niliance_banner_dismissed_at?: string | null
           niliance_synced_at?: string | null
           niliance_user_id?: string | null
+          phone?: string | null
           points?: number
           profile_completion_pct?: number | null
+          school?: string | null
+          selected_goals?: string[]
+          socials?: Json
+          sport?: string | null
+          street_address?: string | null
           updated_at?: string
+          us_state?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
+          website_url?: string | null
+          weight_lbs?: number | null
         }
         Relationships: []
       }
@@ -362,6 +443,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_profile_completion: {
+        Args: { p: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: number
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
