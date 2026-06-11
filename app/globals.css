@@ -13,10 +13,10 @@
     --muted-foreground: 215 14% 65%;      /* #98a3b3 */
     --border: 217 30% 17%;                /* #1e2838 */
 
-    /* Warm gold — primary brand accent */
-    --primary: 43 49% 45%;                /* #ac8d3b */
+    /* Warm gold — primary brand color (matches legacy theedgezone.com #C8A84E) */
+    --primary: 44 53% 55%;                /* #C8A84E — legacy --nil-brand */
     --primary-foreground: 220 50% 4%;     /* near-black on gold */
-    --accent: 44 53% 55%;                 /* #C8A84E — brighter gold */
+    --accent: 44 70% 65%;                 /* brighter gold for gradients + hover */
     --accent-foreground: 220 50% 4%;
 
     --success: 145 63% 49%;               /* #2ecc71 */
@@ -33,7 +33,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(43 49% 45% / 0.08), transparent),
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(44 53% 55% / 0.08), transparent),
       radial-gradient(ellipse 60% 50% at 50% 110%, hsl(220 50% 30% / 0.15), transparent);
     background-attachment: fixed;
   }
