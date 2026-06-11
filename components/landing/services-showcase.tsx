@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   CATEGORIES,
   GUIDED_PATHS,
@@ -170,7 +171,10 @@ export function ServicesShowcase() {
 
 function ServiceCard({ service }: { service: Service }) {
   return (
-    <article className="relative flex flex-col rounded-[var(--radius)] border border-border bg-panel p-6 transition-colors hover:border-primary/40">
+    <Link
+      href={`/services/${service.id}`}
+      className="group relative flex flex-col rounded-[var(--radius)] border border-border bg-panel p-6 transition-colors hover:border-primary/40"
+    >
       {service.status && (
         <span
           className={cn(
@@ -193,7 +197,7 @@ function ServiceCard({ service }: { service: Service }) {
       </p>
       <div className="mt-6 flex items-center justify-between">
         <span className="text-display font-bold text-primary">{service.price}</span>
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-panel-elevated text-foreground/70">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-panel-elevated text-foreground/70 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
           →
         </span>
       </div>
@@ -219,6 +223,6 @@ function ServiceCard({ service }: { service: Service }) {
           </span>
         )}
       </div>
-    </article>
+    </Link>
   )
 }
