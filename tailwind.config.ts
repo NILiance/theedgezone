@@ -11,19 +11,34 @@ const config: Config = {
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        panel: 'hsl(var(--panel))',
+        'panel-elevated': 'hsl(var(--panel-elevated))',
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
         border: 'hsl(var(--border))',
-        accent: 'hsl(var(--accent))',
+        success: 'hsl(var(--success))',
+        destructive: 'hsl(var(--destructive))',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        DEFAULT: 'var(--radius)',
+        sm: 'var(--radius-sm)',
+      },
+      boxShadow: {
+        elevated: '0 16px 48px rgba(0, 0, 0, 0.45)',
       },
     },
   },

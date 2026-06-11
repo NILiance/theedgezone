@@ -7,10 +7,18 @@ export default async function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
-      <div className="max-w-2xl text-center">
-        <h1 className="text-5xl font-bold tracking-tight">Edge Zone</h1>
-        <p className="mt-4 text-lg text-muted-foreground">
-          The platform for athlete brand-building, fulfillment, and creator tools.
+      <div className="max-w-3xl text-center">
+        <p className="text-eyebrow text-accent">The Edge Zone Platform</p>
+        <h1 className="text-display mt-4 text-6xl font-black tracking-tight sm:text-7xl">
+          Build your brand.
+          <br />
+          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Run your business.
+          </span>
+        </h1>
+        <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
+          The all-in-one platform for athlete brand design, fulfillment, sites,
+          stores, podcasts, and apps.
         </p>
         <div className="mt-10 flex items-center justify-center gap-3">
           {user ? (
@@ -30,9 +38,6 @@ export default async function Home() {
             </>
           )}
         </div>
-        <p className="mt-12 text-sm text-muted-foreground">
-          Next-generation platform in active development.
-        </p>
       </div>
     </main>
   )

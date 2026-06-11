@@ -4,19 +4,57 @@
 
 @layer base {
   :root {
-    --background: 220 30% 4%;
-    --foreground: 0 0% 96%;
-    --primary: 152 60% 50%;
-    --primary-foreground: 220 30% 4%;
-    --muted: 220 15% 12%;
-    --muted-foreground: 220 10% 60%;
-    --border: 220 15% 18%;
-    --accent: 152 60% 50%;
+    /* Deep midnight blue-black — Edge Zone signature dark */
+    --background: 225 50% 5%;            /* #060912 */
+    --panel: 220 36% 9%;                  /* #0f1520 — card / surface */
+    --panel-elevated: 220 33% 12%;        /* #141b2a — input / hover */
+    --foreground: 218 24% 93%;            /* #e8ecf3 */
+    --muted: 220 36% 9%;
+    --muted-foreground: 215 14% 65%;      /* #98a3b3 */
+    --border: 217 30% 17%;                /* #1e2838 */
+
+    /* Warm gold — primary brand accent */
+    --primary: 43 49% 45%;                /* #ac8d3b */
+    --primary-foreground: 220 50% 4%;     /* near-black on gold */
+    --accent: 44 53% 55%;                 /* #C8A84E — brighter gold */
+    --accent-foreground: 220 50% 4%;
+
+    --success: 145 63% 49%;               /* #2ecc71 */
+    --destructive: 6 78% 57%;             /* #e74c3c */
+
+    --radius: 14px;
+    --radius-sm: 8px;
   }
 
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--font-sans, system-ui, sans-serif);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(43 49% 45% / 0.08), transparent),
+      radial-gradient(ellipse 60% 50% at 50% 110%, hsl(220 50% 30% / 0.15), transparent);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  .text-display {
+    font-family: var(--font-display), system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .text-eyebrow {
+    font-family: var(--font-display), system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 700;
+    font-size: 0.75rem;
   }
 }

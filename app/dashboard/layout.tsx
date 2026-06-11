@@ -14,25 +14,28 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border">
+      <header className="border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
-            Edge Zone
+          <Link href="/dashboard" className="text-display text-lg font-black tracking-tight">
+            EDGE <span className="text-accent">ZONE</span>
           </Link>
           <nav className="flex items-center gap-6 text-sm">
-            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
+            <Link
+              href="/dashboard"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
               Dashboard
             </Link>
             <Link
               href="/dashboard/profile"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground transition-colors hover:text-foreground"
             >
               {profile?.display_name ?? user.email}
             </Link>
             <form action={signOut}>
               <button
                 type="submit"
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 Sign out
               </button>
@@ -40,7 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
     </div>
   )
 }
