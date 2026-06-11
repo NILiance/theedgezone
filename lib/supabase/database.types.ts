@@ -207,6 +207,36 @@ export type Database = {
         }
         Relationships: []
       }
+      niliance_sync_events: {
+        Row: {
+          created_at: string
+          direction: string
+          id: number
+          level: string
+          message: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          id?: number
+          level: string
+          message: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          id?: number
+          level?: string
+          message?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount_cents: number | null
@@ -286,6 +316,10 @@ export type Database = {
           metadata: Json
           nil_readiness_score: number | null
           niliance_banner_dismissed_at: string | null
+          niliance_last_attempt_at: string | null
+          niliance_link_error: string | null
+          niliance_link_status: string
+          niliance_listing_id: string | null
           niliance_synced_at: string | null
           niliance_user_id: string | null
           phone: string | null
@@ -329,6 +363,10 @@ export type Database = {
           metadata?: Json
           nil_readiness_score?: number | null
           niliance_banner_dismissed_at?: string | null
+          niliance_last_attempt_at?: string | null
+          niliance_link_error?: string | null
+          niliance_link_status?: string
+          niliance_listing_id?: string | null
           niliance_synced_at?: string | null
           niliance_user_id?: string | null
           phone?: string | null
@@ -372,6 +410,10 @@ export type Database = {
           metadata?: Json
           nil_readiness_score?: number | null
           niliance_banner_dismissed_at?: string | null
+          niliance_last_attempt_at?: string | null
+          niliance_link_error?: string | null
+          niliance_link_status?: string
+          niliance_listing_id?: string | null
           niliance_synced_at?: string | null
           niliance_user_id?: string | null
           phone?: string | null

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
+import { syncProfile } from '@/lib/niliance'
 
 export type SectionState = { error?: string; success?: string } | undefined
 
@@ -62,6 +63,7 @@ export async function saveBasics(_prev: SectionState, formData: FormData): Promi
     .eq('id', user.id)
 
   if (error) return { error: error.message }
+  void syncProfile({ userId: user.id })
   revalidatePath('/dashboard', 'layout')
   return { success: 'Basics saved.' }
 }
@@ -108,6 +110,7 @@ export async function saveAthletic(
     .eq('id', user.id)
 
   if (error) return { error: error.message }
+  void syncProfile({ userId: user.id })
   revalidatePath('/dashboard', 'layout')
   return { success: 'Athletic info saved.' }
 }
@@ -176,6 +179,7 @@ export async function saveStory(_prev: SectionState, formData: FormData): Promis
     .eq('id', user.id)
 
   if (error) return { error: error.message }
+  void syncProfile({ userId: user.id })
   revalidatePath('/dashboard', 'layout')
   return { success: 'Story saved.' }
 }
@@ -202,6 +206,7 @@ export async function saveSocial(_prev: SectionState, formData: FormData): Promi
   const supabase = await createClient()
   const { error } = await supabase.from('profiles').update({ socials }).eq('id', user.id)
   if (error) return { error: error.message }
+  void syncProfile({ userId: user.id })
   revalidatePath('/dashboard', 'layout')
   return { success: 'Social handles saved.' }
 }

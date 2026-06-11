@@ -31,8 +31,15 @@ const envSchema = z.object({
   IDEOGRAM_API_KEY: z.string().optional(),
   HEYGEN_API_KEY: z.string().optional(),
   GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+
+  // Sharetribe — Integration API (queries + admin ops)
   SHARETRIBE_CLIENT_ID: z.string().optional(),
   SHARETRIBE_CLIENT_SECRET: z.string().optional(),
+  // Sharetribe — Marketplace API (user create, with trusted: scope)
+  SHARETRIBE_MP_CLIENT_ID: z.string().optional(),
+  SHARETRIBE_MP_CLIENT_SECRET: z.string().optional(),
+  // NILiance frontend URL (for redirect links from Edge Zone)
+  NILIANCE_BASE_URL: z.string().url().optional(),
 
   // CRM
   CRM_API_URL: z.string().url().optional(),
@@ -65,6 +72,9 @@ if (isServer) {
     GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON,
     SHARETRIBE_CLIENT_ID: process.env.SHARETRIBE_CLIENT_ID,
     SHARETRIBE_CLIENT_SECRET: process.env.SHARETRIBE_CLIENT_SECRET,
+    SHARETRIBE_MP_CLIENT_ID: process.env.SHARETRIBE_MP_CLIENT_ID,
+    SHARETRIBE_MP_CLIENT_SECRET: process.env.SHARETRIBE_MP_CLIENT_SECRET,
+    NILIANCE_BASE_URL: process.env.NILIANCE_BASE_URL,
     CRM_API_URL: process.env.CRM_API_URL,
     CRM_API_KEY: process.env.CRM_API_KEY,
   })

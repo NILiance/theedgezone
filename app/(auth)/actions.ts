@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { sendEmail } from '@/lib/resend'
 import { welcomeEmail } from '@/lib/emails/welcome'
+import { createNilianceUser } from '@/lib/niliance'
 
 export type AuthState = { error?: string; success?: string } | undefined
 
@@ -55,7 +56,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   })
   if (error) return { error: error.message }
 
-  // Fire welcome email (best-effort, non-blocking).
+  // Fire welcome email + NILiance create (best-effort, non-blocking).
   if (data.user) {
     const { subject, html } = welcomeEmail({ display_name: parsed.data.display_name })
     void sendEmail({
@@ -64,6 +65,13 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
       html,
       templateKey: 'welcome',
       metadata: { user_id: data.user.id },
+    })
+
+    void createNilianceUser({
+      userId: data.user.id,
+      email: parsed.data.email,
+      displayName: parsed.data.display_name,
+      userType: 'talent',
     })
   }
 
