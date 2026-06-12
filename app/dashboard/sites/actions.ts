@@ -1092,6 +1092,210 @@ export async function deleteReward(formData: FormData) {
   revalidatePath(`/dashboard/sites/${row.site_id}`)
 }
 
+// ── Short links ──────────────────────────────────────────────────────────
+
+const shortLinkSchema = z.object({
+  site_id: z.string().uuid(),
+  link_id: z.string().uuid().optional(),
+  slug: z
+    .string()
+    .min(1)
+    .max(60)
+    .regex(/^[a-z0-9-]+$/i, 'Letters, numbers, and dashes only'),
+  target_url: z.string().url().max(2000),
+  title: z.string().max(120).optional(),
+})
+
+export async function upsertShortLink(formData: FormData) {
+  const user = await requireUser()
+  const parsed = shortLinkSchema.safeParse({
+    site_id: formData.get('site_id'),
+    link_id: formData.get('link_id') || undefined,
+    slug: (formData.get('slug') as string)?.toLowerCase(),
+    target_url: formData.get('target_url'),
+    title: formData.get('title') || undefined,
+  })
+  if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+
+  const supabase = await createClient()
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, user_id')
+    .eq('id', parsed.data.site_id)
+    .single()
+  if (!site || site.user_id !== user.id) throw new Error('Site not found')
+
+  if (parsed.data.link_id) {
+    const { error } = await supabase
+      .from('site_short_links')
+      .update({
+        slug: parsed.data.slug,
+        target_url: parsed.data.target_url,
+        title: parsed.data.title ?? null,
+      })
+      .eq('id', parsed.data.link_id)
+      .eq('site_id', parsed.data.site_id)
+    if (error) {
+      throw new Error(
+        error.message.toLowerCase().includes('duplicate')
+          ? 'That slug is already in use on this site.'
+          : error.message
+      )
+    }
+  } else {
+    const { error } = await supabase.from('site_short_links').insert({
+      site_id: parsed.data.site_id,
+      slug: parsed.data.slug,
+      target_url: parsed.data.target_url,
+      title: parsed.data.title ?? null,
+    })
+    if (error) {
+      throw new Error(
+        error.message.toLowerCase().includes('duplicate')
+          ? 'That slug is already in use on this site.'
+          : error.message
+      )
+    }
+  }
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const deleteLinkSchema = z.object({ link_id: z.string().uuid() })
+export async function deleteShortLink(formData: FormData) {
+  const user = await requireUser()
+  const parsed = deleteLinkSchema.safeParse({ link_id: formData.get('link_id') })
+  if (!parsed.success) throw new Error('Invalid form')
+  const supabase = await createClient()
+  const { data: row } = await supabase
+    .from('site_short_links')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.link_id)
+    .single()
+  const ownerId = (row as any)?.sites?.user_id
+  if (!row || ownerId !== user.id) throw new Error('Link not found')
+  await supabase.from('site_short_links').delete().eq('id', parsed.data.link_id)
+  revalidatePath(`/dashboard/sites/${row.site_id}`)
+}
+
+// ── Affiliates ───────────────────────────────────────────────────────────
+
+function randomCode(len = 8): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let out = ''
+  for (let i = 0; i < len; i++) {
+    out += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return out
+}
+
+const affiliateSchema = z.object({
+  site_id: z.string().uuid(),
+  affiliate_id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(160).optional(),
+  active: z.coerce.boolean().default(true),
+})
+
+export async function upsertAffiliate(formData: FormData) {
+  const user = await requireUser()
+  const parsed = affiliateSchema.safeParse({
+    site_id: formData.get('site_id'),
+    affiliate_id: formData.get('affiliate_id') || undefined,
+    name: formData.get('name'),
+    email: formData.get('email') || undefined,
+    active: formData.get('active') === 'on' || formData.get('active') === 'true',
+  })
+  if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+
+  const supabase = await createClient()
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, user_id')
+    .eq('id', parsed.data.site_id)
+    .single()
+  if (!site || site.user_id !== user.id) throw new Error('Site not found')
+
+  if (parsed.data.affiliate_id) {
+    const { error } = await supabase
+      .from('site_affiliates')
+      .update({
+        name: parsed.data.name,
+        email: parsed.data.email ?? null,
+        active: parsed.data.active,
+      })
+      .eq('id', parsed.data.affiliate_id)
+      .eq('site_id', parsed.data.site_id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase.from('site_affiliates').insert({
+      site_id: parsed.data.site_id,
+      name: parsed.data.name,
+      email: parsed.data.email ?? null,
+      code: randomCode(8),
+      active: parsed.data.active,
+    })
+    if (error) throw new Error(error.message)
+  }
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const deleteAffiliateSchema = z.object({ affiliate_id: z.string().uuid() })
+export async function deleteAffiliate(formData: FormData) {
+  const user = await requireUser()
+  const parsed = deleteAffiliateSchema.safeParse({ affiliate_id: formData.get('affiliate_id') })
+  if (!parsed.success) throw new Error('Invalid form')
+  const supabase = await createClient()
+  const { data: row } = await supabase
+    .from('site_affiliates')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.affiliate_id)
+    .single()
+  const ownerId = (row as any)?.sites?.user_id
+  if (!row || ownerId !== user.id) throw new Error('Affiliate not found')
+  await supabase.from('site_affiliates').delete().eq('id', parsed.data.affiliate_id)
+  revalidatePath(`/dashboard/sites/${row.site_id}`)
+}
+
+const affiliateMagicLinkSchema = z.object({
+  affiliate_id: z.string().uuid(),
+  ttl_hours: z.coerce.number().int().min(1).max(720).default(72),
+})
+
+export async function generateAffiliateMagicLink(
+  formData: FormData
+): Promise<{ ok: boolean; url?: string; message?: string }> {
+  const user = await requireUser()
+  const parsed = affiliateMagicLinkSchema.safeParse({
+    affiliate_id: formData.get('affiliate_id'),
+    ttl_hours: formData.get('ttl_hours') ?? 72,
+  })
+  if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
+
+  const supabase = await createClient()
+  const { data: row } = await supabase
+    .from('site_affiliates')
+    .select('id, site_id, sites!inner(user_id, slug)')
+    .eq('id', parsed.data.affiliate_id)
+    .single()
+  const ownerId = (row as any)?.sites?.user_id
+  const siteSlug = (row as any)?.sites?.slug
+  if (!row || ownerId !== user.id) return { ok: false, message: 'Affiliate not found' }
+
+  const token = randomCode(28).toLowerCase() + randomCode(8).toLowerCase()
+  const expiresAt = new Date(Date.now() + parsed.data.ttl_hours * 3600_000).toISOString()
+  await supabase.from('site_affiliate_tokens').insert({
+    affiliate_id: parsed.data.affiliate_id,
+    token,
+    expires_at: expiresAt,
+  })
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://theedgezone.vercel.app'
+  return {
+    ok: true,
+    url: `${base}/site/${siteSlug}/affiliate?token=${token}`,
+  }
+}
+
 // ── Page status + SEO ──────────────────────────────────────────────────────
 
 const pageStatusSchema = z.object({

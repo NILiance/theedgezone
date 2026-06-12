@@ -11,12 +11,22 @@ import { ThemeTab } from '@/components/site/editor/theme-tab'
 import { TemplatesTab } from '@/components/site/editor/templates-tab'
 import { GalleriesTab } from '@/components/site/editor/galleries-tab'
 import { RevenueTab } from '@/components/site/editor/revenue-tab'
+import { InsightsTab } from '@/components/site/editor/insights-tab'
 import { HeaderFooterTab, type HeaderConfig, type FooterConfig } from '@/components/site/editor/header-footer-tab'
 import { DomainTab } from '@/components/site/editor/domain-tab'
 import { addBlock, publishSite, unpublishSite } from '@/app/dashboard/sites/actions'
 import type { SiteBlock } from '@/components/site/block-renderer'
 
-type Tab = 'pages' | 'templates' | 'theme' | 'header' | 'galleries' | 'revenue' | 'domain' | 'help'
+type Tab =
+  | 'pages'
+  | 'templates'
+  | 'theme'
+  | 'header'
+  | 'galleries'
+  | 'revenue'
+  | 'insights'
+  | 'domain'
+  | 'help'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -30,6 +40,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'header', label: 'Header & Footer' },
   { id: 'galleries', label: 'Galleries' },
   { id: 'revenue', label: 'Revenue' },
+  { id: 'insights', label: 'Insights' },
   { id: 'domain', label: 'Domain' },
   { id: 'help', label: 'Help' },
 ]
@@ -136,6 +147,7 @@ export default async function SiteEditorPage({ params, searchParams }: PageProps
       )}
       {tab === 'galleries' && <GalleriesTabLoader siteId={site.id} />}
       {tab === 'revenue' && <RevenueTabLoader siteId={site.id} />}
+      {tab === 'insights' && <InsightsTabLoader siteId={site.id} siteSlug={site.slug} />}
       {tab === 'domain' && <DomainTabLoader siteId={site.id} slug={site.slug} status={site.status} customDomain={site.custom_domain} />}
       {tab === 'help' && <HelpTab />}
     </div>
@@ -309,6 +321,89 @@ async function GalleriesTabLoader({ siteId }: { siteId: string }) {
           ? (g.images as Array<{ url: string; alt?: string }>)
           : [],
       }))}
+    />
+  )
+}
+
+async function InsightsTabLoader({ siteId, siteSlug }: { siteId: string; siteSlug: string }) {
+  const supabase = await createClient()
+  const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString()
+  const [viewsRes, subsRes, linksRes, affRes] = await Promise.all([
+    supabase
+      .from('site_page_views')
+      .select('id, path, ip_hash, created_at')
+      .eq('site_id', siteId)
+      .gte('created_at', since)
+      .order('created_at', { ascending: true })
+      .limit(50000),
+    supabase
+      .from('site_subscribers')
+      .select('id, email, source, created_at')
+      .eq('site_id', siteId)
+      .order('created_at', { ascending: false })
+      .limit(2000),
+    supabase
+      .from('site_short_links')
+      .select('id, slug, target_url, title, clicks, last_clicked_at')
+      .eq('site_id', siteId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('site_affiliates')
+      .select('id, name, email, code, lifetime_revenue_cents, signups, clicks, active')
+      .eq('site_id', siteId)
+      .order('created_at', { ascending: false }),
+  ])
+
+  const views = viewsRes.data ?? []
+  const totalViews = views.length
+  const uniqueVisitors = new Set(views.map((v) => v.ip_hash).filter(Boolean)).size
+
+  const dayMap = new Map<string, number>()
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 3600_000)
+    dayMap.set(d.toISOString().slice(0, 10), 0)
+  }
+  for (const v of views) {
+    const key = v.created_at.slice(0, 10)
+    if (dayMap.has(key)) dayMap.set(key, dayMap.get(key)! + 1)
+  }
+  const rollup = Array.from(dayMap.entries()).map(([date, count]) => ({ date, count }))
+
+  const pageCounts = new Map<string, number>()
+  for (const v of views) {
+    pageCounts.set(v.path, (pageCounts.get(v.path) ?? 0) + 1)
+  }
+  const topPages = Array.from(pageCounts.entries())
+    .map(([path, count]) => ({ path, views: count }))
+    .sort((a, b) => b.views - a.views)
+
+  return (
+    <InsightsTab
+      siteId={siteId}
+      siteSlug={siteSlug}
+      totalViews={totalViews}
+      uniqueVisitors={uniqueVisitors}
+      rollup={rollup}
+      topPages={topPages}
+      subscribers={(subsRes.data ?? []) as Array<{ id: string; email: string; source: string | null; created_at: string }>}
+      shortLinks={(linksRes.data ?? []) as Array<{
+        id: string
+        slug: string
+        target_url: string
+        title: string | null
+        clicks: number
+        last_clicked_at: string | null
+      }>}
+      affiliates={(affRes.data ?? []) as Array<{
+        id: string
+        name: string
+        email: string | null
+        code: string
+        lifetime_revenue_cents: number
+        signups: number
+        clicks: number
+        active: boolean
+      }>}
     />
   )
 }

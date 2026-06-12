@@ -622,6 +622,91 @@ export type Database = {
         }
         Relationships: []
       }
+      site_affiliate_tokens: {
+        Row: {
+          affiliate_id: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+        }
+        Insert: {
+          affiliate_id: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          token: string
+        }
+        Update: {
+          affiliate_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_affiliate_tokens_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "site_affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_affiliates: {
+        Row: {
+          active: boolean
+          clicks: number
+          code: string
+          created_at: string
+          email: string | null
+          id: string
+          lifetime_revenue_cents: number
+          name: string
+          signups: number
+          site_id: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          clicks?: number
+          code: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          lifetime_revenue_cents?: number
+          name: string
+          signups?: number
+          site_id: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          clicks?: number
+          code?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          lifetime_revenue_cents?: number
+          name?: string
+          signups?: number
+          site_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_affiliates_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_assets: {
         Row: {
           created_at: string
@@ -834,6 +919,57 @@ export type Database = {
           },
         ]
       }
+      site_page_views: {
+        Row: {
+          country: string | null
+          created_at: string
+          id: string
+          ip_hash: string | null
+          page_id: string | null
+          path: string
+          referrer: string | null
+          site_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          page_id?: string | null
+          path: string
+          referrer?: string | null
+          site_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          page_id?: string | null
+          path?: string
+          referrer?: string | null
+          site_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_page_views_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "site_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_page_views_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_pages: {
         Row: {
           created_at: string
@@ -1000,6 +1136,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "site_products_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_short_links: {
+        Row: {
+          clicks: number
+          created_at: string
+          id: string
+          last_clicked_at: string | null
+          site_id: string
+          slug: string
+          target_url: string
+          title: string | null
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          id?: string
+          last_clicked_at?: string | null
+          site_id: string
+          slug: string
+          target_url: string
+          title?: string | null
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          id?: string
+          last_clicked_at?: string | null
+          site_id?: string
+          slug?: string
+          target_url?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_short_links_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
