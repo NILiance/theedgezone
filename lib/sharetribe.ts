@@ -17,7 +17,6 @@
  */
 import { env } from '@/lib/env'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySdk = any
 
 let integrationModule: AnySdk | null = null

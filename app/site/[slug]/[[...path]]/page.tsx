@@ -85,11 +85,17 @@ function SiteNav({
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        {/* Plain <a> intentional: this nav lives at runtime under either
+            /site/<slug>/* (Vercel preview) or <slug>.mytalentsite.com/* (after
+            middleware rewrite). next/link would prefetch real Next routes,
+            which these aren't — they're dynamic per-tenant pages. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a href="/" className="text-display font-black tracking-tight">
           {site.display_name ?? site.slug}
         </a>
         <nav className="flex items-center gap-6 text-sm">
           {pages.map((p) => (
+            /* eslint-disable-next-line @next/next/no-html-link-for-pages */
             <a key={p.path} href={p.path} className="text-muted-foreground hover:text-foreground">
               {p.title}
             </a>
