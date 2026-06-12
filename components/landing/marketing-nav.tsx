@@ -35,7 +35,7 @@ export async function MarketingNav() {
   }
 
   return (
-    <header className="border-b border-border bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
         <Wordmark variant="nav" />
         <nav className="hidden items-center gap-7 lg:flex">
