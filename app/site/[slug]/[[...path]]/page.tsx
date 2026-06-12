@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { BlockRenderer, type SiteBlock } from '@/components/site/block-renderer'
+import { BlockRenderer, type SiteBlock, type SiteData } from '@/components/site/block-renderer'
 
 interface PageProps {
   params: Promise<{ slug: string; path?: string[] }>
@@ -29,7 +29,7 @@ export default async function PublicSitePage({ params }: PageProps) {
 
   const { data: site } = await supabase
     .from('sites')
-    .select('id, slug, display_name, tagline, theme, status')
+    .select('id, slug, display_name, tagline, theme, status, social, header, footer')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -58,17 +58,73 @@ export default async function PublicSitePage({ params }: PageProps) {
     .eq('page_id', page.id)
     .order('position', { ascending: true })
 
-  const theme = ((site.theme ?? {}) as { primary?: string; secondary?: string })
-  const resolvedTheme = {
-    primary: theme.primary ?? '#C8A84E',
-    secondary: theme.secondary ?? '#000000',
+  // Pull any per-site data the blocks might want to render against.
+  const [productsRes, tiersRes, rewardsRes, guestbookRes] = await Promise.all([
+    supabase
+      .from('site_products')
+      .select('id, name, description, price_cents, currency, image_url')
+      .eq('site_id', site.id)
+      .eq('active', true)
+      .order('position', { ascending: true }),
+    supabase
+      .from('site_membership_tiers')
+      .select('id, name, description, price_cents, billing_interval, perks')
+      .eq('site_id', site.id)
+      .eq('active', true)
+      .order('position', { ascending: true }),
+    supabase
+      .from('site_support_rewards')
+      .select('id, name, description, image_url, unlock_amount_cents, reward_type')
+      .eq('site_id', site.id)
+      .eq('active', true)
+      .order('position', { ascending: true }),
+    supabase
+      .from('site_guestbook_entries')
+      .select('id, display_name, message, created_at, block_id')
+      .eq('site_id', site.id)
+      .eq('approved', true)
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ])
+
+  const siteData: SiteData = {
+    siteId: site.id,
+    products: (productsRes.data ?? []) as SiteData['products'],
+    tiers: (tiersRes.data ?? []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      price_cents: t.price_cents,
+      billing_interval: t.billing_interval,
+      perks: Array.isArray(t.perks) ? (t.perks as string[]) : [],
+    })),
+    rewards: (rewardsRes.data ?? []) as SiteData['rewards'],
+    guestbookEntries: (guestbookRes.data ?? []) as SiteData['guestbookEntries'],
   }
+
+  const theme = (site.theme ?? {}) as Record<string, unknown>
+  const resolvedTheme =
+    typeof theme.bg_color === 'string'
+      ? theme
+      : {
+          primary: typeof theme.primary === 'string' ? theme.primary : '#C8A84E',
+          secondary: typeof theme.secondary === 'string' ? theme.secondary : '#000000',
+        }
+
+  const social = (site.social ?? {}) as Record<string, string>
 
   return (
     <main className="min-h-screen bg-background text-foreground">
       <SiteNav site={{ display_name: site.display_name, slug: site.slug }} pages={pages ?? []} />
       {(blocks ?? []).map((b) => (
-        <BlockRenderer key={b.id} block={b as SiteBlock} theme={resolvedTheme} />
+        <BlockRenderer
+          key={b.id}
+          block={b as SiteBlock}
+          theme={resolvedTheme as Parameters<typeof BlockRenderer>[0]['theme']}
+          social={social}
+          siteData={siteData}
+          interactive
+        />
       ))}
       <SiteFooter site={{ display_name: site.display_name, slug: site.slug }} />
     </main>

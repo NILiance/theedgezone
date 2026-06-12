@@ -1,5 +1,11 @@
 import Image from 'next/image'
 import type { ThemeTokens } from '@/lib/site-builder/theme-presets'
+import {
+  GuestbookForm,
+  PollForm,
+  EmailCaptureForm,
+  ContactForm,
+} from '@/components/site/public-forms'
 
 export interface SiteBlock {
   id: string
@@ -8,10 +14,20 @@ export interface SiteBlock {
   props: Record<string, unknown>
 }
 
+export interface SiteData {
+  siteId?: string
+  products?: Array<{ id: string; name: string; description: string | null; price_cents: number; currency: string; image_url: string | null }>
+  tiers?: Array<{ id: string; name: string; description: string | null; price_cents: number; billing_interval: string; perks: string[] }>
+  rewards?: Array<{ id: string; name: string; description: string | null; image_url: string | null; unlock_amount_cents: number; reward_type: string }>
+  guestbookEntries?: Array<{ id: string; display_name: string; message: string; created_at: string; block_id: string | null }>
+}
+
 interface BlockRendererProps {
   block: SiteBlock
   theme: { primary: string; secondary: string } | ThemeTokens
   social?: Record<string, string>
+  siteData?: SiteData
+  interactive?: boolean
 }
 
 function isFullTokens(t: BlockRendererProps['theme']): t is ThemeTokens {
@@ -56,7 +72,7 @@ function asTokens(t: BlockRendererProps['theme']): ThemeTokens {
   }
 }
 
-export function BlockRenderer({ block, theme, social }: BlockRendererProps) {
+export function BlockRenderer({ block, theme, social, siteData, interactive }: BlockRendererProps) {
   const tokens = asTokens(theme)
   switch (block.block_type) {
     case 'hero':
@@ -88,9 +104,24 @@ export function BlockRenderer({ block, theme, social }: BlockRendererProps) {
     case 'schedule':
       return <ScheduleBlock props={block.props} tokens={tokens} />
     case 'contact_form':
-      return <ContactFormBlock props={block.props} tokens={tokens} />
+      return (
+        <ContactFormBlock
+          props={block.props}
+          tokens={tokens}
+          siteId={siteData?.siteId}
+          blockId={block.id}
+          interactive={interactive}
+        />
+      )
     case 'email_capture':
-      return <EmailCaptureBlock props={block.props} tokens={tokens} />
+      return (
+        <EmailCaptureBlock
+          props={block.props}
+          tokens={tokens}
+          siteId={siteData?.siteId}
+          interactive={interactive}
+        />
+      )
     case 'event_countdown':
     case 'countdown':
       return <CountdownBlock props={block.props} tokens={tokens} />
@@ -119,9 +150,26 @@ export function BlockRenderer({ block, theme, social }: BlockRendererProps) {
     case 'tip_jar':
       return <TipJarBlock props={block.props} tokens={tokens} />
     case 'fan_poll':
-      return <FanPollBlock props={block.props} tokens={tokens} />
+      return (
+        <FanPollBlock
+          props={block.props}
+          tokens={tokens}
+          siteId={siteData?.siteId}
+          blockId={block.id}
+          interactive={interactive}
+        />
+      )
     case 'guestbook':
-      return <GuestbookBlock props={block.props} tokens={tokens} />
+      return (
+        <GuestbookBlock
+          props={block.props}
+          tokens={tokens}
+          siteId={siteData?.siteId}
+          blockId={block.id}
+          entries={siteData?.guestbookEntries?.filter((e) => !e.block_id || e.block_id === block.id)}
+          interactive={interactive}
+        />
+      )
     case 'supporters_wall':
       return <SupportersWallBlock props={block.props} tokens={tokens} />
     case 'fan_leaderboard':
@@ -155,15 +203,15 @@ export function BlockRenderer({ block, theme, social }: BlockRendererProps) {
     case 'gift_tip':
       return <GiftTipBlock props={block.props} tokens={tokens} />
     case 'rewards_showcase':
-      return <RewardsShowcaseBlock props={block.props} tokens={tokens} />
+      return <RewardsShowcaseBlock props={block.props} tokens={tokens} rewards={siteData?.rewards} />
 
     // ── Revenue blocks ──────────────────────────────────────────────────
     case 'merch':
-      return <MerchBlock props={block.props} tokens={tokens} />
+      return <MerchBlock props={block.props} tokens={tokens} products={siteData?.products} />
     case 'shoutout_request':
       return <ShoutoutRequestBlock props={block.props} tokens={tokens} />
     case 'membership_tiers':
-      return <MembershipTiersBlock props={block.props} tokens={tokens} />
+      return <MembershipTiersBlock props={block.props} tokens={tokens} tiers={siteData?.tiers} />
 
     default:
       return null
@@ -803,14 +851,23 @@ function ScheduleBlock({
 function ContactFormBlock({
   props,
   tokens,
+  siteId,
+  blockId,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  siteId?: string
+  blockId?: string
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title', 'Get in touch')
   const submitText = getStr(props, 'submit_text', 'Send message')
   const fields = getArr<string | { name?: string }>(props, 'fields')
-  const fieldNames = fields.map((f) => (typeof f === 'string' ? f : f.name ?? ''))
+  const fieldNames = fields
+    .map((f) => (typeof f === 'string' ? f : f.name ?? ''))
+    .filter(Boolean)
+
   return (
     <Section maxWidth="640px">
       <h3
@@ -819,59 +876,87 @@ function ContactFormBlock({
       >
         {title}
       </h3>
-      <form className="space-y-3" method="post">
-        {fieldNames.map((name) =>
-          name === 'message' ? (
-            <textarea
-              key={name}
-              name={name}
-              rows={5}
-              placeholder="Your message…"
-              className="w-full rounded-md border p-3 text-sm"
-              style={{
-                borderColor: tokens.border_color,
-                background: tokens.card_bg,
-                color: tokens.text_color,
-              }}
-            />
-          ) : (
-            <input
-              key={name}
-              type={name === 'email' ? 'email' : 'text'}
-              name={name}
-              placeholder={name.charAt(0).toUpperCase() + name.slice(1)}
-              className="w-full rounded-md border p-3 text-sm"
-              style={{
-                borderColor: tokens.border_color,
-                background: tokens.card_bg,
-                color: tokens.text_color,
-              }}
-            />
-          )
-        )}
-        <button
-          type="submit"
-          className="px-6 py-3 text-sm font-bold uppercase tracking-widest"
-          style={{
-            background: tokens.primary,
-            color: tokens.secondary,
-            borderRadius: tokens.button_radius,
-            fontFamily: tokens.font_heading,
-          }}
-        >
-          {submitText}
-        </button>
-      </form>
+      {interactive && siteId ? (
+        <ContactForm
+          siteId={siteId}
+          blockId={blockId}
+          fields={fieldNames}
+          submitText={submitText}
+          tokens={tokens}
+        />
+      ) : (
+        <StaticContactForm fieldNames={fieldNames} submitText={submitText} tokens={tokens} />
+      )}
     </Section>
+  )
+}
+
+function StaticContactForm({
+  fieldNames,
+  submitText,
+  tokens,
+}: {
+  fieldNames: string[]
+  submitText: string
+  tokens: ThemeTokens
+}) {
+  return (
+    <form className="space-y-3" method="post">
+      {fieldNames.map((name) =>
+        name === 'message' ? (
+          <textarea
+            key={name}
+            name={name}
+            rows={5}
+            placeholder="Your message…"
+            className="w-full rounded-md border p-3 text-sm"
+            style={{
+              borderColor: tokens.border_color,
+              background: tokens.card_bg,
+              color: tokens.text_color,
+            }}
+          />
+        ) : (
+          <input
+            key={name}
+            type={name === 'email' ? 'email' : 'text'}
+            name={name}
+            placeholder={name.charAt(0).toUpperCase() + name.slice(1)}
+            className="w-full rounded-md border p-3 text-sm"
+            style={{
+              borderColor: tokens.border_color,
+              background: tokens.card_bg,
+              color: tokens.text_color,
+            }}
+          />
+        )
+      )}
+      <button
+        type="submit"
+        className="px-6 py-3 text-sm font-bold uppercase tracking-widest"
+        style={{
+          background: tokens.primary,
+          color: tokens.secondary,
+          borderRadius: tokens.button_radius,
+          fontFamily: tokens.font_heading,
+        }}
+      >
+        {submitText}
+      </button>
+    </form>
   )
 }
 
 function EmailCaptureBlock({
   props,
   tokens,
+  siteId,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  siteId?: string
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title', 'Join my newsletter')
   const description = getStr(props, 'description')
@@ -891,32 +976,36 @@ function EmailCaptureBlock({
           </p>
         )}
       </div>
-      <form className="mt-6 flex gap-2" method="post">
-        <input
-          type="email"
-          name="email"
-          required
-          placeholder="you@example.com"
-          className="flex-1 rounded-md border p-3 text-sm"
-          style={{
-            borderColor: tokens.border_color,
-            background: tokens.card_bg,
-            color: tokens.text_color,
-          }}
-        />
-        <button
-          type="submit"
-          className="px-6 py-3 text-sm font-bold uppercase tracking-widest"
-          style={{
-            background: tokens.primary,
-            color: tokens.secondary,
-            borderRadius: tokens.button_radius,
-            fontFamily: tokens.font_heading,
-          }}
-        >
-          {buttonText}
-        </button>
-      </form>
+      {interactive && siteId ? (
+        <EmailCaptureForm siteId={siteId} buttonText={buttonText} tokens={tokens} />
+      ) : (
+        <form className="mt-6 flex gap-2" method="post">
+          <input
+            type="email"
+            name="email"
+            required
+            placeholder="you@example.com"
+            className="flex-1 rounded-md border p-3 text-sm"
+            style={{
+              borderColor: tokens.border_color,
+              background: tokens.card_bg,
+              color: tokens.text_color,
+            }}
+          />
+          <button
+            type="submit"
+            className="px-6 py-3 text-sm font-bold uppercase tracking-widest"
+            style={{
+              background: tokens.primary,
+              color: tokens.secondary,
+              borderRadius: tokens.button_radius,
+              fontFamily: tokens.font_heading,
+            }}
+          >
+            {buttonText}
+          </button>
+        </form>
+      )}
     </Section>
   )
 }
@@ -1284,9 +1373,15 @@ function TipJarBlock({
 function FanPollBlock({
   props,
   tokens,
+  siteId,
+  blockId,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  siteId?: string
+  blockId?: string
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title')
   const question = getStr(props, 'question', 'What should I post next?')
@@ -1303,26 +1398,30 @@ function FanPollBlock({
       <p className="text-base font-bold" style={{ color: tokens.heading_color }}>
         {question}
       </p>
-      <ul className="mt-3 space-y-2">
-        {options.map((opt, i) => (
-          <li key={i}>
-            <button
-              type="button"
-              className="flex w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition hover:opacity-90"
-              style={{
-                borderColor: tokens.border_color,
-                background: tokens.bg_color,
-                color: tokens.text_color,
-              }}
-            >
-              <span>{opt}</span>
-              <span className="text-xs" style={{ color: tokens.muted_color }}>
-                Vote →
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      {interactive && siteId && blockId ? (
+        <PollForm siteId={siteId} blockId={blockId} options={options} tokens={tokens} />
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {options.map((opt, i) => (
+            <li key={i}>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition hover:opacity-90"
+                style={{
+                  borderColor: tokens.border_color,
+                  background: tokens.bg_color,
+                  color: tokens.text_color,
+                }}
+              >
+                <span>{opt}</span>
+                <span className="text-xs" style={{ color: tokens.muted_color }}>
+                  Vote →
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </FanCardShell>
   )
 }
@@ -1330,12 +1429,22 @@ function FanPollBlock({
 function GuestbookBlock({
   props,
   tokens,
+  siteId,
+  blockId,
+  entries,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  siteId?: string
+  blockId?: string
+  entries?: Array<{ id: string; display_name: string; message: string; created_at: string }>
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title', 'Guestbook')
   const description = getStr(props, 'description')
+  const moderationRequired = getBool(props, 'moderation_required', false)
+  const recent = (entries ?? []).slice(0, 5)
   return (
     <FanCardShell title={title} tokens={tokens}>
       {description && (
@@ -1343,41 +1452,64 @@ function GuestbookBlock({
           {description}
         </p>
       )}
-      <form className="space-y-3">
-        <input
-          name="display_name"
-          placeholder="Your name"
-          className="w-full rounded-md border p-3 text-sm"
-          style={{
-            borderColor: tokens.border_color,
-            background: tokens.bg_color,
-            color: tokens.text_color,
-          }}
+      {interactive && siteId ? (
+        <GuestbookForm
+          siteId={siteId}
+          blockId={blockId}
+          moderationRequired={moderationRequired}
+          tokens={tokens}
         />
-        <textarea
-          name="message"
-          rows={3}
-          placeholder="Leave a note…"
-          className="w-full rounded-md border p-3 text-sm"
-          style={{
-            borderColor: tokens.border_color,
-            background: tokens.bg_color,
-            color: tokens.text_color,
-          }}
-        />
-        <button
-          type="submit"
-          className="rounded-md px-6 py-3 text-sm font-bold uppercase tracking-widest"
-          style={{
-            background: tokens.primary,
-            color: tokens.secondary,
-            borderRadius: tokens.button_radius,
-            fontFamily: tokens.font_heading,
-          }}
-        >
-          Sign
-        </button>
-      </form>
+      ) : (
+        <form className="space-y-3">
+          <input
+            name="display_name"
+            placeholder="Your name"
+            className="w-full rounded-md border p-3 text-sm"
+            style={{
+              borderColor: tokens.border_color,
+              background: tokens.bg_color,
+              color: tokens.text_color,
+            }}
+          />
+          <textarea
+            name="message"
+            rows={3}
+            placeholder="Leave a note…"
+            className="w-full rounded-md border p-3 text-sm"
+            style={{
+              borderColor: tokens.border_color,
+              background: tokens.bg_color,
+              color: tokens.text_color,
+            }}
+          />
+          <button
+            type="button"
+            className="rounded-md px-6 py-3 text-sm font-bold uppercase tracking-widest"
+            style={{
+              background: tokens.primary,
+              color: tokens.secondary,
+              borderRadius: tokens.button_radius,
+              fontFamily: tokens.font_heading,
+            }}
+          >
+            Sign
+          </button>
+        </form>
+      )}
+      {recent.length > 0 && (
+        <ul className="mt-6 space-y-3 border-t pt-4" style={{ borderColor: tokens.border_color }}>
+          {recent.map((e) => (
+            <li key={e.id}>
+              <p className="text-sm" style={{ color: tokens.text_color }}>
+                {e.message}
+              </p>
+              <p className="text-xs" style={{ color: tokens.muted_color }}>
+                — {e.display_name}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </FanCardShell>
   )
 }
@@ -1764,11 +1896,40 @@ function GiftTipBlock({
 function RewardsShowcaseBlock({
   props,
   tokens,
+  rewards,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  rewards?: Array<{
+    id: string
+    name: string
+    description: string | null
+    image_url: string | null
+    unlock_amount_cents: number
+    reward_type: string
+  }>
 }) {
   const title = getStr(props, 'title', 'Rewards you can unlock')
+  if (!rewards || rewards.length === 0) {
+    return (
+      <Section>
+        <h3
+          className="mb-6 text-2xl font-bold"
+          style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+        >
+          {title}
+        </h3>
+        <div
+          className="rounded-md border p-8 text-center"
+          style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+        >
+          <p className="text-sm" style={{ color: tokens.muted_color }}>
+            Add rewards in the Revenue tab to populate this block.
+          </p>
+        </div>
+      </Section>
+    )
+  }
   return (
     <Section>
       <h3
@@ -1777,13 +1938,39 @@ function RewardsShowcaseBlock({
       >
         {title}
       </h3>
-      <div
-        className="rounded-md border p-8 text-center"
-        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
-      >
-        <p className="text-sm" style={{ color: tokens.muted_color }}>
-          Rewards configured in the Rewards tab will show here.
-        </p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {rewards.map((r) => (
+          <article
+            key={r.id}
+            className="overflow-hidden rounded-md border"
+            style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+          >
+            {r.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={r.image_url} alt={r.name} className="aspect-video w-full object-cover" />
+            ) : (
+              <div
+                className="flex aspect-video items-center justify-center text-xs uppercase tracking-widest"
+                style={{ color: tokens.muted_color, fontFamily: tokens.font_heading }}
+              >
+                {r.reward_type}
+              </div>
+            )}
+            <div className="p-4">
+              <p className="text-display font-bold" style={{ color: tokens.heading_color }}>
+                {r.name}
+              </p>
+              {r.description && (
+                <p className="mt-1 text-xs" style={{ color: tokens.muted_color }}>
+                  {r.description}
+                </p>
+              )}
+              <p className="mt-2 text-xs uppercase tracking-widest" style={{ color: tokens.primary, fontFamily: tokens.font_heading }}>
+                Unlocks at ${(r.unlock_amount_cents / 100).toFixed(2)}
+              </p>
+            </div>
+          </article>
+        ))}
       </div>
     </Section>
   )
@@ -1792,26 +1979,90 @@ function RewardsShowcaseBlock({
 function MerchBlock({
   props,
   tokens,
+  products,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  products?: Array<{
+    id: string
+    name: string
+    description: string | null
+    price_cents: number
+    currency: string
+    image_url: string | null
+  }>
 }) {
   const title = getStr(props, 'title', 'Shop merch')
+  if (!products || products.length === 0) {
+    return (
+      <Section>
+        <h3
+          className="mb-6 text-2xl font-bold"
+          style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+        >
+          {title}
+        </h3>
+        <div
+          className="rounded-md border p-8 text-center"
+          style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+        >
+          <p className="text-sm" style={{ color: tokens.muted_color }}>
+            Add products in the Revenue tab to populate this block.
+          </p>
+        </div>
+      </Section>
+    )
+  }
   return (
     <Section>
       <h3
-        className="mb-6 text-2xl font-bold"
+        className="mb-6 text-center text-2xl font-bold"
         style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
       >
         {title}
       </h3>
-      <div
-        className="rounded-md border p-8 text-center"
-        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
-      >
-        <p className="text-sm" style={{ color: tokens.muted_color }}>
-          Products from the Merch tab will appear here as a shoppable grid.
-        </p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {products.map((p) => (
+          <article
+            key={p.id}
+            className="overflow-hidden rounded-md border"
+            style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+          >
+            {p.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.image_url} alt={p.name} className="aspect-square w-full object-cover" />
+            ) : (
+              <div className="flex aspect-square items-center justify-center text-xs" style={{ color: tokens.muted_color }}>
+                No image
+              </div>
+            )}
+            <div className="p-4">
+              <p className="text-display font-bold" style={{ color: tokens.heading_color }}>
+                {p.name}
+              </p>
+              {p.description && (
+                <p className="mt-1 text-xs" style={{ color: tokens.muted_color }}>
+                  {p.description}
+                </p>
+              )}
+              <p className="mt-3 text-xl font-black" style={{ color: tokens.primary, fontFamily: tokens.font_heading }}>
+                ${(p.price_cents / 100).toFixed(2)}
+              </p>
+              <button
+                type="button"
+                className="mt-3 w-full rounded-md px-4 py-2 text-xs font-bold uppercase tracking-widest"
+                style={{
+                  background: tokens.primary,
+                  color: tokens.secondary,
+                  borderRadius: tokens.button_radius,
+                  fontFamily: tokens.font_heading,
+                }}
+              >
+                Add to cart
+              </button>
+            </div>
+          </article>
+        ))}
       </div>
     </Section>
   )
@@ -1863,11 +2114,28 @@ function ShoutoutRequestBlock({
 function MembershipTiersBlock({
   props,
   tokens,
+  tiers,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  tiers?: Array<{
+    id: string
+    name: string
+    description: string | null
+    price_cents: number
+    billing_interval: string
+    perks: string[]
+  }>
 }) {
   const title = getStr(props, 'title', 'Join the membership')
+  const list =
+    tiers && tiers.length > 0
+      ? tiers
+      : [
+          { id: 's', name: 'Supporter', description: null, price_cents: 300, billing_interval: 'month', perks: ['Behind-the-scenes posts'] },
+          { id: 'i', name: 'Insider', description: null, price_cents: 1000, billing_interval: 'month', perks: ['Everything in Supporter', 'Monthly Q&A', 'Discord access'] },
+          { id: 'v', name: 'VIP', description: null, price_cents: 2500, billing_interval: 'month', perks: ['Everything in Insider', 'Quarterly video call', 'Signed gear'] },
+        ]
   return (
     <Section>
       <h3
@@ -1877,21 +2145,9 @@ function MembershipTiersBlock({
         {title}
       </h3>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[
-          { name: 'Supporter', price: '$3/mo', perks: ['Behind-the-scenes posts'] },
-          {
-            name: 'Insider',
-            price: '$10/mo',
-            perks: ['Everything in Supporter', 'Monthly Q&A', 'Discord access'],
-          },
-          {
-            name: 'VIP',
-            price: '$25/mo',
-            perks: ['Everything in Insider', 'Quarterly video call', 'Signed gear'],
-          },
-        ].map((t) => (
+        {list.map((t) => (
           <div
-            key={t.name}
+            key={t.id}
             className="rounded-md border p-6"
             style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
           >
@@ -1905,11 +2161,19 @@ function MembershipTiersBlock({
               className="mt-2 text-3xl font-black"
               style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
             >
-              {t.price}
+              ${(t.price_cents / 100).toFixed(0)}
+              <span className="ml-1 text-sm font-normal" style={{ color: tokens.muted_color }}>
+                /{t.billing_interval}
+              </span>
             </p>
+            {t.description && (
+              <p className="mt-2 text-xs" style={{ color: tokens.muted_color }}>
+                {t.description}
+              </p>
+            )}
             <ul className="mt-4 space-y-1 text-sm" style={{ color: tokens.text_color }}>
-              {t.perks.map((p) => (
-                <li key={p}>✓ {p}</li>
+              {t.perks.map((p, i) => (
+                <li key={i}>✓ {p}</li>
               ))}
             </ul>
             <button
@@ -1927,9 +2191,11 @@ function MembershipTiersBlock({
           </div>
         ))}
       </div>
-      <p className="mt-3 text-center text-xs" style={{ color: tokens.muted_color }}>
-        Real tiers from your Membership Tiers tab replace these once configured.
-      </p>
+      {(!tiers || tiers.length === 0) && (
+        <p className="mt-3 text-center text-xs" style={{ color: tokens.muted_color }}>
+          Add tiers in the Revenue tab to replace these examples.
+        </p>
+      )}
     </Section>
   )
 }

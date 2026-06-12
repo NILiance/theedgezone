@@ -10,12 +10,13 @@ import { BlockEditor } from '@/components/site/editor/block-editor'
 import { ThemeTab } from '@/components/site/editor/theme-tab'
 import { TemplatesTab } from '@/components/site/editor/templates-tab'
 import { GalleriesTab } from '@/components/site/editor/galleries-tab'
+import { RevenueTab } from '@/components/site/editor/revenue-tab'
 import { HeaderFooterTab, type HeaderConfig, type FooterConfig } from '@/components/site/editor/header-footer-tab'
 import { DomainTab } from '@/components/site/editor/domain-tab'
 import { addBlock, publishSite, unpublishSite } from '@/app/dashboard/sites/actions'
 import type { SiteBlock } from '@/components/site/block-renderer'
 
-type Tab = 'pages' | 'templates' | 'theme' | 'header' | 'galleries' | 'domain' | 'help'
+type Tab = 'pages' | 'templates' | 'theme' | 'header' | 'galleries' | 'revenue' | 'domain' | 'help'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -28,6 +29,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'theme', label: 'Theme' },
   { id: 'header', label: 'Header & Footer' },
   { id: 'galleries', label: 'Galleries' },
+  { id: 'revenue', label: 'Revenue' },
   { id: 'domain', label: 'Domain' },
   { id: 'help', label: 'Help' },
 ]
@@ -133,6 +135,7 @@ export default async function SiteEditorPage({ params, searchParams }: PageProps
         <HeaderFooterTab siteId={site.id} header={header} footer={footer} social={social} />
       )}
       {tab === 'galleries' && <GalleriesTabLoader siteId={site.id} />}
+      {tab === 'revenue' && <RevenueTabLoader siteId={site.id} />}
       {tab === 'domain' && (
         <DomainTab slug={site.slug} status={site.status} customDomain={site.custom_domain} />
       )}
@@ -308,6 +311,64 @@ async function GalleriesTabLoader({ siteId }: { siteId: string }) {
           ? (g.images as Array<{ url: string; alt?: string }>)
           : [],
       }))}
+    />
+  )
+}
+
+async function RevenueTabLoader({ siteId }: { siteId: string }) {
+  const supabase = await createClient()
+  const [productsRes, tiersRes, rewardsRes] = await Promise.all([
+    supabase
+      .from('site_products')
+      .select('id, name, description, price_cents, currency, image_url, active')
+      .eq('site_id', siteId)
+      .order('position', { ascending: true }),
+    supabase
+      .from('site_membership_tiers')
+      .select('id, name, description, price_cents, billing_interval, perks, active')
+      .eq('site_id', siteId)
+      .order('position', { ascending: true }),
+    supabase
+      .from('site_support_rewards')
+      .select(
+        'id, name, description, reward_type, file_url, image_url, unlock_amount_cents, required_tier_id, active'
+      )
+      .eq('site_id', siteId)
+      .order('position', { ascending: true }),
+  ])
+
+  return (
+    <RevenueTab
+      siteId={siteId}
+      products={(productsRes.data ?? []) as Array<{
+        id: string
+        name: string
+        description: string | null
+        price_cents: number
+        currency: string
+        image_url: string | null
+        active: boolean
+      }>}
+      tiers={(tiersRes.data ?? []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        price_cents: t.price_cents,
+        billing_interval: t.billing_interval,
+        perks: Array.isArray(t.perks) ? (t.perks as string[]) : [],
+        active: t.active,
+      }))}
+      rewards={(rewardsRes.data ?? []) as Array<{
+        id: string
+        name: string
+        description: string | null
+        reward_type: string
+        file_url: string | null
+        image_url: string | null
+        unlock_amount_cents: number
+        required_tier_id: string | null
+        active: boolean
+      }>}
     />
   )
 }

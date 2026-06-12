@@ -845,6 +845,253 @@ export async function deleteGallery(formData: FormData) {
 // quiet the unused-env import for now until next round wires custom domains
 void env
 
+// ── Revenue: products / tiers / rewards ────────────────────────────────────
+
+const productSchema = z.object({
+  site_id: z.string().uuid(),
+  product_id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  description: z.string().max(2000).optional(),
+  price_cents: z.coerce.number().int().min(0).max(10_000_000),
+  currency: z.string().min(3).max(8).default('usd'),
+  image_url: z.string().max(500).optional(),
+  active: z.coerce.boolean().default(true),
+})
+
+export async function upsertProduct(formData: FormData) {
+  const user = await requireUser()
+  const parsed = productSchema.safeParse({
+    site_id: formData.get('site_id'),
+    product_id: formData.get('product_id') || undefined,
+    name: formData.get('name'),
+    description: formData.get('description') || undefined,
+    price_cents: formData.get('price_cents'),
+    currency: formData.get('currency') || 'usd',
+    image_url: formData.get('image_url') || undefined,
+    active: formData.get('active') === 'on' || formData.get('active') === 'true',
+  })
+  if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+
+  const supabase = await createClient()
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, user_id')
+    .eq('id', parsed.data.site_id)
+    .single()
+  if (!site || site.user_id !== user.id) throw new Error('Site not found')
+
+  if (parsed.data.product_id) {
+    const { error } = await supabase
+      .from('site_products')
+      .update({
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+        price_cents: parsed.data.price_cents,
+        currency: parsed.data.currency,
+        image_url: parsed.data.image_url ?? null,
+        active: parsed.data.active,
+      })
+      .eq('id', parsed.data.product_id)
+      .eq('site_id', parsed.data.site_id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase.from('site_products').insert({
+      site_id: parsed.data.site_id,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      price_cents: parsed.data.price_cents,
+      currency: parsed.data.currency,
+      image_url: parsed.data.image_url ?? null,
+      active: parsed.data.active,
+    })
+    if (error) throw new Error(error.message)
+  }
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const deleteProductSchema = z.object({ product_id: z.string().uuid() })
+export async function deleteProduct(formData: FormData) {
+  const user = await requireUser()
+  const parsed = deleteProductSchema.safeParse({ product_id: formData.get('product_id') })
+  if (!parsed.success) throw new Error('Invalid form')
+  const supabase = await createClient()
+  const { data: row } = await supabase
+    .from('site_products')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.product_id)
+    .single()
+  const ownerId = (row as any)?.sites?.user_id
+  if (!row || ownerId !== user.id) throw new Error('Product not found')
+  await supabase.from('site_products').delete().eq('id', parsed.data.product_id)
+  revalidatePath(`/dashboard/sites/${row.site_id}`)
+}
+
+const tierSchema = z.object({
+  site_id: z.string().uuid(),
+  tier_id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  description: z.string().max(2000).optional(),
+  price_cents: z.coerce.number().int().min(0).max(10_000_000),
+  billing_interval: z.enum(['month', 'year']),
+  perks: z.string(),
+  active: z.coerce.boolean().default(true),
+})
+
+export async function upsertTier(formData: FormData) {
+  const user = await requireUser()
+  const parsed = tierSchema.safeParse({
+    site_id: formData.get('site_id'),
+    tier_id: formData.get('tier_id') || undefined,
+    name: formData.get('name'),
+    description: formData.get('description') || undefined,
+    price_cents: formData.get('price_cents'),
+    billing_interval: formData.get('billing_interval') || 'month',
+    perks: formData.get('perks'),
+    active: formData.get('active') === 'on' || formData.get('active') === 'true',
+  })
+  if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+  let perks: string[]
+  try {
+    perks = JSON.parse(parsed.data.perks)
+    if (!Array.isArray(perks)) throw new Error('not array')
+  } catch {
+    throw new Error('Invalid perks payload')
+  }
+
+  const supabase = await createClient()
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, user_id')
+    .eq('id', parsed.data.site_id)
+    .single()
+  if (!site || site.user_id !== user.id) throw new Error('Site not found')
+
+  if (parsed.data.tier_id) {
+    const { error } = await supabase
+      .from('site_membership_tiers')
+      .update({
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+        price_cents: parsed.data.price_cents,
+        billing_interval: parsed.data.billing_interval,
+        perks: perks as unknown as Record<string, unknown>[],
+        active: parsed.data.active,
+      })
+      .eq('id', parsed.data.tier_id)
+      .eq('site_id', parsed.data.site_id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase.from('site_membership_tiers').insert({
+      site_id: parsed.data.site_id,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      price_cents: parsed.data.price_cents,
+      billing_interval: parsed.data.billing_interval,
+      perks: perks as unknown as Record<string, unknown>[],
+      active: parsed.data.active,
+    })
+    if (error) throw new Error(error.message)
+  }
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const deleteTierSchema = z.object({ tier_id: z.string().uuid() })
+export async function deleteTier(formData: FormData) {
+  const user = await requireUser()
+  const parsed = deleteTierSchema.safeParse({ tier_id: formData.get('tier_id') })
+  if (!parsed.success) throw new Error('Invalid form')
+  const supabase = await createClient()
+  const { data: row } = await supabase
+    .from('site_membership_tiers')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.tier_id)
+    .single()
+  const ownerId = (row as any)?.sites?.user_id
+  if (!row || ownerId !== user.id) throw new Error('Tier not found')
+  await supabase.from('site_membership_tiers').delete().eq('id', parsed.data.tier_id)
+  revalidatePath(`/dashboard/sites/${row.site_id}`)
+}
+
+const rewardSchema = z.object({
+  site_id: z.string().uuid(),
+  reward_id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  description: z.string().max(2000).optional(),
+  reward_type: z.string().min(1).max(40),
+  file_url: z.string().max(500).optional(),
+  image_url: z.string().max(500).optional(),
+  unlock_amount_cents: z.coerce.number().int().min(0).max(10_000_000),
+  required_tier_id: z.string().uuid().optional(),
+  active: z.coerce.boolean().default(true),
+})
+
+export async function upsertReward(formData: FormData) {
+  const user = await requireUser()
+  const parsed = rewardSchema.safeParse({
+    site_id: formData.get('site_id'),
+    reward_id: formData.get('reward_id') || undefined,
+    name: formData.get('name'),
+    description: formData.get('description') || undefined,
+    reward_type: formData.get('reward_type') || 'digital',
+    file_url: formData.get('file_url') || undefined,
+    image_url: formData.get('image_url') || undefined,
+    unlock_amount_cents: formData.get('unlock_amount_cents') || 0,
+    required_tier_id: formData.get('required_tier_id') || undefined,
+    active: formData.get('active') === 'on' || formData.get('active') === 'true',
+  })
+  if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+
+  const supabase = await createClient()
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, user_id')
+    .eq('id', parsed.data.site_id)
+    .single()
+  if (!site || site.user_id !== user.id) throw new Error('Site not found')
+
+  const row = {
+    site_id: parsed.data.site_id,
+    name: parsed.data.name,
+    description: parsed.data.description ?? null,
+    reward_type: parsed.data.reward_type,
+    file_url: parsed.data.file_url ?? null,
+    image_url: parsed.data.image_url ?? null,
+    unlock_amount_cents: parsed.data.unlock_amount_cents,
+    required_tier_id: parsed.data.required_tier_id ?? null,
+    active: parsed.data.active,
+  }
+
+  if (parsed.data.reward_id) {
+    const { error } = await supabase
+      .from('site_support_rewards')
+      .update(row)
+      .eq('id', parsed.data.reward_id)
+      .eq('site_id', parsed.data.site_id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase.from('site_support_rewards').insert(row)
+    if (error) throw new Error(error.message)
+  }
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const deleteRewardSchema = z.object({ reward_id: z.string().uuid() })
+export async function deleteReward(formData: FormData) {
+  const user = await requireUser()
+  const parsed = deleteRewardSchema.safeParse({ reward_id: formData.get('reward_id') })
+  if (!parsed.success) throw new Error('Invalid form')
+  const supabase = await createClient()
+  const { data: row } = await supabase
+    .from('site_support_rewards')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.reward_id)
+    .single()
+  const ownerId = (row as any)?.sites?.user_id
+  if (!row || ownerId !== user.id) throw new Error('Reward not found')
+  await supabase.from('site_support_rewards').delete().eq('id', parsed.data.reward_id)
+  revalidatePath(`/dashboard/sites/${row.site_id}`)
+}
+
 // ── Page status + SEO ──────────────────────────────────────────────────────
 
 const pageStatusSchema = z.object({
