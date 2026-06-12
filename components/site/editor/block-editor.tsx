@@ -11,6 +11,7 @@ import {
   removeBlock,
   moveBlock,
 } from '@/app/dashboard/sites/actions'
+import { improveBlock } from '@/app/dashboard/sites/generate-actions'
 
 interface Props {
   block: SiteBlock
@@ -73,6 +74,25 @@ export function BlockEditor({ block, theme, social, isFirst, isLast }: Props) {
     })
   }
 
+  const [improvePrompt, setImprovePrompt] = useState('')
+  const [improveOpen, setImproveOpen] = useState(false)
+  const handleImprove = () => {
+    if (!improvePrompt.trim()) return
+    setError(null)
+    const fd = new FormData()
+    fd.set('block_id', block.id)
+    fd.set('prompt', improvePrompt)
+    startTransition(async () => {
+      const res = await improveBlock(fd)
+      if (res.ok) {
+        setImprovePrompt('')
+        setImproveOpen(false)
+      } else {
+        setError(res.message ?? 'Improve failed')
+      }
+    })
+  }
+
   return (
     <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
       <div className="flex items-center justify-between gap-3 border-b border-border bg-panel-elevated/50 px-4 py-2.5">
@@ -104,7 +124,22 @@ export function BlockEditor({ block, theme, social, isFirst, isLast }: Props) {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => {
+              setImproveOpen((s) => !s)
+              setOpen(false)
+            }}
+            disabled={isPending}
+            title="Improve this block with a prompt"
+          >
+            Improve
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setOpen((o) => !o)
+              setImproveOpen(false)
+            }}
             disabled={isPending}
           >
             {open ? 'Close' : 'Edit'}
@@ -121,6 +156,36 @@ export function BlockEditor({ block, theme, social, isFirst, isLast }: Props) {
           </Button>
         </div>
       </div>
+
+      {improveOpen && (
+        <div className="space-y-3 border-b border-border bg-panel-elevated/30 p-4">
+          <p className="text-eyebrow text-primary">Improve with prompt</p>
+          <textarea
+            value={improvePrompt}
+            onChange={(e) => setImprovePrompt(e.target.value)}
+            rows={2}
+            placeholder="e.g. Make the headline punchier and lead with my position"
+            className="flex w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleImprove} disabled={isPending || !improvePrompt.trim()}>
+              {isPending ? 'Generating…' : 'Generate'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setImproveOpen(false)
+                setImprovePrompt('')
+              }}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+      )}
 
       {open ? (
         <div className="grid gap-4 p-4 lg:grid-cols-[1fr_1fr]">

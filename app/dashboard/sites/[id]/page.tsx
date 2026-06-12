@@ -11,6 +11,7 @@ import { ThemeTab } from '@/components/site/editor/theme-tab'
 import { TemplatesTab } from '@/components/site/editor/templates-tab'
 import { GalleriesTab } from '@/components/site/editor/galleries-tab'
 import { RevenueTab } from '@/components/site/editor/revenue-tab'
+import { RegeneratePageButton } from '@/components/site/editor/regenerate-page'
 import { InsightsTab } from '@/components/site/editor/insights-tab'
 import { HeaderFooterTab, type HeaderConfig, type FooterConfig } from '@/components/site/editor/header-footer-tab'
 import { DomainTab } from '@/components/site/editor/domain-tab'
@@ -213,7 +214,7 @@ async function PagesTab({
       <div className="space-y-4">
         {currentPage && (
           <div className="rounded-[var(--radius)] border border-border bg-panel/40 px-5 py-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-eyebrow text-primary">Editing page</p>
                 <p className="text-display mt-1 text-lg font-bold">
@@ -223,15 +224,18 @@ async function PagesTab({
                   </span>
                 </p>
               </div>
-              <span
-                className={`text-display rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                  currentPage.status === 'published'
-                    ? 'bg-success/20 text-success'
-                    : 'bg-panel-elevated text-muted-foreground'
-                }`}
-              >
-                {currentPage.status}
-              </span>
+              <div className="flex items-center gap-3">
+                <RegeneratePageButton pageId={currentPage.id} />
+                <span
+                  className={`text-display rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                    currentPage.status === 'published'
+                      ? 'bg-success/20 text-success'
+                      : 'bg-panel-elevated text-muted-foreground'
+                  }`}
+                >
+                  {currentPage.status}
+                </span>
+              </div>
             </div>
           </div>
         )}

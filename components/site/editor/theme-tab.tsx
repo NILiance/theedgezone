@@ -4,9 +4,9 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { updateTheme, applyThemePreset } from '@/app/dashboard/sites/actions'
+import { updateTheme } from '@/app/dashboard/sites/actions'
+import { generateTheme } from '@/app/dashboard/sites/generate-actions'
 import {
-  THEME_PRESETS,
   HEADING_FONTS,
   BODY_FONTS,
   type ThemeTokens,
@@ -21,9 +21,7 @@ export function ThemeTab({ siteId, tokens }: Props) {
   const [draft, setDraft] = useState<ThemeTokens>(tokens)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [section, setSection] = useState<'presets' | 'colors' | 'typography' | 'layout' | 'css'>(
-    'presets'
-  )
+  const [section, setSection] = useState<'colors' | 'typography' | 'layout' | 'css'>('colors')
 
   const save = () => {
     setError(null)
@@ -39,29 +37,55 @@ export function ThemeTab({ siteId, tokens }: Props) {
     })
   }
 
-  const apply = (presetId: string) => {
+  const setField = <K extends keyof ThemeTokens>(key: K, value: ThemeTokens[K]) =>
+    setDraft({ ...draft, [key]: value })
+
+  const [vibe, setVibe] = useState('')
+  const [genPending, startGen] = useTransition()
+  const handleGenerate = () => {
+    if (!vibe.trim()) return
     setError(null)
     const fd = new FormData()
     fd.set('site_id', siteId)
-    fd.set('preset_id', presetId)
-    startTransition(async () => {
-      try {
-        await applyThemePreset(fd)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Apply failed')
+    fd.set('vibe', vibe)
+    startGen(async () => {
+      const res = await generateTheme(fd)
+      if (res.ok && res.data) {
+        setDraft(res.data)
+        setVibe('')
+      } else {
+        setError(res.message ?? 'Failed to generate theme')
       }
     })
   }
 
-  const setField = <K extends keyof ThemeTokens>(key: K, value: ThemeTokens[K]) =>
-    setDraft({ ...draft, [key]: value })
-
   return (
     <div className="space-y-5">
+      <p className="text-sm text-muted-foreground">
+        Fine-tune your theme tokens. To start from a curated bundle, head to{' '}
+        <strong>Templates</strong> — each template ships with its own colors, fonts, and layout.
+      </p>
+
+      <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-4">
+        <p className="text-eyebrow text-primary">Generate from a vibe</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Describe how the site should feel — colors, mood, energy. We&apos;ll set the tokens.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Input
+            value={vibe}
+            onChange={(e) => setVibe(e.target.value)}
+            placeholder="e.g. moody neon athlete with electric teal accents"
+            className="min-w-[200px] flex-1"
+          />
+          <Button onClick={handleGenerate} disabled={genPending || !vibe.trim()}>
+            {genPending ? 'Generating…' : 'Generate'}
+          </Button>
+        </div>
+      </div>
       <div className="flex flex-wrap gap-1 rounded-[var(--radius-sm)] bg-panel-elevated/50 p-1">
         {(
           [
-            ['presets', 'Presets'],
             ['colors', 'Colors'],
             ['typography', 'Typography'],
             ['layout', 'Layout'],
@@ -82,50 +106,6 @@ export function ThemeTab({ siteId, tokens }: Props) {
           </button>
         ))}
       </div>
-
-      {section === 'presets' && (
-        <div>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Apply a preset to overwrite all your current theme tokens. You can fine-tune from there.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {THEME_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => apply(p.id)}
-                disabled={isPending}
-                className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40 text-left transition hover:border-primary/40"
-              >
-                <div
-                  className="flex h-24 items-center justify-center"
-                  style={{
-                    background: p.tokens.bg_color,
-                    color: p.tokens.heading_color,
-                    fontFamily: p.tokens.font_heading,
-                  }}
-                >
-                  <span className="text-display text-xl font-black">{p.name}</span>
-                </div>
-                <div className="flex gap-1 p-2">
-                  {[p.tokens.primary, p.tokens.secondary, p.tokens.accent, p.tokens.card_bg].map(
-                    (c, i) => (
-                      <div
-                        key={i}
-                        className="h-4 flex-1 rounded-sm"
-                        style={{ background: c, border: '1px solid rgba(255,255,255,0.1)' }}
-                      />
-                    )
-                  )}
-                </div>
-                <p className="border-t border-border bg-panel-elevated/50 px-3 py-2 text-xs text-muted-foreground">
-                  {p.description}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {section === 'colors' && (
         <div className="space-y-3">
@@ -361,24 +341,20 @@ export function ThemeTab({ siteId, tokens }: Props) {
         </div>
       )}
 
-      {section !== 'presets' && (
-        <>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex gap-2 border-t border-border pt-4">
-            <Button size="sm" onClick={save} disabled={isPending}>
-              {isPending ? 'Saving…' : 'Save theme'}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setDraft(tokens)}
-              disabled={isPending}
-            >
-              Revert
-            </Button>
-          </div>
-        </>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <div className="flex gap-2 border-t border-border pt-4">
+        <Button size="sm" onClick={save} disabled={isPending}>
+          {isPending ? 'Saving…' : 'Save theme'}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setDraft(tokens)}
+          disabled={isPending}
+        >
+          Revert
+        </Button>
+      </div>
     </div>
   )
 }

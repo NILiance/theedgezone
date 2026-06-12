@@ -12,6 +12,7 @@ import {
   updatePageStatus,
   updatePageSeo,
 } from '@/app/dashboard/sites/actions'
+import { generatePageSeo } from '@/app/dashboard/sites/generate-actions'
 import { PAGE_ARCHETYPES } from '@/lib/site-builder/page-templates'
 
 interface Page {
@@ -178,6 +179,7 @@ export function PageList({ siteId, pages, currentPageId }: Props) {
               ) : isSeoEditing ? (
                 <SeoEditor
                   initial={p.seo}
+                  pageId={p.id}
                   onSave={(seo) => handleSaveSeo(p.id, seo)}
                   onCancel={() => setSeoEditingId(null)}
                   isPending={isPending}
@@ -325,16 +327,54 @@ function SeoEditor({
   onSave,
   onCancel,
   isPending,
+  pageId,
 }: {
   initial: Record<string, string>
   onSave: (seo: Record<string, string>) => void
   onCancel: () => void
   isPending: boolean
+  pageId?: string
 }) {
   const [draft, setDraft] = useState<Record<string, string>>(initial)
+  const [genPending, startGen] = useTransition()
+  const [genError, setGenError] = useState<string | null>(null)
+  const handleGenerate = () => {
+    if (!pageId) return
+    setGenError(null)
+    const fd = new FormData()
+    fd.set('page_id', pageId)
+    startGen(async () => {
+      const res = await generatePageSeo(fd)
+      if (res.ok && res.data) {
+        setDraft({
+          ...draft,
+          meta_title: res.data.meta_title,
+          meta_description: res.data.meta_description,
+          keywords: res.data.keywords,
+        })
+      } else {
+        setGenError(res.message ?? 'Failed to generate SEO')
+      }
+    })
+  }
   return (
     <div className="space-y-3 px-5 py-4">
-      <p className="text-eyebrow text-primary">SEO</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-eyebrow text-primary">SEO</p>
+        {pageId && (
+          <Button
+            size="sm"
+            variant="outline"
+            type="button"
+            onClick={handleGenerate}
+            disabled={genPending || isPending}
+            className="h-7 px-2 text-xs"
+          >
+            {genPending ? 'Generating…' : 'Generate'}
+          </Button>
+        )}
+      </div>
+      {genError && <p className="text-xs text-destructive">{genError}</p>}
       <div>
         <Label>Meta title</Label>
         <Input

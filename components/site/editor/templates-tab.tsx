@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { SITE_TEMPLATES, templateTokens } from '@/lib/site-builder/site-templates'
 import { LAYOUTS } from '@/lib/site-builder/layouts'
 import { applySiteTemplate, setLayout } from '@/app/dashboard/sites/actions'
+import { LayoutPreview } from '@/components/site/editor/layout-preview'
 
 interface Props {
   siteId: string
@@ -182,22 +183,29 @@ export function TemplatesTab({ siteId, currentLayout, currentTemplateId }: Props
             A layout controls page chrome (nav position, hero style, footer style). Non-destructive
             — your content stays.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             {LAYOUTS.map((l) => {
               const isActive = currentLayout === l.id
               const isApplying = pendingLayout === l.id && isPending
               return (
                 <div
                   key={l.id}
-                  className={`overflow-hidden rounded-[var(--radius)] border bg-panel/40 ${
-                    isActive ? 'border-primary' : 'border-border'
+                  className={`overflow-hidden rounded-[var(--radius)] border bg-panel/40 transition-colors ${
+                    isActive ? 'border-primary' : 'border-border hover:border-primary/40'
                   }`}
                 >
-                  <pre className="whitespace-pre p-3 font-mono text-[9px] leading-tight text-muted-foreground">
-                    {l.wireframe}
-                  </pre>
-                  <div className="border-t border-border bg-panel-elevated/30 p-3">
-                    <p className="text-display text-sm font-bold">{l.name}</p>
+                  <div className="p-3">
+                    <LayoutPreview layout={l} active={isActive} />
+                  </div>
+                  <div className="border-t border-border bg-panel-elevated/30 p-4">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="text-display text-base font-bold">{l.name}</p>
+                      <div className="flex flex-wrap gap-1 text-[9px] uppercase tracking-widest text-muted-foreground">
+                        <span>{l.nav_position} nav</span>
+                        <span>·</span>
+                        <span>{l.hero_style} hero</span>
+                      </div>
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">{l.description}</p>
                     <Button
                       size="sm"
@@ -206,7 +214,7 @@ export function TemplatesTab({ siteId, currentLayout, currentTemplateId }: Props
                       disabled={isPending}
                       className="mt-3 w-full"
                     >
-                      {isApplying ? 'Applying…' : isActive ? 'Current' : 'Use layout'}
+                      {isApplying ? 'Applying…' : isActive ? 'Current layout' : 'Use this layout'}
                     </Button>
                   </div>
                 </div>
