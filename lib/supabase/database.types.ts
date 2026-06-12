@@ -622,6 +622,50 @@ export type Database = {
         }
         Relationships: []
       }
+      site_assets: {
+        Row: {
+          created_at: string
+          filename: string | null
+          id: string
+          mime_type: string | null
+          path: string
+          site_id: string | null
+          size_bytes: number | null
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filename?: string | null
+          id?: string
+          mime_type?: string | null
+          path: string
+          site_id?: string | null
+          size_bytes?: number | null
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filename?: string | null
+          id?: string
+          mime_type?: string | null
+          path?: string
+          site_id?: string | null
+          size_bytes?: number | null
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_assets_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_blocks: {
         Row: {
           block_type: string

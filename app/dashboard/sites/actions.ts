@@ -11,6 +11,7 @@ import { THEME_PRESETS_BY_ID, type ThemeTokens } from '@/lib/site-builder/theme-
 import { LAYOUTS_BY_ID } from '@/lib/site-builder/layouts'
 import { SITE_TEMPLATES_BY_ID, templateTokens } from '@/lib/site-builder/site-templates'
 import { seedFor } from '@/lib/site-builder/page-templates'
+import { env } from '@/lib/env'
 
 export async function createSite() {
   const user = await requireUser()
@@ -656,6 +657,171 @@ export async function applySiteTemplate(formData: FormData) {
 
   revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
 }
+
+// ── Asset uploads ───────────────────────────────────────────────────────────
+
+const uploadAssetSchema = z.object({
+  site_id: z.string().uuid().optional(),
+})
+
+const ALLOWED_MIME = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+  'video/mp4',
+  'video/webm',
+])
+const MAX_BYTES = 10 * 1024 * 1024
+
+/**
+ * Uploads a file to the `site-assets` storage bucket under
+ * `{user_id}/{site_id|root}/{uuid}.{ext}`, records it in site_assets,
+ * and returns the public URL.
+ */
+export async function uploadAsset(formData: FormData): Promise<{ url: string; path: string }> {
+  const user = await requireUser()
+  const parsed = uploadAssetSchema.safeParse({
+    site_id: formData.get('site_id') || undefined,
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  const file = formData.get('file')
+  if (!(file instanceof File)) throw new Error('No file uploaded')
+
+  if (file.size === 0) throw new Error('File is empty')
+  if (file.size > MAX_BYTES) {
+    throw new Error(`File too large — max ${(MAX_BYTES / 1024 / 1024).toFixed(0)} MB`)
+  }
+  if (!ALLOWED_MIME.has(file.type)) {
+    throw new Error(`Unsupported file type: ${file.type}`)
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+  const uid = crypto.randomUUID()
+  const path = `${user.id}/${parsed.data.site_id ?? 'shared'}/${uid}.${ext}`
+
+  const supabase = await createClient()
+  const { error: uploadError } = await supabase.storage
+    .from('site-assets')
+    .upload(path, file, {
+      contentType: file.type,
+      cacheControl: '31536000',
+      upsert: false,
+    })
+  if (uploadError) throw new Error(uploadError.message)
+
+  const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
+  const url = pub.publicUrl
+
+  // Record in our index. Best-effort — failure here doesn't unwind the upload.
+  await supabase.from('site_assets').insert({
+    user_id: user.id,
+    site_id: parsed.data.site_id ?? null,
+    path,
+    url,
+    filename: file.name,
+    mime_type: file.type,
+    size_bytes: file.size,
+  })
+
+  return { url, path }
+}
+
+const deleteAssetSchema = z.object({ path: z.string().min(1) })
+
+export async function deleteAsset(formData: FormData) {
+  const user = await requireUser()
+  const parsed = deleteAssetSchema.safeParse({ path: formData.get('path') })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  // Ownership check via the path prefix (folder is the user id)
+  if (!parsed.data.path.startsWith(`${user.id}/`)) {
+    throw new Error('Not your file')
+  }
+
+  const supabase = await createClient()
+  await supabase.storage.from('site-assets').remove([parsed.data.path])
+  await supabase.from('site_assets').delete().eq('user_id', user.id).eq('path', parsed.data.path)
+}
+
+// ── Galleries ───────────────────────────────────────────────────────────────
+
+const upsertGallerySchema = z.object({
+  site_id: z.string().uuid(),
+  gallery_id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  images: z.string(),
+})
+
+export async function upsertGallery(formData: FormData) {
+  const user = await requireUser()
+  const parsed = upsertGallerySchema.safeParse({
+    site_id: formData.get('site_id'),
+    gallery_id: formData.get('gallery_id') || undefined,
+    name: formData.get('name'),
+    images: formData.get('images'),
+  })
+  if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+
+  let images: Array<{ url: string; alt?: string }>
+  try {
+    images = JSON.parse(parsed.data.images)
+  } catch {
+    throw new Error('Invalid images payload')
+  }
+
+  const supabase = await createClient()
+  // Ownership
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, user_id')
+    .eq('id', parsed.data.site_id)
+    .single()
+  if (!site || site.user_id !== user.id) throw new Error('Site not found')
+
+  if (parsed.data.gallery_id) {
+    const { error } = await supabase
+      .from('site_galleries')
+      .update({ name: parsed.data.name, images: images as unknown as Record<string, unknown>[] })
+      .eq('id', parsed.data.gallery_id)
+      .eq('site_id', parsed.data.site_id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase.from('site_galleries').insert({
+      site_id: parsed.data.site_id,
+      name: parsed.data.name,
+      images: images as unknown as Record<string, unknown>[],
+    })
+    if (error) throw new Error(error.message)
+  }
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const deleteGallerySchema = z.object({ gallery_id: z.string().uuid() })
+
+export async function deleteGallery(formData: FormData) {
+  const user = await requireUser()
+  const parsed = deleteGallerySchema.safeParse({ gallery_id: formData.get('gallery_id') })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  const supabase = await createClient()
+  const { data: gallery } = await supabase
+    .from('site_galleries')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.gallery_id)
+    .single()
+  const ownerId = (gallery as any)?.sites?.user_id
+  if (!gallery || ownerId !== user.id) throw new Error('Gallery not found')
+
+  await supabase.from('site_galleries').delete().eq('id', parsed.data.gallery_id)
+  revalidatePath(`/dashboard/sites/${gallery.site_id}`)
+}
+
+// quiet the unused-env import for now until next round wires custom domains
+void env
 
 // ── Page status + SEO ──────────────────────────────────────────────────────
 

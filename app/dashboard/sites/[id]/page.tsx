@@ -9,12 +9,13 @@ import { PageList } from '@/components/site/editor/page-list'
 import { BlockEditor } from '@/components/site/editor/block-editor'
 import { ThemeTab } from '@/components/site/editor/theme-tab'
 import { TemplatesTab } from '@/components/site/editor/templates-tab'
+import { GalleriesTab } from '@/components/site/editor/galleries-tab'
 import { HeaderFooterTab, type HeaderConfig, type FooterConfig } from '@/components/site/editor/header-footer-tab'
 import { DomainTab } from '@/components/site/editor/domain-tab'
 import { addBlock, publishSite, unpublishSite } from '@/app/dashboard/sites/actions'
 import type { SiteBlock } from '@/components/site/block-renderer'
 
-type Tab = 'pages' | 'templates' | 'theme' | 'header' | 'domain' | 'help'
+type Tab = 'pages' | 'templates' | 'theme' | 'header' | 'galleries' | 'domain' | 'help'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -26,6 +27,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'templates', label: 'Templates' },
   { id: 'theme', label: 'Theme' },
   { id: 'header', label: 'Header & Footer' },
+  { id: 'galleries', label: 'Galleries' },
   { id: 'domain', label: 'Domain' },
   { id: 'help', label: 'Help' },
 ]
@@ -130,6 +132,7 @@ export default async function SiteEditorPage({ params, searchParams }: PageProps
       {tab === 'header' && (
         <HeaderFooterTab siteId={site.id} header={header} footer={footer} social={social} />
       )}
+      {tab === 'galleries' && <GalleriesTabLoader siteId={site.id} />}
       {tab === 'domain' && (
         <DomainTab slug={site.slug} status={site.status} customDomain={site.custom_domain} />
       )}
@@ -261,6 +264,28 @@ async function PagesTab({
         )}
       </div>
     </div>
+  )
+}
+
+async function GalleriesTabLoader({ siteId }: { siteId: string }) {
+  const supabase = await createClient()
+  const { data: galleries } = await supabase
+    .from('site_galleries')
+    .select('id, name, images')
+    .eq('site_id', siteId)
+    .order('updated_at', { ascending: false })
+
+  return (
+    <GalleriesTab
+      siteId={siteId}
+      galleries={(galleries ?? []).map((g) => ({
+        id: g.id,
+        name: g.name,
+        images: Array.isArray(g.images)
+          ? (g.images as Array<{ url: string; alt?: string }>)
+          : [],
+      }))}
+    />
   )
 }
 

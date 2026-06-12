@@ -3,6 +3,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { AssetPicker } from '@/components/site/editor/asset-picker'
 import type { FieldSpec } from '@/lib/site-builder/block-types'
 
 interface BlockFieldProps {
@@ -131,15 +132,11 @@ export function BlockField({ spec, value, onChange }: BlockFieldProps) {
       return (
         <div>
           <Label htmlFor={spec.key}>{spec.label}</Label>
-          <Input
-            id={spec.key}
-            defaultValue={(value as string) ?? ''}
-            placeholder={spec.placeholder ?? 'https://…'}
-            onChange={(e) => onChange(e.target.value)}
+          <AssetPicker
+            value={(value as string) ?? ''}
+            onChange={(v) => onChange(v)}
+            placeholder={spec.placeholder ?? 'https://… or click Upload'}
           />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Paste an image URL. (Asset uploads coming in v2-D.)
-          </p>
         </div>
       )
 

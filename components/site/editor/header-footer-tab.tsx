@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AssetPicker } from '@/components/site/editor/asset-picker'
 import { updateHeader, updateFooter, updateSocial } from '@/app/dashboard/sites/actions'
 
 export interface HeaderConfig {
@@ -63,6 +64,18 @@ interface Props {
   social: Record<string, string>
 }
 
+function HeaderLogoPicker({
+  value,
+  onChange,
+  siteId,
+}: {
+  value: string
+  onChange: (v: string) => void
+  siteId: string
+}) {
+  return <AssetPicker value={value} onChange={onChange} siteId={siteId} accept="image/*" />
+}
+
 export function HeaderFooterTab({ siteId, header, footer, social }: Props) {
   const [section, setSection] = useState<'header' | 'footer' | 'social'>('header')
 
@@ -98,7 +111,8 @@ export function HeaderFooterTab({ siteId, header, footer, social }: Props) {
   )
 }
 
-function HeaderEditor({ siteId, header }: { siteId: string; header: HeaderConfig }) {
+interface HeaderEditorProps { siteId: string; header: HeaderConfig }
+function HeaderEditor({ siteId, header }: HeaderEditorProps) {
   const [draft, setDraft] = useState<HeaderConfig>(header)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -120,11 +134,11 @@ function HeaderEditor({ siteId, header }: { siteId: string; header: HeaderConfig
   return (
     <div className="space-y-3">
       <div>
-        <Label>Logo URL</Label>
-        <Input
-          defaultValue={draft.logo_url ?? ''}
-          onChange={(e) => setDraft({ ...draft, logo_url: e.target.value })}
-          placeholder="https://…"
+        <Label>Logo</Label>
+        <HeaderLogoPicker
+          value={draft.logo_url ?? ''}
+          onChange={(v) => setDraft({ ...draft, logo_url: v })}
+          siteId={siteId}
         />
       </div>
       <div>
@@ -262,16 +276,86 @@ function FooterEditor({ siteId, footer }: { siteId: string; footer: FooterConfig
         </div>
       </div>
 
+      <DragDropFooterColumns
+        cols={cols}
+        onCols={setCols}
+        onAddElement={addElement}
+        onRemoveElement={removeElement}
+        onAddCol={addCol}
+        onRemoveCol={removeCol}
+        onUpdateCol={updateCol}
+      />
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <div className="flex gap-2 border-t border-border pt-4">
+        <Button size="sm" onClick={save} disabled={isPending}>
+          {isPending ? 'Saving…' : 'Save footer'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function DragDropFooterColumns({
+  cols,
+  onCols,
+  onAddElement,
+  onRemoveElement,
+  onAddCol,
+  onRemoveCol,
+  onUpdateCol,
+}: {
+  cols: FooterColumn[]
+  onCols: (next: FooterColumn[]) => void
+  onAddElement: (colIdx: number, type: FooterElement['type']) => void
+  onRemoveElement: (colIdx: number, elIdx: number) => void
+  onAddCol: () => void
+  onRemoveCol: (idx: number) => void
+  onUpdateCol: (idx: number, patch: Partial<FooterColumn>) => void
+}) {
+  const [dragged, setDragged] = useState<{ col: number; el: number } | null>(null)
+  const [hoverCol, setHoverCol] = useState<number | null>(null)
+
+  const handleDragStart = (col: number, el: number) => setDragged({ col, el })
+  const handleDragEnd = () => {
+    setDragged(null)
+    setHoverCol(null)
+  }
+  const handleDrop = (targetCol: number, targetEl?: number) => {
+    if (!dragged) return
+    const { col: fromCol, el: fromEl } = dragged
+    if (fromCol === targetCol && fromEl === targetEl) {
+      handleDragEnd()
+      return
+    }
+    const next = cols.map((c) => ({ ...c, elements: [...c.elements] }))
+    const item = next[fromCol]!.elements.splice(fromEl, 1)[0]!
+    const insertAt = targetEl ?? next[targetCol]!.elements.length
+    next[targetCol]!.elements.splice(insertAt, 0, item)
+    onCols(next)
+    handleDragEnd()
+  }
+
+  return (
+    <>
       <div className="grid gap-3 lg:grid-cols-3">
         {cols.map((col, colIdx) => (
           <div
             key={colIdx}
-            className="rounded-[var(--radius-sm)] border border-border bg-panel/40 p-3"
+            onDragOver={(e) => {
+              e.preventDefault()
+              setHoverCol(colIdx)
+            }}
+            onDragLeave={() => setHoverCol((prev) => (prev === colIdx ? null : prev))}
+            onDrop={() => handleDrop(colIdx)}
+            className={`rounded-[var(--radius-sm)] border bg-panel/40 p-3 transition-colors ${
+              hoverCol === colIdx ? 'border-primary bg-primary/5' : 'border-border'
+            }`}
           >
             <div className="mb-2 flex items-center gap-2">
               <Input
                 defaultValue={col.heading ?? ''}
-                onChange={(e) => updateCol(colIdx, { heading: e.target.value })}
+                onChange={(e) => onUpdateCol(colIdx, { heading: e.target.value })}
                 placeholder="Column heading"
                 className="text-sm"
               />
@@ -279,34 +363,56 @@ function FooterEditor({ siteId, footer }: { siteId: string; footer: FooterConfig
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() => removeCol(colIdx)}
+                onClick={() => onRemoveCol(colIdx)}
                 className="text-destructive"
               >
                 ×
               </Button>
             </div>
             <ul className="space-y-1">
-              {col.elements.map((el, elIdx) => (
-                <li
-                  key={elIdx}
-                  className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs"
-                >
-                  <span className="capitalize">{el.type.replace('_', ' ')}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeElement(colIdx, elIdx)}
-                    className="text-destructive hover:opacity-70"
+              {col.elements.map((el, elIdx) => {
+                const isDragging =
+                  dragged && dragged.col === colIdx && dragged.el === elIdx
+                return (
+                  <li
+                    key={elIdx}
+                    draggable
+                    onDragStart={() => handleDragStart(colIdx, elIdx)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(e) => {
+                      e.stopPropagation()
+                      handleDrop(colIdx, elIdx)
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    className={`flex cursor-grab items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs transition-opacity ${
+                      isDragging ? 'opacity-40' : ''
+                    }`}
                   >
-                    remove
-                  </button>
+                    <span className="flex items-center gap-2 capitalize">
+                      <span className="text-muted-foreground">⠿</span>
+                      {el.type.replace('_', ' ')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveElement(colIdx, elIdx)}
+                      className="text-destructive hover:opacity-70"
+                    >
+                      remove
+                    </button>
+                  </li>
+                )
+              })}
+              {col.elements.length === 0 && (
+                <li className="rounded-[var(--radius-sm)] border border-dashed border-border px-2 py-3 text-center text-xs text-muted-foreground">
+                  Drop element here
                 </li>
-              ))}
+              )}
             </ul>
             <select
               value=""
               onChange={(e) => {
                 const t = e.target.value as FooterElement['type']
-                if (t) addElement(colIdx, t)
+                if (t) onAddElement(colIdx, t)
                 e.target.value = ''
               }}
               className="mt-2 h-8 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 text-xs"
@@ -321,17 +427,13 @@ function FooterEditor({ siteId, footer }: { siteId: string; footer: FooterConfig
           </div>
         ))}
       </div>
-      <Button type="button" size="sm" variant="outline" onClick={addCol}>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Drag the ⠿ handle to move elements between columns.
+      </p>
+      <Button type="button" size="sm" variant="outline" onClick={onAddCol}>
         + Add column
       </Button>
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <div className="flex gap-2 border-t border-border pt-4">
-        <Button size="sm" onClick={save} disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save footer'}
-        </Button>
-      </div>
-    </div>
+    </>
   )
 }
 
