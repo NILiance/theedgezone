@@ -44,10 +44,8 @@ export async function POST(request: Request) {
     )
   }
 
-  let supabase
-  try {
-    supabase = createServiceClient()
-  } catch {
+  const supabase = createServiceClient()
+  if (!supabase) {
     return NextResponse.json(
       { error: 'Server cannot reach Supabase — SUPABASE_SERVICE_ROLE_KEY missing.' },
       { status: 503 }
@@ -128,7 +126,7 @@ export async function POST(request: Request) {
 }
 
 async function handleCheckoutCompleted(
-  supabase: ReturnType<typeof createServiceClient>,
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
   session: Stripe.Checkout.Session
 ) {
   const metadata = session.metadata ?? {}

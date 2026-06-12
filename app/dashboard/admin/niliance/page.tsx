@@ -10,6 +10,33 @@ export default async function NilianceAdminPage() {
   await requireAdmin()
   const supabase = createServiceClient()
 
+  if (!supabase) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-display text-2xl font-black tracking-tight">NILiance Bridge</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This admin page needs the Supabase service-role key to read aggregate sync data.
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Missing configuration</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Set <code>SUPABASE_SERVICE_ROLE_KEY</code> in your environment (
+              <Link href="https://vercel.com" className="text-primary hover:underline">
+                Vercel → Project Settings → Environment Variables
+              </Link>
+              ) and redeploy.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   const [{ data: profiles }, { data: events }] = await Promise.all([
     supabase
       .from('profiles')

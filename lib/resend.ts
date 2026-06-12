@@ -43,9 +43,10 @@ export async function sendEmail({
   const r = client()
 
   let logId: string | null = null
-  let supabase: ReturnType<typeof createServiceClient> | null = null
+  let supabase: ReturnType<typeof createServiceClient> = null
   try {
     supabase = createServiceClient()
+    if (!supabase) throw new Error('no service client')
     const { data } = await supabase
       .from('email_log')
       .insert({

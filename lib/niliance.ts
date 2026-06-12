@@ -43,14 +43,23 @@ interface SyncProfileParams {
 }
 
 export async function createNilianceUser(params: CreateNilianceUserParams): Promise<LinkStatus> {
-  const supabase = createServiceClient()
-
   if (!sharetribeEnabled) {
     await logEvent({
       user_id: params.userId,
       level: 'warn',
       direction: 'outbound',
       message: 'Sharetribe not configured — skipping NILiance user create',
+    })
+    return 'unlinked'
+  }
+
+  const supabase = createServiceClient()
+  if (!supabase) {
+    await logEvent({
+      user_id: params.userId,
+      level: 'warn',
+      direction: 'outbound',
+      message: 'SUPABASE_SERVICE_ROLE_KEY missing — skipping NILiance user create',
     })
     return 'unlinked'
   }
@@ -136,6 +145,8 @@ export async function syncProfile(params: SyncProfileParams): Promise<boolean> {
   if (!sharetribeEnabled) return false
 
   const supabase = createServiceClient()
+  if (!supabase) return false
+
   const { data: profile } = await supabase
     .from('profiles')
     .select(
@@ -210,6 +221,7 @@ interface LogEventParams {
 export async function logEvent(params: LogEventParams) {
   try {
     const supabase = createServiceClient()
+    if (!supabase) return
     await supabase.from('niliance_sync_events').insert({
       user_id: params.user_id ?? null,
       level: params.level,

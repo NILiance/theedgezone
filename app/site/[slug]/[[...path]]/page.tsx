@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { BlockRenderer, type SiteBlock } from '@/components/site/block-renderer'
 
 interface PageProps {
@@ -8,7 +8,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params
-  const supabase = createServiceClient()
+  const supabase = await createClient()
   const { data: site } = await supabase
     .from('sites')
     .select('display_name, default_meta')
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PublicSitePage({ params }: PageProps) {
   const { slug, path } = await params
-  const supabase = createServiceClient()
+  const supabase = await createClient()
 
   const { data: site } = await supabase
     .from('sites')

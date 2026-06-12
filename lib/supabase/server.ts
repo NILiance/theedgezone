@@ -32,11 +32,14 @@ export async function createClient() {
 /**
  * Service-role client for server actions that bypass RLS
  * (Stripe webhooks, admin operations, background jobs).
- * Throws at runtime if SUPABASE_SERVICE_ROLE_KEY isn't set.
+ *
+ * Returns null when SUPABASE_SERVICE_ROLE_KEY is unset so callers can
+ * degrade gracefully (admin pages render a "missing key" notice, the
+ * Stripe webhook returns 503, etc.) rather than the entire page crashing.
  */
 export function createServiceClient() {
   if (!env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for service-role operations')
+    return null
   }
   return createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
@@ -46,4 +49,16 @@ export function createServiceClient() {
       auth: { persistSession: false, autoRefreshToken: false },
     }
   )
+}
+
+/**
+ * Service-role client that throws if missing — for code paths where
+ * graceful degradation isn't possible (e.g. background-only operations).
+ */
+export function createServiceClientOrThrow() {
+  const client = createServiceClient()
+  if (!client) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for this operation')
+  }
+  return client
 }
