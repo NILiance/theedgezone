@@ -3,66 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { ADMIN_NAV } from '@/components/admin/admin-nav-config'
 
-interface NavItem {
-  label: string
-  href: string
-}
-
-interface NavGroup {
-  title: string
-  items: NavItem[]
-}
-
-export const ADMIN_NAV: NavGroup[] = [
-  {
-    title: 'Platform Management',
-    items: [
-      { label: 'Platform', href: '/dashboard/admin/branding' },
-      { label: 'Integrations', href: '/dashboard/admin/integrations' },
-      { label: 'NILiance', href: '/dashboard/admin/niliance' },
-      { label: 'Pricing', href: '/dashboard/admin/pricing' },
-      { label: 'Enrollment', href: '/dashboard/admin/enrollment' },
-      { label: 'App Defaults', href: '/dashboard/admin/app-defaults' },
-    ],
-  },
-  {
-    title: 'Content & Pages',
-    items: [
-      { label: 'Pages', href: '/dashboard/admin/pages' },
-      { label: 'Resources', href: '/dashboard/admin/resources' },
-      { label: 'Roadmap Builder', href: '/dashboard/admin/roadmap' },
-      { label: 'Climb Studio', href: '/dashboard/admin/climb' },
-    ],
-  },
-  {
-    title: 'Products & Orders',
-    items: [
-      { label: 'Orders', href: '/dashboard/admin/orders' },
-      { label: 'Payouts', href: '/dashboard/admin/payouts' },
-      { label: 'Brand Designs', href: '/dashboard/admin/brands' },
-      { label: 'Websites', href: '/dashboard/admin/websites' },
-      { label: 'EPKs', href: '/dashboard/admin/epks' },
-      { label: 'Apps', href: '/dashboard/admin/apps' },
-      { label: 'Podcasts', href: '/dashboard/admin/podcasts' },
-      { label: 'Stores', href: '/dashboard/admin/stores' },
-    ],
-  },
-  {
-    title: 'Users & Access',
-    items: [
-      { label: 'Users', href: '/dashboard/admin/users' },
-      { label: 'Permissions', href: '/dashboard/admin/permissions' },
-    ],
-  },
-  {
-    title: 'Engagement',
-    items: [
-      { label: 'Rewards Store', href: '/dashboard/admin/rewards' },
-      { label: 'Tickets', href: '/dashboard/admin/tickets' },
-    ],
-  },
-]
+export { ADMIN_NAV } from '@/components/admin/admin-nav-config'
 
 export function AdminSidebar() {
   const pathname = usePathname()

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ADMIN_NAV } from '@/components/admin/admin-sidebar'
+import { ADMIN_NAV } from '@/components/admin/admin-nav-config'
 
 export const metadata = { title: 'Admin' }
 
