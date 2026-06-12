@@ -12,6 +12,7 @@ import {
   updatePageStatus,
   updatePageSeo,
 } from '@/app/dashboard/sites/actions'
+import { PAGE_ARCHETYPES } from '@/lib/site-builder/page-templates'
 
 interface Page {
   id: string
@@ -124,30 +125,7 @@ export function PageList({ siteId, pages, currentPageId }: Props) {
         </div>
       )}
 
-      {adding && (
-        <form action={handleAdd} className="space-y-3 border-b border-border px-5 py-4">
-          <input type="hidden" name="site_id" value={siteId} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="add_title">Title</Label>
-              <Input id="add_title" name="title" required placeholder="About" />
-            </div>
-            <div>
-              <Label htmlFor="add_path">Path</Label>
-              <Input
-                id="add_path"
-                name="path"
-                required
-                placeholder="/about"
-                className="font-mono"
-              />
-            </div>
-          </div>
-          <Button type="submit" size="sm" disabled={isPending}>
-            {isPending ? 'Adding…' : 'Add page'}
-          </Button>
-        </form>
-      )}
+      {adding && <AddPageForm siteId={siteId} onSubmit={handleAdd} isPending={isPending} />}
 
       <ul className="divide-y divide-border">
         {pages.map((p) => {
@@ -280,6 +258,65 @@ export function PageList({ siteId, pages, currentPageId }: Props) {
         })}
       </ul>
     </div>
+  )
+}
+
+function AddPageForm({
+  siteId,
+  onSubmit,
+  isPending,
+}: {
+  siteId: string
+  onSubmit: (fd: FormData) => void
+  isPending: boolean
+}) {
+  const [pageType, setPageType] = useState<string>('custom')
+  const archetype = PAGE_ARCHETYPES.find((a) => a.type === pageType)
+  return (
+    <form action={onSubmit} className="space-y-3 border-b border-border px-5 py-4">
+      <input type="hidden" name="site_id" value={siteId} />
+      <div>
+        <Label>Start from</Label>
+        <select
+          name="page_type"
+          value={pageType}
+          onChange={(e) => setPageType(e.target.value)}
+          className="flex h-10 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 text-sm"
+        >
+          {PAGE_ARCHETYPES.map((a) => (
+            <option key={a.type} value={a.type}>
+              {a.label} — {a.description.slice(0, 50)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="add_title">Title</Label>
+          <Input
+            id="add_title"
+            name="title"
+            key={pageType + '-title'}
+            defaultValue={archetype?.suggested_title ?? ''}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="add_path">Path</Label>
+          <Input
+            id="add_path"
+            name="path"
+            key={pageType + '-path'}
+            defaultValue={archetype?.suggested_path ?? '/new-page'}
+            required
+            className="font-mono"
+          />
+        </div>
+      </div>
+      <Button type="submit" size="sm" disabled={isPending}>
+        {isPending ? 'Adding…' : 'Add page'}
+      </Button>
+    </form>
   )
 }
 

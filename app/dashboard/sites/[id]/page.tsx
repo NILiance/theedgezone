@@ -8,12 +8,13 @@ import { defaultTokens, type ThemeTokens } from '@/lib/site-builder/theme-preset
 import { PageList } from '@/components/site/editor/page-list'
 import { BlockEditor } from '@/components/site/editor/block-editor'
 import { ThemeTab } from '@/components/site/editor/theme-tab'
+import { TemplatesTab } from '@/components/site/editor/templates-tab'
 import { HeaderFooterTab, type HeaderConfig, type FooterConfig } from '@/components/site/editor/header-footer-tab'
 import { DomainTab } from '@/components/site/editor/domain-tab'
 import { addBlock, publishSite, unpublishSite } from '@/app/dashboard/sites/actions'
 import type { SiteBlock } from '@/components/site/block-renderer'
 
-type Tab = 'pages' | 'theme' | 'header' | 'domain' | 'help'
+type Tab = 'pages' | 'templates' | 'theme' | 'header' | 'domain' | 'help'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -22,6 +23,7 @@ interface PageProps {
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'pages', label: 'Pages' },
+  { id: 'templates', label: 'Templates' },
   { id: 'theme', label: 'Theme' },
   { id: 'header', label: 'Header & Footer' },
   { id: 'domain', label: 'Domain' },
@@ -117,6 +119,13 @@ export default async function SiteEditorPage({ params, searchParams }: PageProps
       </nav>
 
       {tab === 'pages' && <PagesTab siteId={site.id} pageId={sp.pageId} tokens={tokens} social={social} />}
+      {tab === 'templates' && (
+        <TemplatesTab
+          siteId={site.id}
+          currentLayout={site.layout ?? 'classic'}
+          currentTemplateId={site.template_id ?? null}
+        />
+      )}
       {tab === 'theme' && <ThemeTab siteId={site.id} tokens={tokens} />}
       {tab === 'header' && (
         <HeaderFooterTab siteId={site.id} header={header} footer={footer} social={social} />

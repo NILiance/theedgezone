@@ -8,6 +8,9 @@ import { requireUser } from '@/lib/auth'
 import { provisionSite } from '@/lib/provisioning'
 import { defaultPropsFor } from '@/lib/site-builder/block-types'
 import { THEME_PRESETS_BY_ID, type ThemeTokens } from '@/lib/site-builder/theme-presets'
+import { LAYOUTS_BY_ID } from '@/lib/site-builder/layouts'
+import { SITE_TEMPLATES_BY_ID, templateTokens } from '@/lib/site-builder/site-templates'
+import { seedFor } from '@/lib/site-builder/page-templates'
 
 export async function createSite() {
   const user = await requireUser()
@@ -97,6 +100,7 @@ const addPageSchema = z.object({
     .min(1)
     .max(120)
     .regex(/^\/[a-z0-9-/]*$/i, 'Path must start with / and use letters/numbers/dashes'),
+  page_type: z.string().min(1).max(40).optional(),
 })
 
 export async function addPage(formData: FormData) {
@@ -105,6 +109,7 @@ export async function addPage(formData: FormData) {
     site_id: formData.get('site_id'),
     title: formData.get('title'),
     path: formData.get('path'),
+    page_type: formData.get('page_type') || undefined,
   })
   if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
 
@@ -133,6 +138,7 @@ export async function addPage(formData: FormData) {
       title: parsed.data.title,
       path: parsed.data.path.toLowerCase(),
       position: nextPosition,
+      page_type: parsed.data.page_type ?? 'custom',
     })
     .select('id')
     .single()
@@ -143,6 +149,21 @@ export async function addPage(formData: FormData) {
       throw new Error('A page with that path already exists.')
     }
     throw new Error(msg)
+  }
+
+  // Seed blocks from the page archetype if one was selected.
+  if (parsed.data.page_type) {
+    const seedBlocks = seedFor(parsed.data.page_type)
+    if (seedBlocks.length) {
+      await supabase.from('site_blocks').insert(
+        seedBlocks.map((b, idx) => ({
+          page_id: page.id,
+          position: idx,
+          block_type: b.block_type,
+          props: b.props,
+        }))
+      )
+    }
   }
 
   revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
@@ -528,6 +549,115 @@ export async function updateSocial(formData: FormData) {
 }
 
 // ── Page SEO + status ───────────────────────────────────────────────────────
+
+// ── Layout / site template ──────────────────────────────────────────────────
+
+const setLayoutSchema = z.object({
+  site_id: z.string().uuid(),
+  layout_id: z.string().min(1).max(40),
+})
+
+export async function setLayout(formData: FormData) {
+  const user = await requireUser()
+  const parsed = setLayoutSchema.safeParse({
+    site_id: formData.get('site_id'),
+    layout_id: formData.get('layout_id'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+  if (!LAYOUTS_BY_ID[parsed.data.layout_id]) throw new Error('Unknown layout')
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('sites')
+    .update({ layout: parsed.data.layout_id })
+    .eq('id', parsed.data.site_id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const applyTemplateSchema = z.object({
+  site_id: z.string().uuid(),
+  template_id: z.string().min(1).max(60),
+})
+
+/**
+ * Destructive: overwrites theme, layout, header, footer, and replaces
+ * all pages with the template's page set. Caller must confirm.
+ */
+export async function applySiteTemplate(formData: FormData) {
+  const user = await requireUser()
+  const parsed = applyTemplateSchema.safeParse({
+    site_id: formData.get('site_id'),
+    template_id: formData.get('template_id'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  const template = SITE_TEMPLATES_BY_ID[parsed.data.template_id]
+  if (!template) throw new Error('Template not found')
+
+  const supabase = await createClient()
+
+  // Confirm ownership
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, user_id')
+    .eq('id', parsed.data.site_id)
+    .single()
+  if (!site || site.user_id !== user.id) throw new Error('Site not found')
+
+  const tokens = templateTokens(template)
+
+  // Update the site bundle in one shot.
+  await supabase
+    .from('sites')
+    .update({
+      theme: tokens as unknown as Record<string, unknown>,
+      layout: template.layout,
+      header: template.header as unknown as Record<string, unknown>,
+      footer: template.footer as unknown as Record<string, unknown>,
+      template_id: template.id,
+    })
+    .eq('id', parsed.data.site_id)
+
+  // Wipe existing pages (cascades to blocks via FK).
+  await supabase.from('site_pages').delete().eq('site_id', parsed.data.site_id)
+
+  // Recreate pages from the template.
+  for (let i = 0; i < template.pages.length; i++) {
+    const tp = template.pages[i]!
+    const { data: page } = await supabase
+      .from('site_pages')
+      .insert({
+        site_id: parsed.data.site_id,
+        title: tp.title,
+        path: tp.path,
+        position: i,
+        page_type: tp.type,
+        status: 'draft',
+      })
+      .select('id')
+      .single()
+
+    if (!page) continue
+    const seed = tp.seed ?? seedFor(tp.type)
+    if (seed.length) {
+      await supabase.from('site_blocks').insert(
+        seed.map((b, idx) => ({
+          page_id: page.id,
+          position: idx,
+          block_type: b.block_type,
+          props: b.props,
+        }))
+      )
+    }
+  }
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+// ── Page status + SEO ──────────────────────────────────────────────────────
 
 const pageStatusSchema = z.object({
   page_id: z.string().uuid(),
