@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { provisionSite } from '@/lib/provisioning'
+import { defaultPropsFor } from '@/lib/site-builder/block-types'
+import { THEME_PRESETS_BY_ID, type ThemeTokens } from '@/lib/site-builder/theme-presets'
 
 export async function createSite() {
   const user = await requireUser()
@@ -238,7 +240,7 @@ export async function addBlock(formData: FormData) {
     page_id: parsed.data.page_id,
     position: nextPosition,
     block_type: parsed.data.block_type,
-    props: defaultPropsForType(parsed.data.block_type),
+    props: defaultPropsFor(parsed.data.block_type),
   })
 
   const { data: page } = await supabase
@@ -372,36 +374,226 @@ export async function moveBlock(formData: FormData) {
   if (siteId) revalidatePath(`/dashboard/sites/${siteId}`)
 }
 
-function defaultPropsForType(type: string): Record<string, unknown> {
-  switch (type) {
-    case 'hero':
-      return { title: 'Headline', subtitle: 'Tagline' }
-    case 'text':
-      return { content: 'Write something compelling here.' }
-    case 'stats':
-      return {
-        items: [
-          { value: '—', label: 'Stat one' },
-          { value: '—', label: 'Stat two' },
-          { value: '—', label: 'Stat three' },
-        ],
-      }
-    case 'gallery':
-      return { images: [] }
-    case 'sponsors':
-      return { logos: [] }
-    case 'cta':
-      return {
-        title: 'Get in touch',
-        body: 'Drop a message or a brand request.',
-        button_label: 'Contact me',
-        button_href: '#',
-      }
-    case 'contact':
-      return { email: '', social: [] }
-    case 'video':
-      return { url: '' }
-    default:
-      return {}
+// ── Theme / header / footer / social ────────────────────────────────────────
+
+const themeSchema = z.object({
+  site_id: z.string().uuid(),
+  tokens: z.string(),
+})
+
+export async function updateTheme(formData: FormData) {
+  const user = await requireUser()
+  const parsed = themeSchema.safeParse({
+    site_id: formData.get('site_id'),
+    tokens: formData.get('tokens'),
+  })
+  if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+
+  let tokens: ThemeTokens
+  try {
+    tokens = JSON.parse(parsed.data.tokens) as ThemeTokens
+  } catch {
+    throw new Error('Invalid theme tokens payload')
   }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('sites')
+    .update({ theme: tokens as unknown as Record<string, unknown> })
+    .eq('id', parsed.data.site_id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const applyPresetSchema = z.object({
+  site_id: z.string().uuid(),
+  preset_id: z.string().min(1).max(60),
+})
+
+export async function applyThemePreset(formData: FormData) {
+  const user = await requireUser()
+  const parsed = applyPresetSchema.safeParse({
+    site_id: formData.get('site_id'),
+    preset_id: formData.get('preset_id'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  const preset = THEME_PRESETS_BY_ID[parsed.data.preset_id]
+  if (!preset) throw new Error('Preset not found')
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('sites')
+    .update({ theme: preset.tokens as unknown as Record<string, unknown> })
+    .eq('id', parsed.data.site_id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const headerSchema = z.object({
+  site_id: z.string().uuid(),
+  header: z.string(),
+})
+
+export async function updateHeader(formData: FormData) {
+  const user = await requireUser()
+  const parsed = headerSchema.safeParse({
+    site_id: formData.get('site_id'),
+    header: formData.get('header'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  let header: Record<string, unknown>
+  try {
+    header = JSON.parse(parsed.data.header)
+  } catch {
+    throw new Error('Invalid header payload')
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('sites')
+    .update({ header })
+    .eq('id', parsed.data.site_id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const footerSchema = z.object({
+  site_id: z.string().uuid(),
+  footer: z.string(),
+})
+
+export async function updateFooter(formData: FormData) {
+  const user = await requireUser()
+  const parsed = footerSchema.safeParse({
+    site_id: formData.get('site_id'),
+    footer: formData.get('footer'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  let footer: Record<string, unknown>
+  try {
+    footer = JSON.parse(parsed.data.footer)
+  } catch {
+    throw new Error('Invalid footer payload')
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('sites')
+    .update({ footer })
+    .eq('id', parsed.data.site_id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+const socialSchema = z.object({
+  site_id: z.string().uuid(),
+  social: z.string(),
+})
+
+export async function updateSocial(formData: FormData) {
+  const user = await requireUser()
+  const parsed = socialSchema.safeParse({
+    site_id: formData.get('site_id'),
+    social: formData.get('social'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  let social: Record<string, string>
+  try {
+    social = JSON.parse(parsed.data.social)
+  } catch {
+    throw new Error('Invalid social payload')
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('sites')
+    .update({ social })
+    .eq('id', parsed.data.site_id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${parsed.data.site_id}`)
+}
+
+// ── Page SEO + status ───────────────────────────────────────────────────────
+
+const pageStatusSchema = z.object({
+  page_id: z.string().uuid(),
+  status: z.enum(['published', 'draft']),
+})
+
+export async function updatePageStatus(formData: FormData) {
+  const user = await requireUser()
+  const parsed = pageStatusSchema.safeParse({
+    page_id: formData.get('page_id'),
+    status: formData.get('status'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  const supabase = await createClient()
+  const { data: page } = await supabase
+    .from('site_pages')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.page_id)
+    .single()
+  const ownerId = (page as any)?.sites?.user_id
+  if (!page || ownerId !== user.id) throw new Error('Page not found')
+
+  const { error } = await supabase
+    .from('site_pages')
+    .update({ status: parsed.data.status })
+    .eq('id', parsed.data.page_id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${page.site_id}`)
+}
+
+const pageSeoSchema = z.object({
+  page_id: z.string().uuid(),
+  seo: z.string(),
+})
+
+export async function updatePageSeo(formData: FormData) {
+  const user = await requireUser()
+  const parsed = pageSeoSchema.safeParse({
+    page_id: formData.get('page_id'),
+    seo: formData.get('seo'),
+  })
+  if (!parsed.success) throw new Error('Invalid form')
+
+  let seo: Record<string, unknown>
+  try {
+    seo = JSON.parse(parsed.data.seo)
+  } catch {
+    throw new Error('Invalid SEO payload')
+  }
+
+  const supabase = await createClient()
+  const { data: page } = await supabase
+    .from('site_pages')
+    .select('id, site_id, sites!inner(user_id)')
+    .eq('id', parsed.data.page_id)
+    .single()
+  const ownerId = (page as any)?.sites?.user_id
+  if (!page || ownerId !== user.id) throw new Error('Page not found')
+
+  const { error } = await supabase
+    .from('site_pages')
+    .update({ seo })
+    .eq('id', parsed.data.page_id)
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/sites/${page.site_id}`)
 }

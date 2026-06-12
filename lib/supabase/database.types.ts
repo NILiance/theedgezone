@@ -660,40 +660,190 @@ export type Database = {
           },
         ]
       }
-      site_pages: {
+      site_galleries: {
         Row: {
           created_at: string
           id: string
-          meta: Json
-          path: string
-          position: number
+          images: Json
+          name: string
           site_id: string
-          title: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
-          meta?: Json
-          path: string
-          position?: number
+          images?: Json
+          name: string
           site_id: string
-          title: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          images?: Json
+          name?: string
+          site_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_galleries_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_pages: {
+        Row: {
+          created_at: string
+          early_access_hours: number
+          id: string
+          meta: Json
+          nav_label: string | null
+          nav_parent: string | null
+          nav_visible: boolean
+          page_type: string | null
+          path: string
+          position: number
+          required_level: number
+          seo: Json
+          site_id: string
+          status: string
+          supporters_only: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          early_access_hours?: number
+          id?: string
           meta?: Json
+          nav_label?: string | null
+          nav_parent?: string | null
+          nav_visible?: boolean
+          page_type?: string | null
+          path: string
+          position?: number
+          required_level?: number
+          seo?: Json
+          site_id: string
+          status?: string
+          supporters_only?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          early_access_hours?: number
+          id?: string
+          meta?: Json
+          nav_label?: string | null
+          nav_parent?: string | null
+          nav_visible?: boolean
+          page_type?: string | null
           path?: string
           position?: number
+          required_level?: number
+          seo?: Json
           site_id?: string
+          status?: string
+          supporters_only?: boolean
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "site_pages_nav_parent_fkey"
+            columns: ["nav_parent"]
+            isOneToOne: false
+            referencedRelation: "site_pages"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "site_pages_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_submissions: {
+        Row: {
+          block_id: string | null
+          created_at: string
+          id: string
+          page_id: string | null
+          payload: Json
+          site_id: string
+        }
+        Insert: {
+          block_id?: string | null
+          created_at?: string
+          id?: string
+          page_id?: string | null
+          payload?: Json
+          site_id: string
+        }
+        Update: {
+          block_id?: string | null
+          created_at?: string
+          id?: string
+          page_id?: string | null
+          payload?: Json
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_submissions_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "site_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_submissions_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "site_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_submissions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          site_id: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          site_id: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          site_id?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_subscribers_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
@@ -706,12 +856,18 @@ export type Database = {
           created_at: string
           default_meta: Json
           display_name: string | null
+          footer: Json
+          header: Json
           id: string
+          layout: string | null
+          onboarding_complete: boolean
           order_id: string | null
           published_at: string | null
           slug: string
+          social: Json
           status: string
           tagline: string | null
+          template_id: string | null
           theme: Json
           updated_at: string
           user_id: string
@@ -720,12 +876,18 @@ export type Database = {
           created_at?: string
           default_meta?: Json
           display_name?: string | null
+          footer?: Json
+          header?: Json
           id?: string
+          layout?: string | null
+          onboarding_complete?: boolean
           order_id?: string | null
           published_at?: string | null
           slug: string
+          social?: Json
           status?: string
           tagline?: string | null
+          template_id?: string | null
           theme?: Json
           updated_at?: string
           user_id: string
@@ -734,12 +896,18 @@ export type Database = {
           created_at?: string
           default_meta?: Json
           display_name?: string | null
+          footer?: Json
+          header?: Json
           id?: string
+          layout?: string | null
+          onboarding_complete?: boolean
           order_id?: string | null
           published_at?: string | null
           slug?: string
+          social?: Json
           status?: string
           tagline?: string | null
+          template_id?: string | null
           theme?: Json
           updated_at?: string
           user_id?: string
@@ -798,6 +966,30 @@ export type Database = {
           granted_at?: string
           granted_by?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_theme_presets: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          tokens: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          tokens?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          tokens?: Json
           user_id?: string
         }
         Relationships: []

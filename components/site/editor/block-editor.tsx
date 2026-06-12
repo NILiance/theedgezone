@@ -3,18 +3,9 @@
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { BlockRenderer, type SiteBlock } from '@/components/site/block-renderer'
-import {
-  HeroForm,
-  TextForm,
-  StatsForm,
-  GalleryForm,
-  SponsorsForm,
-  CtaForm,
-  ContactForm,
-  VideoForm,
-  GenericForm,
-  type BlockFormProps,
-} from '@/components/site/editor/block-forms'
+import { BlockField } from '@/components/site/editor/block-field'
+import { BLOCK_TYPES_BY_KEY } from '@/lib/site-builder/block-types'
+import type { ThemeTokens } from '@/lib/site-builder/theme-presets'
 import {
   updateBlockProps,
   removeBlock,
@@ -23,39 +14,21 @@ import {
 
 interface Props {
   block: SiteBlock
-  theme: { primary: string; secondary: string }
+  theme: ThemeTokens
+  social: Record<string, string>
   isFirst: boolean
   isLast: boolean
 }
 
-function FormForType({ blockType, ...rest }: BlockFormProps & { blockType: string }) {
-  switch (blockType) {
-    case 'hero':
-      return <HeroForm {...rest} />
-    case 'text':
-      return <TextForm {...rest} />
-    case 'stats':
-      return <StatsForm {...rest} />
-    case 'gallery':
-      return <GalleryForm {...rest} />
-    case 'sponsors':
-      return <SponsorsForm {...rest} />
-    case 'cta':
-      return <CtaForm {...rest} />
-    case 'contact':
-      return <ContactForm {...rest} />
-    case 'video':
-      return <VideoForm {...rest} />
-    default:
-      return <GenericForm {...rest} />
-  }
-}
-
-export function BlockEditor({ block, theme, isFirst, isLast }: Props) {
+export function BlockEditor({ block, theme, social, isFirst, isLast }: Props) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Record<string, unknown>>(block.props)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+
+  const def = BLOCK_TYPES_BY_KEY[block.block_type]
+  const fields = def?.fields ?? []
+  const label = def?.label ?? block.block_type
 
   const save = () => {
     setError(null)
@@ -105,7 +78,7 @@ export function BlockEditor({ block, theme, isFirst, isLast }: Props) {
       <div className="flex items-center justify-between gap-3 border-b border-border bg-panel-elevated/50 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-display rounded-full bg-primary/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-            {block.block_type}
+            {def?.icon} {label}
           </span>
           <span className="font-mono text-xs text-muted-foreground">#{block.position}</span>
         </div>
@@ -150,24 +123,40 @@ export function BlockEditor({ block, theme, isFirst, isLast }: Props) {
       </div>
 
       {open ? (
-        <div className="space-y-4 p-4">
-          <FormForType blockType={block.block_type} props={draft} onChange={setDraft} />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex gap-2">
-            <Button size="sm" onClick={save} disabled={isPending}>
-              {isPending ? 'Saving…' : 'Save block'}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setDraft(block.props)
-                setOpen(false)
-              }}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
+        <div className="grid gap-4 p-4 lg:grid-cols-[1fr_1fr]">
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{def?.desc}</p>
+            {fields.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No editable settings for this block.
+              </p>
+            ) : (
+              fields.map((spec) => (
+                <BlockField
+                  key={spec.key}
+                  spec={spec}
+                  value={draft[spec.key]}
+                  onChange={(next) => setDraft({ ...draft, [spec.key]: next })}
+                />
+              ))
+            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex gap-2">
+              <Button size="sm" onClick={save} disabled={isPending}>
+                {isPending ? 'Saving…' : 'Save block'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setDraft(block.props)
+                  setOpen(false)
+                }}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-[var(--radius-sm)] border border-dashed border-border bg-background">
@@ -178,13 +167,14 @@ export function BlockEditor({ block, theme, isFirst, isLast }: Props) {
               <BlockRenderer
                 block={{ ...block, props: draft }}
                 theme={theme}
+                social={social}
               />
             </div>
           </div>
         </div>
       ) : (
         <div className="overflow-hidden">
-          <BlockRenderer block={block} theme={theme} />
+          <BlockRenderer block={block} theme={theme} social={social} />
         </div>
       )}
     </div>
