@@ -739,6 +739,101 @@ export type Database = {
           },
         ]
       }
+      site_guestbook_entries: {
+        Row: {
+          approved: boolean
+          block_id: string | null
+          created_at: string
+          display_name: string
+          id: string
+          message: string
+          site_id: string
+        }
+        Insert: {
+          approved?: boolean
+          block_id?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          message: string
+          site_id: string
+        }
+        Update: {
+          approved?: boolean
+          block_id?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          message?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_guestbook_entries_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "site_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_guestbook_entries_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_membership_tiers: {
+        Row: {
+          active: boolean
+          billing_interval: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          perks: Json
+          position: number
+          price_cents: number
+          site_id: string
+          stripe_price_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          billing_interval?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          perks?: Json
+          position?: number
+          price_cents?: number
+          site_id: string
+          stripe_price_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          billing_interval?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          perks?: Json
+          position?: number
+          price_cents?: number
+          site_id?: string
+          stripe_price_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_membership_tiers_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_pages: {
         Row: {
           created_at: string
@@ -807,6 +902,104 @@ export type Database = {
           },
           {
             foreignKeyName: "site_pages_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_poll_votes: {
+        Row: {
+          block_id: string
+          created_at: string
+          id: string
+          option_value: string
+          site_id: string
+          voter_token: string | null
+          voter_user_id: string | null
+        }
+        Insert: {
+          block_id: string
+          created_at?: string
+          id?: string
+          option_value: string
+          site_id: string
+          voter_token?: string | null
+          voter_user_id?: string | null
+        }
+        Update: {
+          block_id?: string
+          created_at?: string
+          id?: string
+          option_value?: string
+          site_id?: string
+          voter_token?: string | null
+          voter_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_poll_votes_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "site_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_poll_votes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_products: {
+        Row: {
+          active: boolean
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          position: number
+          price_cents: number
+          site_id: string
+          stripe_price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          position?: number
+          price_cents?: number
+          site_id: string
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          position?: number
+          price_cents?: number
+          site_id?: string
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_products_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
@@ -888,6 +1081,120 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "site_subscribers_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_support_rewards: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          file_url: string | null
+          id: string
+          image_url: string | null
+          name: string
+          position: number
+          required_tier_id: string | null
+          reward_type: string
+          site_id: string
+          unlock_amount_cents: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          position?: number
+          required_tier_id?: string | null
+          reward_type?: string
+          site_id: string
+          unlock_amount_cents?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          position?: number
+          required_tier_id?: string | null
+          reward_type?: string
+          site_id?: string
+          unlock_amount_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_support_rewards_required_tier_id_fkey"
+            columns: ["required_tier_id"]
+            isOneToOne: false
+            referencedRelation: "site_membership_tiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_support_rewards_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_tips: {
+        Row: {
+          amount_cents: number
+          block_id: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          message: string | null
+          site_id: string
+          status: string
+          stripe_payment_intent: string | null
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          block_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          message?: string | null
+          site_id: string
+          status?: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          block_id?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          message?: string | null
+          site_id?: string
+          status?: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_tips_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "site_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_tips_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"

@@ -114,6 +114,57 @@ export function BlockRenderer({ block, theme, social }: BlockRendererProps) {
       return <HtmlBlock props={block.props} />
     case 'navigation':
       return <NavStubBlock props={block.props} />
+
+    // ── Fan blocks ──────────────────────────────────────────────────────
+    case 'tip_jar':
+      return <TipJarBlock props={block.props} tokens={tokens} />
+    case 'fan_poll':
+      return <FanPollBlock props={block.props} tokens={tokens} />
+    case 'guestbook':
+      return <GuestbookBlock props={block.props} tokens={tokens} />
+    case 'supporters_wall':
+      return <SupportersWallBlock props={block.props} tokens={tokens} />
+    case 'fan_leaderboard':
+      return <FanLeaderboardBlock props={block.props} tokens={tokens} />
+    case 'milestones':
+      return <MilestonesBlock props={block.props} tokens={tokens} />
+    case 'supporter_streak':
+      return <SupporterStreakBlock props={block.props} tokens={tokens} />
+    case 'content_drip':
+      return <ContentDripBlock props={block.props} tokens={tokens} />
+    case 'referral':
+      return <ReferralBlock props={block.props} tokens={tokens} />
+    case 'activity_feed':
+      return <ActivityFeedBlock props={block.props} tokens={tokens} />
+    case 'revenue_ticker':
+      return <RevenueTickerBlock props={block.props} tokens={tokens} />
+    case 'fan_portal':
+      return <FanPortalBlock props={block.props} tokens={tokens} />
+    case 'my_purchases':
+      return <FanScopedBlock title={getStr(block.props, 'title', 'My purchases')} note="Your recent orders will appear here once you sign in." tokens={tokens} />
+    case 'my_rewards':
+      return <FanScopedBlock title={getStr(block.props, 'title', 'My rewards')} note="Rewards you've unlocked will appear here." tokens={tokens} />
+    case 'my_card':
+      return <FanScopedBlock title={getStr(block.props, 'title', 'My supporter card')} note="Your personalized supporter card will render here." tokens={tokens} />
+    case 'my_membership':
+      return <FanScopedBlock title={getStr(block.props, 'title', 'My membership')} note="Membership status + manage subscription." tokens={tokens} />
+    case 'my_activity':
+      return <FanScopedBlock title={getStr(block.props, 'title', 'My activity')} note="Lifetime support summary across orders, tips, and engagement." tokens={tokens} />
+    case 'my_referrals':
+      return <FanScopedBlock title={getStr(block.props, 'title', 'My referrals')} note="Your referral link + earnings breakdown." tokens={tokens} />
+    case 'gift_tip':
+      return <GiftTipBlock props={block.props} tokens={tokens} />
+    case 'rewards_showcase':
+      return <RewardsShowcaseBlock props={block.props} tokens={tokens} />
+
+    // ── Revenue blocks ──────────────────────────────────────────────────
+    case 'merch':
+      return <MerchBlock props={block.props} tokens={tokens} />
+    case 'shoutout_request':
+      return <ShoutoutRequestBlock props={block.props} tokens={tokens} />
+    case 'membership_tiers':
+      return <MembershipTiersBlock props={block.props} tokens={tokens} />
+
     default:
       return null
   }
@@ -1106,6 +1157,778 @@ function NavStubBlock({ props }: { props: Record<string, unknown> }) {
       {title && <p className="mb-3 text-eyebrow text-muted-foreground">{title}</p>}
       <p className="text-sm text-muted-foreground">
         Site navigation will render here when the page is viewed publicly.
+      </p>
+    </Section>
+  )
+}
+
+// ─── Fan / revenue blocks ────────────────────────────────────────────────────
+
+function FanCardShell({
+  title,
+  tokens,
+  children,
+  centered = false,
+}: {
+  title?: string
+  tokens: ThemeTokens
+  children: React.ReactNode
+  centered?: boolean
+}) {
+  return (
+    <Section maxWidth="640px">
+      {title && (
+        <h3
+          className={`mb-4 text-2xl font-bold ${centered ? 'text-center' : ''}`}
+          style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+        >
+          {title}
+        </h3>
+      )}
+      <div
+        className="rounded-md border p-6"
+        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+      >
+        {children}
+      </div>
+    </Section>
+  )
+}
+
+function FanScopedBlock({
+  title,
+  note,
+  tokens,
+}: {
+  title: string
+  note: string
+  tokens: ThemeTokens
+}) {
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      <p className="text-sm" style={{ color: tokens.muted_color }}>
+        {note}
+      </p>
+    </FanCardShell>
+  )
+}
+
+function TipJarBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Send a tip')
+  const description = getStr(props, 'description')
+  const amountsRaw = getArr<{ value?: number } | number>(props, 'amounts')
+  const amounts = amountsRaw
+    .map((a) => (typeof a === 'number' ? a : Number(a.value ?? 0)))
+    .filter((n) => n > 0)
+  const allowCustom = getBool(props, 'allow_custom', true)
+  return (
+    <FanCardShell title={title} tokens={tokens} centered>
+      {description && (
+        <p className="mb-4 text-sm" style={{ color: tokens.muted_color }}>
+          {description}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {amounts.map((amt) => (
+          <button
+            key={amt}
+            type="button"
+            className="rounded-md px-4 py-3 text-sm font-bold transition hover:opacity-90"
+            style={{
+              background: tokens.primary,
+              color: tokens.secondary,
+              borderRadius: tokens.button_radius,
+              fontFamily: tokens.font_heading,
+            }}
+          >
+            ${amt}
+          </button>
+        ))}
+      </div>
+      {allowCustom && (
+        <div className="mt-4 flex gap-2">
+          <input
+            type="number"
+            placeholder="Custom amount"
+            min={1}
+            className="flex-1 rounded-md border p-3 text-sm"
+            style={{
+              borderColor: tokens.border_color,
+              background: tokens.bg_color,
+              color: tokens.text_color,
+            }}
+          />
+          <button
+            type="button"
+            className="rounded-md px-6 text-sm font-bold"
+            style={{
+              background: tokens.primary,
+              color: tokens.secondary,
+              borderRadius: tokens.button_radius,
+            }}
+          >
+            Send
+          </button>
+        </div>
+      )}
+    </FanCardShell>
+  )
+}
+
+function FanPollBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title')
+  const question = getStr(props, 'question', 'What should I post next?')
+  const optsRaw = props.options
+  const options: string[] = Array.isArray(optsRaw)
+    ? (optsRaw as Array<string | { text?: string }>)
+        .map((o) => (typeof o === 'string' ? o : o.text ?? ''))
+        .filter(Boolean)
+    : typeof optsRaw === 'string'
+    ? optsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+    : []
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      <p className="text-base font-bold" style={{ color: tokens.heading_color }}>
+        {question}
+      </p>
+      <ul className="mt-3 space-y-2">
+        {options.map((opt, i) => (
+          <li key={i}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between rounded-md border px-4 py-3 text-left text-sm transition hover:opacity-90"
+              style={{
+                borderColor: tokens.border_color,
+                background: tokens.bg_color,
+                color: tokens.text_color,
+              }}
+            >
+              <span>{opt}</span>
+              <span className="text-xs" style={{ color: tokens.muted_color }}>
+                Vote →
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </FanCardShell>
+  )
+}
+
+function GuestbookBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Guestbook')
+  const description = getStr(props, 'description')
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      {description && (
+        <p className="mb-4 text-sm" style={{ color: tokens.muted_color }}>
+          {description}
+        </p>
+      )}
+      <form className="space-y-3">
+        <input
+          name="display_name"
+          placeholder="Your name"
+          className="w-full rounded-md border p-3 text-sm"
+          style={{
+            borderColor: tokens.border_color,
+            background: tokens.bg_color,
+            color: tokens.text_color,
+          }}
+        />
+        <textarea
+          name="message"
+          rows={3}
+          placeholder="Leave a note…"
+          className="w-full rounded-md border p-3 text-sm"
+          style={{
+            borderColor: tokens.border_color,
+            background: tokens.bg_color,
+            color: tokens.text_color,
+          }}
+        />
+        <button
+          type="submit"
+          className="rounded-md px-6 py-3 text-sm font-bold uppercase tracking-widest"
+          style={{
+            background: tokens.primary,
+            color: tokens.secondary,
+            borderRadius: tokens.button_radius,
+            fontFamily: tokens.font_heading,
+          }}
+        >
+          Sign
+        </button>
+      </form>
+    </FanCardShell>
+  )
+}
+
+function SupportersWallBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'My supporters')
+  const description = getStr(props, 'description')
+  return (
+    <Section maxWidth="900px">
+      <div className="text-center">
+        <h3
+          className="text-2xl font-bold"
+          style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+        >
+          {title}
+        </h3>
+        {description && (
+          <p className="mt-1 text-sm" style={{ color: tokens.muted_color }}>
+            {description}
+          </p>
+        )}
+      </div>
+      <div
+        className="mt-6 rounded-md border p-6 text-center"
+        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+      >
+        <p className="text-sm" style={{ color: tokens.muted_color }}>
+          Recent supporters will appear here once orders/tips come in.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+function FanLeaderboardBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Top supporters')
+  return (
+    <Section maxWidth="640px">
+      <h3
+        className="mb-4 text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <div
+        className="rounded-md border"
+        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+      >
+        <p className="px-6 py-8 text-center text-sm" style={{ color: tokens.muted_color }}>
+          Leaderboard fills in as supporters contribute.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+function MilestonesBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Milestones')
+  const milestones = getArr<{ target: number; title: string; reward: string }>(props, 'milestones')
+  return (
+    <Section maxWidth="800px">
+      <h3
+        className="mb-6 text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <ol className="space-y-3">
+        {milestones.map((m, i) => (
+          <li
+            key={i}
+            className="flex items-center gap-4 rounded-md border p-4"
+            style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+          >
+            <div
+              className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: tokens.primary,
+                color: tokens.secondary,
+                fontFamily: tokens.font_heading,
+              }}
+            >
+              <span className="text-xs font-black">{i + 1}</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-base font-bold" style={{ color: tokens.heading_color }}>
+                {m.title}{' '}
+                <span style={{ color: tokens.muted_color }}>· {m.target.toLocaleString()}</span>
+              </p>
+              <p className="text-sm" style={{ color: tokens.text_color }}>
+                {m.reward}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </Section>
+  )
+}
+
+function SupporterStreakBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Longest streaks')
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      <p className="text-sm" style={{ color: tokens.muted_color }}>
+        Supporter streaks will populate based on consecutive months of support.
+      </p>
+    </FanCardShell>
+  )
+}
+
+function ContentDripBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Members-only drops')
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      <p className="text-sm" style={{ color: tokens.muted_color }}>
+        Scheduled content drops will appear here once a supporter signs in.
+      </p>
+    </FanCardShell>
+  )
+}
+
+function ReferralBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Refer a friend')
+  const description = getStr(props, 'description')
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      {description && (
+        <p className="mb-4 text-sm" style={{ color: tokens.muted_color }}>
+          {description}
+        </p>
+      )}
+      <button
+        type="button"
+        className="rounded-md px-6 py-3 text-sm font-bold uppercase tracking-widest"
+        style={{
+          background: tokens.primary,
+          color: tokens.secondary,
+          borderRadius: tokens.button_radius,
+          fontFamily: tokens.font_heading,
+        }}
+      >
+        Get my referral link
+      </button>
+    </FanCardShell>
+  )
+}
+
+function ActivityFeedBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Latest activity')
+  return (
+    <Section maxWidth="640px">
+      <h3
+        className="mb-4 text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <ul
+        className="divide-y rounded-md border"
+        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+      >
+        <li className="px-4 py-3 text-sm" style={{ color: tokens.text_color }}>
+          Live activity will appear here once supporters engage.
+        </li>
+      </ul>
+    </Section>
+  )
+}
+
+function RevenueTickerBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const label = getStr(props, 'label', 'Raised so far')
+  const currency = getStr(props, 'currency', 'USD')
+  return (
+    <Section maxWidth="640px">
+      <div
+        className="rounded-md border p-6 text-center"
+        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+      >
+        <p
+          className="text-eyebrow"
+          style={{ color: tokens.muted_color, fontFamily: tokens.font_heading }}
+        >
+          {label}
+        </p>
+        <p
+          className="mt-2 text-5xl font-black"
+          style={{ color: tokens.primary, fontFamily: tokens.font_heading }}
+        >
+          {currency === 'USD' ? '$' : ''}0
+          <span className="text-2xl" style={{ color: tokens.muted_color }}>
+            {currency !== 'USD' && ` ${currency}`}
+          </span>
+        </p>
+        <p className="mt-1 text-xs" style={{ color: tokens.muted_color }}>
+          Updates live as fans support.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+function FanPortalBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'My account')
+  const showRewards = getBool(props, 'show_rewards', true)
+  const showOrders = getBool(props, 'show_orders', true)
+  const showMembership = getBool(props, 'show_membership', true)
+  return (
+    <Section>
+      <h3
+        className="mb-6 text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {showOrders && <PortalCard title="Orders" body="Recent purchases" tokens={tokens} />}
+        {showRewards && <PortalCard title="Rewards" body="Unlocked perks" tokens={tokens} />}
+        {showMembership && <PortalCard title="Membership" body="Status + manage" tokens={tokens} />}
+      </div>
+    </Section>
+  )
+}
+
+function PortalCard({
+  title,
+  body,
+  tokens,
+}: {
+  title: string
+  body: string
+  tokens: ThemeTokens
+}) {
+  return (
+    <div
+      className="rounded-md border p-5"
+      style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+    >
+      <p
+        className="text-display text-sm font-bold uppercase tracking-widest"
+        style={{ color: tokens.primary, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </p>
+      <p className="mt-2 text-sm" style={{ color: tokens.text_color }}>
+        {body}
+      </p>
+      <p className="mt-3 text-xs" style={{ color: tokens.muted_color }}>
+        Sign in to see your data.
+      </p>
+    </div>
+  )
+}
+
+function GiftTipBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Gift a tip')
+  const description = getStr(props, 'description')
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      {description && (
+        <p className="mb-4 text-sm" style={{ color: tokens.muted_color }}>
+          {description}
+        </p>
+      )}
+      <div className="space-y-2">
+        <input
+          placeholder="Recipient name"
+          className="w-full rounded-md border p-3 text-sm"
+          style={{
+            borderColor: tokens.border_color,
+            background: tokens.bg_color,
+            color: tokens.text_color,
+          }}
+        />
+        <input
+          type="email"
+          placeholder="Recipient email"
+          className="w-full rounded-md border p-3 text-sm"
+          style={{
+            borderColor: tokens.border_color,
+            background: tokens.bg_color,
+            color: tokens.text_color,
+          }}
+        />
+        <textarea
+          rows={2}
+          placeholder="Message"
+          className="w-full rounded-md border p-3 text-sm"
+          style={{
+            borderColor: tokens.border_color,
+            background: tokens.bg_color,
+            color: tokens.text_color,
+          }}
+        />
+        <div className="flex gap-2">
+          <input
+            type="number"
+            placeholder="Amount"
+            className="flex-1 rounded-md border p-3 text-sm"
+            style={{
+              borderColor: tokens.border_color,
+              background: tokens.bg_color,
+              color: tokens.text_color,
+            }}
+          />
+          <button
+            type="button"
+            className="rounded-md px-6 text-sm font-bold"
+            style={{
+              background: tokens.primary,
+              color: tokens.secondary,
+              borderRadius: tokens.button_radius,
+              fontFamily: tokens.font_heading,
+            }}
+          >
+            Send gift
+          </button>
+        </div>
+      </div>
+    </FanCardShell>
+  )
+}
+
+function RewardsShowcaseBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Rewards you can unlock')
+  return (
+    <Section>
+      <h3
+        className="mb-6 text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <div
+        className="rounded-md border p-8 text-center"
+        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+      >
+        <p className="text-sm" style={{ color: tokens.muted_color }}>
+          Rewards configured in the Rewards tab will show here.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+function MerchBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Shop merch')
+  return (
+    <Section>
+      <h3
+        className="mb-6 text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <div
+        className="rounded-md border p-8 text-center"
+        style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+      >
+        <p className="text-sm" style={{ color: tokens.muted_color }}>
+          Products from the Merch tab will appear here as a shoppable grid.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+function ShoutoutRequestBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Get a personalized shoutout')
+  const description = getStr(props, 'description')
+  const priceCents = getNum(props, 'price_cents', 5000)
+  const deliveryDays = getNum(props, 'delivery_days', 7)
+  return (
+    <FanCardShell title={title} tokens={tokens}>
+      {description && (
+        <p className="mb-4 text-sm" style={{ color: tokens.muted_color }}>
+          {description}
+        </p>
+      )}
+      <p
+        className="text-3xl font-black"
+        style={{ color: tokens.primary, fontFamily: tokens.font_heading }}
+      >
+        ${(priceCents / 100).toFixed(2)}
+        <span className="ml-2 text-sm font-normal" style={{ color: tokens.muted_color }}>
+          per video · {deliveryDays}-day delivery
+        </span>
+      </p>
+      <button
+        type="button"
+        className="mt-4 rounded-md px-6 py-3 text-sm font-bold uppercase tracking-widest"
+        style={{
+          background: tokens.primary,
+          color: tokens.secondary,
+          borderRadius: tokens.button_radius,
+          fontFamily: tokens.font_heading,
+        }}
+      >
+        Request a shoutout
+      </button>
+    </FanCardShell>
+  )
+}
+
+function MembershipTiersBlock({
+  props,
+  tokens,
+}: {
+  props: Record<string, unknown>
+  tokens: ThemeTokens
+}) {
+  const title = getStr(props, 'title', 'Join the membership')
+  return (
+    <Section>
+      <h3
+        className="mb-6 text-center text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          { name: 'Supporter', price: '$3/mo', perks: ['Behind-the-scenes posts'] },
+          {
+            name: 'Insider',
+            price: '$10/mo',
+            perks: ['Everything in Supporter', 'Monthly Q&A', 'Discord access'],
+          },
+          {
+            name: 'VIP',
+            price: '$25/mo',
+            perks: ['Everything in Insider', 'Quarterly video call', 'Signed gear'],
+          },
+        ].map((t) => (
+          <div
+            key={t.name}
+            className="rounded-md border p-6"
+            style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+          >
+            <p
+              className="text-display text-sm font-bold uppercase tracking-widest"
+              style={{ color: tokens.primary, fontFamily: tokens.font_heading }}
+            >
+              {t.name}
+            </p>
+            <p
+              className="mt-2 text-3xl font-black"
+              style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+            >
+              {t.price}
+            </p>
+            <ul className="mt-4 space-y-1 text-sm" style={{ color: tokens.text_color }}>
+              {t.perks.map((p) => (
+                <li key={p}>✓ {p}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-4 w-full rounded-md px-4 py-2 text-sm font-bold uppercase tracking-widest"
+              style={{
+                background: tokens.primary,
+                color: tokens.secondary,
+                borderRadius: tokens.button_radius,
+                fontFamily: tokens.font_heading,
+              }}
+            >
+              Join
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-center text-xs" style={{ color: tokens.muted_color }}>
+        Real tiers from your Membership Tiers tab replace these once configured.
       </p>
     </Section>
   )

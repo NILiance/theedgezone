@@ -241,27 +241,50 @@ async function PagesTab({
           )}
         </div>
 
-        {currentPage && (
-          <div className="rounded-[var(--radius)] border border-dashed border-border bg-panel/20 p-4">
-            <p className="text-eyebrow mb-3 text-muted-foreground">Add block</p>
-            <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {BLOCK_TYPES.map((b) => (
-                <form key={b.type} action={addBlock}>
-                  <input type="hidden" name="page_id" value={currentPage.id} />
-                  <input type="hidden" name="block_type" value={b.type} />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    className="h-auto w-full justify-start gap-2 px-3 py-2 text-left"
-                  >
-                    <span className="text-base">{b.icon}</span>
-                    <span className="flex-1 truncate text-xs font-bold">{b.label}</span>
-                  </Button>
-                </form>
-              ))}
+        {currentPage && <AddBlockPanel pageId={currentPage.id} />}
+      </div>
+    </div>
+  )
+}
+
+function AddBlockPanel({ pageId }: { pageId: string }) {
+  const groups: Array<{ id: 'mysite' | 'fans' | 'revenue'; label: string }> = [
+    { id: 'mysite', label: 'My site' },
+    { id: 'fans', label: 'For my fans' },
+    { id: 'revenue', label: 'Revenue' },
+  ]
+  return (
+    <div className="rounded-[var(--radius)] border border-dashed border-border bg-panel/20 p-4">
+      <p className="text-eyebrow mb-3 text-muted-foreground">Add block</p>
+      <div className="space-y-4">
+        {groups.map((g) => {
+          const blocks = BLOCK_TYPES.filter((b) => b.category === g.id)
+          if (blocks.length === 0) return null
+          return (
+            <div key={g.id}>
+              <p className="text-display mb-2 text-[10px] font-bold uppercase tracking-widest text-primary">
+                {g.label}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {blocks.map((b) => (
+                  <form key={b.type} action={addBlock}>
+                    <input type="hidden" name="page_id" value={pageId} />
+                    <input type="hidden" name="block_type" value={b.type} />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="h-auto w-full justify-start gap-2 px-3 py-2 text-left"
+                      title={b.desc}
+                    >
+                      <span className="text-base">{b.icon}</span>
+                      <span className="flex-1 truncate text-xs font-bold">{b.label}</span>
+                    </Button>
+                  </form>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })}
       </div>
     </div>
   )
