@@ -729,6 +729,28 @@ export async function uploadAsset(formData: FormData): Promise<{ url: string; pa
   return { url, path }
 }
 
+export async function listAssets(siteId?: string): Promise<
+  Array<{ id: string; url: string; path: string; filename: string | null; mime_type: string | null }>
+> {
+  const user = await requireUser()
+  const supabase = await createClient()
+  let q = supabase
+    .from('site_assets')
+    .select('id, url, path, filename, mime_type, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(80)
+  if (siteId) q = q.or(`site_id.eq.${siteId},site_id.is.null`)
+  const { data } = await q
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    url: r.url,
+    path: r.path,
+    filename: r.filename,
+    mime_type: r.mime_type,
+  }))
+}
+
 const deleteAssetSchema = z.object({ path: z.string().min(1) })
 
 export async function deleteAsset(formData: FormData) {
