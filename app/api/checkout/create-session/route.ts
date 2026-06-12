@@ -50,9 +50,7 @@ export async function POST(request: Request) {
 
   try {
     const session = await stripe.checkout.sessions.create({
-      // @ts-expect-error — 'embedded' is supported by the API but not yet
-      // in this SDK build's UiMode union. Safe to cast at the call site.
-      ui_mode: 'embedded',
+      ui_mode: 'embedded_page',
       mode: pricing.interval ? 'subscription' : 'payment',
       line_items: [
         {
