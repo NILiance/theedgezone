@@ -4,6 +4,7 @@ import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { env } from '@/lib/env'
 import { createServiceClient } from '@/lib/supabase/server'
+import { provisionOrder } from '@/lib/provisioning'
 
 export const runtime = 'nodejs' // raw body needed for signature verification
 
@@ -143,17 +144,49 @@ async function handleCheckoutCompleted(
     .maybeSingle()
   if (existingOrder) return
 
-  await supabase.from('orders').insert({
-    user_id: userId,
-    product_slug: productSlug,
-    product_title: productTitle,
-    plan: metadata.plan ?? 'onetime',
-    amount_cents: session.amount_total ?? null,
-    currency: session.currency ?? 'usd',
-    status: 'paid',
-    stripe_session_id: session.id,
-    stripe_payment_intent:
-      typeof session.payment_intent === 'string' ? session.payment_intent : null,
-    purchased_at: new Date().toISOString(),
-  })
+  const { data: inserted } = await supabase
+    .from('orders')
+    .insert({
+      user_id: userId,
+      product_slug: productSlug,
+      product_title: productTitle,
+      plan: metadata.plan ?? 'onetime',
+      amount_cents: session.amount_total ?? null,
+      currency: session.currency ?? 'usd',
+      status: 'provisioning',
+      stripe_session_id: session.id,
+      stripe_payment_intent:
+        typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      purchased_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+
+  if (!inserted) return
+
+  // Auto-provision the matching module row (sites for personal-website,
+  // brand_designs for brand design, etc.) so My Products links to the
+  // real entity rather than an empty index.
+  try {
+    const result = await provisionOrder(supabase, {
+      id: inserted.id as string,
+      user_id: userId,
+      product_slug: productSlug,
+    })
+    await supabase
+      .from('orders')
+      .update({
+        status: result.status,
+        provisioned_entity_id: result.entity_id ?? null,
+        provisioned_at: result.entity_id ? new Date().toISOString() : null,
+      })
+      .eq('id', inserted.id as string)
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : 'Unknown provisioning error'
+    await supabase
+      .from('orders')
+      .update({ status: 'provisioning' })
+      .eq('id', inserted.id as string)
+    console.error('[stripe-webhook] provisioning failed', errMsg)
+  }
 }

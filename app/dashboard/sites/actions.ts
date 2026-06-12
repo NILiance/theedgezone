@@ -5,103 +5,14 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
-
-function slugify(str: string): string {
-  return str
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 50)
-}
+import { provisionSite } from '@/lib/provisioning'
 
 export async function createSite() {
   const user = await requireUser()
   const supabase = await createClient()
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, brand_primary_color, brand_secondary_color, sport')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const baseName = profile?.display_name ?? user.email?.split('@')[0] ?? 'me'
-  // Append a short suffix so multiple sites per user don't collide
-  let slug = slugify(baseName)
-  const { data: existing } = await supabase
-    .from('sites')
-    .select('slug')
-    .eq('user_id', user.id)
-  if ((existing ?? []).some((s) => s.slug === slug)) {
-    slug = `${slug}-${(existing?.length ?? 0) + 1}`
-  }
-
-  const { data: site, error } = await supabase
-    .from('sites')
-    .insert({
-      user_id: user.id,
-      slug,
-      display_name: profile?.display_name ?? null,
-      theme: {
-        primary: profile?.brand_primary_color ?? '#C8A84E',
-        secondary: profile?.brand_secondary_color ?? '#000000',
-      },
-      status: 'draft',
-    })
-    .select('id')
-    .single()
-
-  if (error || !site) throw new Error(error?.message ?? 'Failed to create site')
-
-  // Seed the Home page with a hero + text + stats block so the user has
-  // something to look at on first open of the editor.
-  const { data: home } = await supabase
-    .from('site_pages')
-    .insert({
-      site_id: site.id,
-      path: '/',
-      title: 'Home',
-      position: 0,
-    })
-    .select('id')
-    .single()
-
-  if (home) {
-    await supabase.from('site_blocks').insert([
-      {
-        page_id: home.id,
-        position: 0,
-        block_type: 'hero',
-        props: {
-          title: profile?.display_name ?? 'My Brand',
-          subtitle: profile?.sport ? `${profile.sport} · NIL Athlete` : 'NIL Athlete',
-        },
-      },
-      {
-        page_id: home.id,
-        position: 1,
-        block_type: 'stats',
-        props: {
-          items: [
-            { value: '—', label: 'Followers' },
-            { value: '—', label: 'Engagement' },
-            { value: '—', label: 'Career stat' },
-          ],
-        },
-      },
-      {
-        page_id: home.id,
-        position: 2,
-        block_type: 'text',
-        props: {
-          content:
-            'Tell your story here. This block holds the headline narrative — what you stand for, what brands should know, how fans should engage.',
-        },
-      },
-    ])
-  }
-
-  redirect(`/dashboard/sites/${site.id}`)
+  const result = await provisionSite(supabase, user.id)
+  if (!result.entity_id) throw new Error('Failed to create site')
+  redirect(`/dashboard/sites/${result.entity_id}`)
 }
 
 const publishSchema = z.object({

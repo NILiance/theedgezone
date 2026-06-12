@@ -431,6 +431,8 @@ export type Database = {
           plan: string | null
           product_slug: string
           product_title: string
+          provisioned_at: string | null
+          provisioned_entity_id: string | null
           purchased_at: string
           status: string
           stripe_payment_intent: string | null
@@ -447,6 +449,8 @@ export type Database = {
           plan?: string | null
           product_slug: string
           product_title: string
+          provisioned_at?: string | null
+          provisioned_entity_id?: string | null
           purchased_at?: string
           status?: string
           stripe_payment_intent?: string | null
@@ -463,6 +467,8 @@ export type Database = {
           plan?: string | null
           product_slug?: string
           product_title?: string
+          provisioned_at?: string | null
+          provisioned_entity_id?: string | null
           purchased_at?: string
           status?: string
           stripe_payment_intent?: string | null

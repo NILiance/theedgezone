@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { defaultR1Prompt, generateConcepts as genIdeogram } from '@/lib/ideogram'
+import { provisionBrandDesign } from '@/lib/provisioning'
 
 /**
  * Create a new brand design row + redirect to the studio.
@@ -14,32 +15,9 @@ import { defaultR1Prompt, generateConcepts as genIdeogram } from '@/lib/ideogram
 export async function createBrandDesign() {
   const user = await requireUser()
   const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, sport, athletic_position, school, brand_primary_color, brand_secondary_color, jersey_number')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const { data: created, error } = await supabase
-    .from('brand_designs')
-    .insert({
-      user_id: user.id,
-      brand_name: profile?.display_name ?? null,
-      sport: profile?.sport ?? null,
-      athletic_position: profile?.athletic_position ?? null,
-      school: profile?.school ?? null,
-      jersey_number: profile?.jersey_number ?? null,
-      primary_color: profile?.brand_primary_color ?? '#C8A84E',
-      secondary_color: profile?.brand_secondary_color ?? '#000000',
-      status: 'concept',
-    })
-    .select('id')
-    .single()
-
-  if (error || !created) throw new Error(error?.message ?? 'Failed to create brand design')
-
-  redirect(`/dashboard/brand-design/${created.id}`)
+  const result = await provisionBrandDesign(supabase, user.id)
+  if (!result.entity_id) throw new Error('Failed to create brand design')
+  redirect(`/dashboard/brand-design/${result.entity_id}`)
 }
 
 const generateSchema = z.object({

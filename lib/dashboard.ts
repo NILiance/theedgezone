@@ -24,6 +24,7 @@ export interface DashboardOrder {
   status: string
   purchased_at: string
   crm_synced_at: string | null
+  provisioned_entity_id: string | null
 }
 
 export const getDashboardData = cache(async (userId: string) => {
@@ -39,7 +40,9 @@ export const getDashboardData = cache(async (userId: string) => {
       .maybeSingle(),
     supabase
       .from('orders')
-      .select('id, product_slug, product_title, plan, amount_cents, status, purchased_at, crm_synced_at')
+      .select(
+        'id, product_slug, product_title, plan, amount_cents, status, purchased_at, crm_synced_at, provisioned_entity_id'
+      )
       .eq('user_id', userId)
       .order('purchased_at', { ascending: false })
       .limit(50),
@@ -65,16 +68,26 @@ export function readinessGrade(score: number): string {
   return 'F'
 }
 
-/** Map an order's product_slug to its action label + module link. */
-export function getProductActions(slug: string): { label: string; href: string }[] {
+/**
+ * Maps an order to its action links. When the order has a provisioned entity
+ * (sites row, brand_designs row, etc.) we deep-link straight to it; otherwise
+ * we fall back to the module index.
+ */
+export function getProductActions(
+  slug: string,
+  entityId?: string | null
+): { label: string; href: string }[] {
   const service = SERVICES.find((s) => s.id === slug)
   if (!service) return []
 
   switch (slug) {
     case 'personal-website':
-      return [
-        { label: 'My Sites', href: '/dashboard/sites' },
-      ]
+      return entityId
+        ? [
+            { label: 'Open Site Builder', href: `/dashboard/sites/${entityId}` },
+            { label: 'All Sites', href: '/dashboard/sites' },
+          ]
+        : [{ label: 'My Sites', href: '/dashboard/sites' }]
     case 'electronic-press-kit':
       return [
         { label: 'View EPK', href: '#' },
@@ -87,7 +100,9 @@ export function getProductActions(slug: string): { label: string; href: string }
       ]
     case 'personal-brand-design':
     case 'brand-lite':
-      return [{ label: 'Design Studio', href: '/dashboard/brand-design' }]
+      return entityId
+        ? [{ label: 'Open Design Studio', href: `/dashboard/brand-design/${entityId}` }]
+        : [{ label: 'Design Studio', href: '/dashboard/brand-design' }]
     case 'start-a-podcast':
       return [{ label: 'Open Podcast Studio', href: '#' }]
     case 'create-an-online-store':

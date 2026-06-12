@@ -202,7 +202,7 @@ function ProductCard({
 }: {
   order: Awaited<ReturnType<typeof getDashboardData>>['orders'][number]
 }) {
-  const actions = getProductActions(order.product_slug)
+  const actions = getProductActions(order.product_slug, order.provisioned_entity_id)
   const dateStr = new Date(order.purchased_at).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
