@@ -3,8 +3,9 @@ import { Wordmark } from '@/components/landing/wordmark'
 import { Button } from '@/components/ui/button'
 import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { AccountMenu } from '@/components/landing/account-menu'
 
-const NAV_LINKS = [
+const PUBLIC_LINKS = [
   { label: 'HOME', href: '/' },
   { label: 'SERVICES', href: '/services' },
   { label: 'OPPORTUNITIES', href: '/opportunities' },
@@ -17,15 +18,20 @@ export async function MarketingNav() {
   const user = await getCurrentUser()
 
   let isAdmin = false
+  let displayName: string | null = null
   if (user) {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .maybeSingle()
-    isAdmin = !!data
+    const [{ data: roleRow }, { data: profile }] = await Promise.all([
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle(),
+      supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
+    ])
+    isAdmin = !!roleRow
+    displayName = (profile?.display_name as string | null) ?? null
   }
 
   return (
@@ -33,7 +39,7 @@ export async function MarketingNav() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
         <Wordmark variant="nav" />
         <nav className="hidden items-center gap-7 lg:flex">
-          {NAV_LINKS.map((link) => (
+          {PUBLIC_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -47,15 +53,16 @@ export async function MarketingNav() {
           {user ? (
             <>
               {isAdmin && (
-                <Link href="/dashboard/admin/branding" className="hidden sm:block">
+                <Link href="/dashboard/admin" className="hidden sm:block">
                   <Button size="sm" variant="ghost">
                     Admin
                   </Button>
                 </Link>
               )}
-              <Link href="/dashboard">
-                <Button size="sm">My Account</Button>
-              </Link>
+              <AccountMenu
+                displayName={displayName ?? user.email ?? 'Account'}
+                isAdmin={isAdmin}
+              />
             </>
           ) : (
             <>
