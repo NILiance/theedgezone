@@ -3,17 +3,15 @@ import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { addBlock, publishSite } from '@/app/dashboard/sites/actions'
+import { SiteSettingsForm } from '@/components/site/editor/site-settings-form'
+import { PageList } from '@/components/site/editor/page-list'
+import { BlockEditor } from '@/components/site/editor/block-editor'
+import { addBlock, publishSite, unpublishSite } from '@/app/dashboard/sites/actions'
+import type { SiteBlock } from '@/components/site/block-renderer'
 
 interface PageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ pageId?: string }>
 }
 
 const BLOCK_TYPES = [
@@ -29,8 +27,9 @@ const BLOCK_TYPES = [
 
 export const metadata = { title: 'Site Editor' }
 
-export default async function SiteEditorPage({ params }: PageProps) {
+export default async function SiteEditorPage({ params, searchParams }: PageProps) {
   const { id } = await params
+  const sp = await searchParams
   const user = await requireUser()
   const supabase = await createClient()
 
@@ -43,17 +42,37 @@ export default async function SiteEditorPage({ params }: PageProps) {
     .eq('site_id', id)
     .order('position', { ascending: true })
 
-  const homePage = pages?.find((p) => p.path === '/') ?? pages?.[0]
-  const { data: blocks } = homePage
+  const pageList = pages ?? []
+  // Prefer ?pageId=… (if it belongs to this site), else fall back to Home, else first page.
+  const currentPage =
+    pageList.find((p) => p.id === sp.pageId) ??
+    pageList.find((p) => p.path === '/') ??
+    pageList[0]
+
+  const { data: rawBlocks } = currentPage
     ? await supabase
         .from('site_blocks')
         .select('id, position, block_type, props')
-        .eq('page_id', homePage.id)
+        .eq('page_id', currentPage.id)
         .order('position', { ascending: true })
     : { data: [] }
 
+  const blocks: SiteBlock[] = (rawBlocks ?? []).map((b) => ({
+    id: b.id,
+    block_type: b.block_type,
+    position: b.position,
+    props: (b.props ?? {}) as Record<string, unknown>,
+  }))
+
+  const theme = (site.theme ?? {}) as { primary?: string; secondary?: string }
+  const resolvedTheme = {
+    primary: theme.primary ?? '#C8A84E',
+    secondary: theme.secondary ?? '#000000',
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Header */}
       <div>
         <Link
           href="/dashboard/sites"
@@ -84,7 +103,14 @@ export default async function SiteEditorPage({ params }: PageProps) {
                 Preview
               </Button>
             </Link>
-            {site.status !== 'published' && (
+            {site.status === 'published' ? (
+              <form action={unpublishSite}>
+                <input type="hidden" name="site_id" value={site.id} />
+                <Button type="submit" size="sm" variant="outline">
+                  Unpublish
+                </Button>
+              </form>
+            ) : (
               <form action={publishSite}>
                 <input type="hidden" name="site_id" value={site.id} />
                 <Button type="submit" size="sm">
@@ -96,97 +122,72 @@ export default async function SiteEditorPage({ params }: PageProps) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Pages</CardTitle>
-          <CardDescription>
-            Multi-page editing comes in the next iteration. For now, the Home page is the
-            primary editable surface.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-1">
-            {(pages ?? []).map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between rounded-[var(--radius-sm)] border border-border bg-panel/40 px-3 py-2 text-sm"
-              >
-                <span>
-                  <span className="text-display font-bold text-foreground">{p.title}</span>{' '}
-                  <span className="font-mono text-muted-foreground">{p.path}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      {/* Site settings */}
+      <SiteSettingsForm
+        siteId={site.id}
+        displayName={site.display_name}
+        tagline={site.tagline}
+        primary={resolvedTheme.primary}
+        secondary={resolvedTheme.secondary}
+      />
 
-      {homePage && (
-        <section>
-          <p className="text-eyebrow mb-3 text-primary">Blocks on home page</p>
+      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        {/* Pages */}
+        <PageList
+          siteId={site.id}
+          pages={pageList}
+          currentPageId={currentPage?.id ?? ''}
+        />
+
+        {/* Block list for current page */}
+        <div className="space-y-4">
+          {currentPage && (
+            <div className="rounded-[var(--radius)] border border-border bg-panel/40 px-5 py-4">
+              <p className="text-eyebrow text-primary">Editing</p>
+              <p className="text-display mt-1 text-lg font-bold">
+                {currentPage.title}{' '}
+                <span className="font-mono text-sm text-muted-foreground">
+                  {currentPage.path}
+                </span>
+              </p>
+            </div>
+          )}
+
           <div className="space-y-3">
-            {(blocks ?? []).map((b) => (
-              <BlockRow key={b.id} block={b} />
+            {blocks.map((b, idx) => (
+              <BlockEditor
+                key={b.id}
+                block={b}
+                theme={resolvedTheme}
+                isFirst={idx === 0}
+                isLast={idx === blocks.length - 1}
+              />
             ))}
-            {(blocks ?? []).length === 0 && (
-              <p className="rounded-[var(--radius-sm)] border border-border bg-panel/40 px-4 py-6 text-center text-sm text-muted-foreground">
-                No blocks yet. Add one below.
+            {blocks.length === 0 && (
+              <p className="rounded-[var(--radius-sm)] border border-border bg-panel/40 px-4 py-8 text-center text-sm text-muted-foreground">
+                No blocks on this page yet. Add one below.
               </p>
             )}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            {BLOCK_TYPES.map((b) => (
-              <form key={b.type} action={addBlock}>
-                <input type="hidden" name="page_id" value={homePage.id} />
-                <input type="hidden" name="block_type" value={b.type} />
-                <Button type="submit" size="sm" variant="outline">
-                  + {b.label}
-                </Button>
-              </form>
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
-  )
-}
-
-function BlockRow({
-  block,
-}: {
-  block: { id: string; position: number; block_type: string; props: unknown }
-}) {
-  const props = block.props as Record<string, unknown>
-  const summary = summariseBlock(block.block_type, props)
-  return (
-    <div className="rounded-[var(--radius-sm)] border border-border bg-panel/40 px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-display text-sm font-bold uppercase tracking-widest text-primary">
-            {block.block_type}
-          </p>
-          <p className="mt-0.5 truncate text-sm text-muted-foreground">{summary}</p>
+          {currentPage && (
+            <div className="rounded-[var(--radius)] border border-dashed border-border bg-panel/20 p-4">
+              <p className="text-eyebrow mb-3 text-muted-foreground">Add block</p>
+              <div className="flex flex-wrap gap-2">
+                {BLOCK_TYPES.map((b) => (
+                  <form key={b.type} action={addBlock}>
+                    <input type="hidden" name="page_id" value={currentPage.id} />
+                    <input type="hidden" name="block_type" value={b.type} />
+                    <Button type="submit" size="sm" variant="outline">
+                      + {b.label}
+                    </Button>
+                  </form>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <span className="font-mono text-xs text-muted-foreground/70">#{block.position}</span>
       </div>
     </div>
   )
-}
-
-function summariseBlock(type: string, props: Record<string, unknown>): string {
-  switch (type) {
-    case 'hero':
-      return `${props.title ?? ''} — ${props.subtitle ?? ''}`
-    case 'text':
-      return ((props.content as string) ?? '').slice(0, 80)
-    case 'stats':
-      return `${((props.items as unknown[]) ?? []).length} stats`
-    case 'gallery':
-      return `${((props.images as unknown[]) ?? []).length} images`
-    case 'sponsors':
-      return `${((props.logos as unknown[]) ?? []).length} logos`
-    default:
-      return ''
-  }
 }
