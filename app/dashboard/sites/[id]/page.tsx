@@ -136,9 +136,7 @@ export default async function SiteEditorPage({ params, searchParams }: PageProps
       )}
       {tab === 'galleries' && <GalleriesTabLoader siteId={site.id} />}
       {tab === 'revenue' && <RevenueTabLoader siteId={site.id} />}
-      {tab === 'domain' && (
-        <DomainTab slug={site.slug} status={site.status} customDomain={site.custom_domain} />
-      )}
+      {tab === 'domain' && <DomainTabLoader siteId={site.id} slug={site.slug} status={site.status} customDomain={site.custom_domain} />}
       {tab === 'help' && <HelpTab />}
     </div>
   )
@@ -311,6 +309,30 @@ async function GalleriesTabLoader({ siteId }: { siteId: string }) {
           ? (g.images as Array<{ url: string; alt?: string }>)
           : [],
       }))}
+    />
+  )
+}
+
+async function DomainTabLoader({
+  siteId,
+  slug,
+  status,
+  customDomain,
+}: {
+  siteId: string
+  slug: string
+  status: string
+  customDomain: string | null
+}) {
+  const { readDomainStatus } = await import('@/app/dashboard/sites/domain-actions')
+  const domainStatus = customDomain ? await readDomainStatus(customDomain) : null
+  return (
+    <DomainTab
+      siteId={siteId}
+      slug={slug}
+      status={status}
+      customDomain={customDomain}
+      domainStatus={domainStatus}
     />
   )
 }

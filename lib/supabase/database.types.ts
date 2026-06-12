@@ -1205,6 +1205,7 @@ export type Database = {
       sites: {
         Row: {
           created_at: string
+          custom_domain: string | null
           default_meta: Json
           display_name: string | null
           footer: Json
@@ -1225,6 +1226,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_domain?: string | null
           default_meta?: Json
           display_name?: string | null
           footer?: Json
@@ -1245,6 +1247,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_domain?: string | null
           default_meta?: Json
           display_name?: string | null
           footer?: Json
