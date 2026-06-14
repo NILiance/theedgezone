@@ -129,6 +129,8 @@ export type Database = {
           brand_tone: string | null
           conference: string | null
           created_at: string
+          final_logo_url: string | null
+          finalized_at: string | null
           id: string
           jersey_number: string | null
           logo_concept_credits: number
@@ -152,6 +154,8 @@ export type Database = {
           brand_tone?: string | null
           conference?: string | null
           created_at?: string
+          final_logo_url?: string | null
+          finalized_at?: string | null
           id?: string
           jersey_number?: string | null
           logo_concept_credits?: number
@@ -175,6 +179,8 @@ export type Database = {
           brand_tone?: string | null
           conference?: string | null
           created_at?: string
+          final_logo_url?: string | null
+          finalized_at?: string | null
           id?: string
           jersey_number?: string | null
           logo_concept_credits?: number
