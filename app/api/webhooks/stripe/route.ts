@@ -216,6 +216,12 @@ async function handleCheckoutCompleted(
     return
   }
 
+  // NIL Store merch purchase — promotes the matching store_orders row.
+  if (metadata.kind === 'store_merch') {
+    await handleStoreOrderCompleted(supabase, session)
+    return
+  }
+
   const userId = metadata.user_id
   const productSlug = metadata.product_slug
   const productTitle = metadata.product_title
@@ -273,6 +279,55 @@ async function handleCheckoutCompleted(
       .update({ status: 'provisioning' })
       .eq('id', inserted.id as string)
     console.error('[stripe-webhook] provisioning failed', errMsg)
+  }
+}
+
+/**
+ * NIL Store merch checkout completed. Stamps the order row with the
+ * payment intent and decrements inventory if tracked.
+ */
+async function handleStoreOrderCompleted(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const metadata = session.metadata ?? {}
+  const orderId = typeof metadata.order_id === 'string' ? metadata.order_id : ''
+  if (!orderId) return
+  const paymentIntent =
+    typeof session.payment_intent === 'string' ? session.payment_intent : null
+  const shippingDetails =
+    (session as unknown as { shipping_details?: unknown }).shipping_details ?? null
+
+  const { data: existing } = await supabase
+    .from('store_orders')
+    .select('id, status, product_id')
+    .eq('id', orderId)
+    .maybeSingle()
+  if (!existing || existing.status === 'paid' || existing.status === 'fulfilled') return
+
+  await supabase
+    .from('store_orders')
+    .update({
+      status: 'paid',
+      stripe_payment_intent: paymentIntent,
+      paid_at: new Date().toISOString(),
+      shipping_address: shippingDetails as unknown as Record<string, unknown>,
+    })
+    .eq('id', orderId)
+
+  // Decrement inventory if tracked
+  if (existing.product_id) {
+    const { data: prod } = await supabase
+      .from('store_products')
+      .select('inventory')
+      .eq('id', existing.product_id)
+      .maybeSingle()
+    if (prod && typeof prod.inventory === 'number') {
+      await supabase
+        .from('store_products')
+        .update({ inventory: Math.max(0, prod.inventory - 1) })
+        .eq('id', existing.product_id)
+    }
   }
 }
 

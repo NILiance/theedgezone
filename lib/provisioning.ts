@@ -57,6 +57,8 @@ export async function provisionOrder(
       return provisionEpk(supabase, order.user_id, order.id)
     case 'create-a-mobile-app':
       return provisionTalentApp(supabase, order.user_id, order.id)
+    case 'create-an-online-store':
+      return provisionStore(supabase, order.user_id, order.id)
     default:
       return { status: 'paid' }
   }
@@ -363,6 +365,55 @@ export async function provisionTalentApp(
 
   if (error || !app) return { status: 'provisioning' }
   return { status: 'ready', entity_id: app.id }
+}
+
+/**
+ * Provisions a draft store with a collision-free slug and the talent's
+ * brand colors. Products are added manually in the dashboard for v1;
+ * supplier API integrations land in a follow-up round.
+ */
+export async function provisionStore(
+  supabase: Supabase,
+  userId: string,
+  orderId?: string
+): Promise<ProvisionResult> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, brand_primary_color, brand_secondary_color, sport')
+    .eq('id', userId)
+    .maybeSingle()
+
+  const baseName = profile?.display_name ?? 'shop'
+  let slug = slugify(baseName)
+  if (!slug) slug = 'shop'
+
+  const { data: existing } = await supabase
+    .from('stores')
+    .select('slug')
+    .eq('user_id', userId)
+  const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
+  if (existingSlugs.has(slug)) {
+    let suffix = (existing?.length ?? 0) + 1
+    while (existingSlugs.has(`${slug}-${suffix}`)) suffix += 1
+    slug = `${slug}-${suffix}`
+  }
+
+  const { data: store, error } = await supabase
+    .from('stores')
+    .insert({
+      user_id: userId,
+      order_id: orderId ?? null,
+      slug,
+      name: profile?.display_name ? `${profile.display_name} Shop` : 'Shop',
+      tagline: profile?.sport ? `Official ${profile.sport} merch` : 'Official merch',
+      primary_color: profile?.brand_primary_color ?? '#C8A84E',
+      secondary_color: profile?.brand_secondary_color ?? '#000000',
+      status: 'draft',
+    })
+    .select('id')
+    .single()
+  if (error || !store) return { status: 'provisioning' }
+  return { status: 'ready', entity_id: store.id }
 }
 
 /** Creates a brand_designs row pre-filled from the user's profile. */

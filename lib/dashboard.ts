@@ -110,10 +110,12 @@ export function getProductActions(
     case 'start-a-podcast':
       return [{ label: 'Open Podcast Studio', href: '#' }]
     case 'create-an-online-store':
-      return [
-        { label: 'View Store', href: '#' },
-        { label: 'Edit Store', href: '#' },
-      ]
+      return entityId
+        ? [
+            { label: 'Manage store', href: `/dashboard/stores/${entityId}` },
+            { label: 'All stores', href: '/dashboard/stores' },
+          ]
+        : [{ label: 'My stores', href: '/dashboard/stores' }]
     default:
       return [{ label: 'Manage', href: '#' }]
   }

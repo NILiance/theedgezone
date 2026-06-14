@@ -2265,6 +2265,238 @@ export type Database = {
           },
         ]
       }
+      store_orders: {
+        Row: {
+          amount_cents: number
+          buyer_email: string | null
+          buyer_name: string | null
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json
+          paid_at: string | null
+          product_id: string | null
+          shipped_at: string | null
+          shipping_address: Json | null
+          status: string
+          store_id: string
+          stripe_payment_intent: string | null
+          stripe_session_id: string | null
+          tracking_carrier: string | null
+          tracking_number: string | null
+          variant_sku: string | null
+        }
+        Insert: {
+          amount_cents: number
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          product_id?: string | null
+          shipped_at?: string | null
+          shipping_address?: Json | null
+          status?: string
+          store_id: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          variant_sku?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          product_id?: string | null
+          shipped_at?: string | null
+          shipping_address?: Json | null
+          status?: string
+          store_id?: string
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          variant_sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_products: {
+        Row: {
+          active: boolean
+          compare_at_cents: number | null
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          image_urls: Json
+          inventory: number | null
+          name: string
+          position: number
+          price_cents: number
+          primary_image_url: string | null
+          slug: string
+          store_id: string
+          supplier: string | null
+          supplier_payload: Json | null
+          supplier_sku: string | null
+          tags: string[]
+          updated_at: string
+          variants: Json
+          weight_grams: number | null
+        }
+        Insert: {
+          active?: boolean
+          compare_at_cents?: number | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          image_urls?: Json
+          inventory?: number | null
+          name: string
+          position?: number
+          price_cents?: number
+          primary_image_url?: string | null
+          slug: string
+          store_id: string
+          supplier?: string | null
+          supplier_payload?: Json | null
+          supplier_sku?: string | null
+          tags?: string[]
+          updated_at?: string
+          variants?: Json
+          weight_grams?: number | null
+        }
+        Update: {
+          active?: boolean
+          compare_at_cents?: number | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          image_urls?: Json
+          inventory?: number | null
+          name?: string
+          position?: number
+          price_cents?: number
+          primary_image_url?: string | null
+          slug?: string
+          store_id?: string
+          supplier?: string | null
+          supplier_payload?: Json | null
+          supplier_sku?: string | null
+          tags?: string[]
+          updated_at?: string
+          variants?: Json
+          weight_grams?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          commission_bps: number
+          contact_email: string | null
+          created_at: string
+          custom_domain: string | null
+          description: string | null
+          hero_image_url: string | null
+          id: string
+          logo_url: string | null
+          metadata: Json
+          name: string
+          order_id: string | null
+          payout_currency: string
+          primary_color: string
+          secondary_color: string
+          slug: string
+          status: string
+          tagline: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          commission_bps?: number
+          contact_email?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          hero_image_url?: string | null
+          id?: string
+          logo_url?: string | null
+          metadata?: Json
+          name: string
+          order_id?: string | null
+          payout_currency?: string
+          primary_color?: string
+          secondary_color?: string
+          slug: string
+          status?: string
+          tagline?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          commission_bps?: number
+          contact_email?: string | null
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          hero_image_url?: string | null
+          id?: string
+          logo_url?: string | null
+          metadata?: Json
+          name?: string
+          order_id?: string | null
+          payout_currency?: string
+          primary_color?: string
+          secondary_color?: string
+          slug?: string
+          status?: string
+          tagline?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stores_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_events: {
         Row: {
           id: string
