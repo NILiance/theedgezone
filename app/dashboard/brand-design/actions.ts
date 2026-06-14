@@ -13,6 +13,8 @@ import {
   r3FinalizePrompt,
 } from '@/lib/ideogram'
 import { provisionBrandDesign } from '@/lib/provisioning'
+import { assembleBrandKit } from '@/lib/brand-kit'
+import { uploadZipToDrive, gdriveConfigured } from '@/lib/gdrive'
 
 /**
  * Create a new brand design row + redirect to the studio.
@@ -241,6 +243,89 @@ export async function selectFinalConcept(formData: FormData) {
     .eq('id', concept.brand_design_id)
 
   revalidatePath(`/dashboard/brand-design/${concept.brand_design_id}`)
+}
+
+const assembleKitSchema = z.object({ brand_id: z.string().uuid() })
+
+export async function assembleAndUploadKit(
+  formData: FormData
+): Promise<{ ok: boolean; url?: string; message?: string }> {
+  const user = await requireUser()
+  const parsed = assembleKitSchema.safeParse({ brand_id: formData.get('brand_id') })
+  if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
+
+  const supabase = await createClient()
+  const { data: brand } = await supabase
+    .from('brand_designs')
+    .select(
+      'id, user_id, brand_name, sport, athletic_position, school, jersey_number, primary_color, secondary_color, final_logo_url, brand_kit_url, brand_kit_drive_id'
+    )
+    .eq('id', parsed.data.brand_id)
+    .single()
+  if (!brand || brand.user_id !== user.id) return { ok: false, message: 'Brand design not found' }
+  if (!brand.final_logo_url) {
+    return { ok: false, message: 'Pick a final logo first.' }
+  }
+
+  // Build the kit ZIP
+  let kit: { zipBuffer: Buffer; filename: string }
+  try {
+    kit = await assembleBrandKit({
+      brand_name: brand.brand_name ?? 'untitled',
+      sport: brand.sport,
+      athletic_position: brand.athletic_position,
+      school: brand.school,
+      jersey_number: brand.jersey_number,
+      primary_color: brand.primary_color ?? '#000000',
+      secondary_color: brand.secondary_color ?? '#ffffff',
+      final_logo_url: brand.final_logo_url,
+    })
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Kit build failed' }
+  }
+
+  // Upload — if Drive isn't configured, return the zip via Supabase Storage instead.
+  let publicUrl: string | null = null
+  let driveId: string | null = null
+
+  if (gdriveConfigured()) {
+    try {
+      const folder = brand.brand_name ?? `brand-${brand.id.slice(0, 6)}`
+      const up = await uploadZipToDrive(kit.zipBuffer, kit.filename, folder)
+      publicUrl = up.webViewLink
+      driveId = up.fileId
+    } catch (err) {
+      // Fall through to Supabase Storage if Drive upload fails
+      console.error('[brand-kit] Drive upload failed, falling back to Storage', err)
+    }
+  }
+
+  if (!publicUrl) {
+    // Fallback: upload to site-assets bucket so the user can still download
+    const path = `${user.id}/brand-kits/${brand.id}/${kit.filename}`
+    const { error: upErr } = await supabase.storage
+      .from('site-assets')
+      .upload(path, kit.zipBuffer, {
+        contentType: 'application/zip',
+        upsert: true,
+      })
+    if (upErr) return { ok: false, message: upErr.message }
+    const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
+    publicUrl = pub.publicUrl
+  }
+
+  // Stamp on the brand row
+  await supabase
+    .from('brand_designs')
+    .update({
+      brand_kit_url: publicUrl,
+      brand_kit_drive_id: driveId,
+      brand_kit_assembled_at: new Date().toISOString(),
+    })
+    .eq('id', parsed.data.brand_id)
+
+  revalidatePath(`/dashboard/brand-design/${parsed.data.brand_id}`)
+  return { ok: true, url: publicUrl }
 }
 
 const clearShortlistSchema = z.object({ brand_id: z.string().uuid(), round: z.coerce.number().int().min(1).max(3) })

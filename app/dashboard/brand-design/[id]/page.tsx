@@ -17,6 +17,7 @@ import {
   refineRound,
   selectFinalConcept,
 } from '@/app/dashboard/brand-design/actions'
+import { AssembleKitButton } from './assemble-kit'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -162,16 +163,19 @@ export default async function BrandDesignStudioPage({ params }: PageProps) {
                 Round {selectedConcept.round} concept chosen
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Brand kit assembly + Drive ZIP ships in the next round of polish. The original
-                file is preserved at <code className="text-foreground">{selectedConcept.image_url}</code>.
+                Assemble the kit to get the logo on white + transparent + 6 social avatar sizes
+                + color tokens, packaged in a ZIP.
               </p>
+              <div className="mt-3">
+                <AssembleKitButton brandId={brand.id} existingKitUrl={brand.brand_kit_url ?? null} />
+              </div>
             </div>
             <a
               href={selectedConcept.image_url}
               download
-              className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-2 text-xs font-bold uppercase tracking-widest hover:bg-panel"
+              className="text-display self-start rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-2 text-xs font-bold uppercase tracking-widest hover:bg-panel"
             >
-              Download PNG
+              Download original PNG
             </a>
           </div>
         </section>

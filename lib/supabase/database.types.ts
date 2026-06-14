@@ -125,6 +125,9 @@ export type Database = {
           asset_credits_total: number
           asset_credits_used: number
           athletic_position: string | null
+          brand_kit_assembled_at: string | null
+          brand_kit_drive_id: string | null
+          brand_kit_url: string | null
           brand_name: string | null
           brand_tone: string | null
           conference: string | null
@@ -150,6 +153,9 @@ export type Database = {
           asset_credits_total?: number
           asset_credits_used?: number
           athletic_position?: string | null
+          brand_kit_assembled_at?: string | null
+          brand_kit_drive_id?: string | null
+          brand_kit_url?: string | null
           brand_name?: string | null
           brand_tone?: string | null
           conference?: string | null
@@ -175,6 +181,9 @@ export type Database = {
           asset_credits_total?: number
           asset_credits_used?: number
           athletic_position?: string | null
+          brand_kit_assembled_at?: string | null
+          brand_kit_drive_id?: string | null
+          brand_kit_url?: string | null
           brand_name?: string | null
           brand_tone?: string | null
           conference?: string | null

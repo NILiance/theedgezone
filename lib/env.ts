@@ -35,6 +35,7 @@ const envSchema = z.object({
   IDEOGRAM_API_KEY: z.string().optional(),
   HEYGEN_API_KEY: z.string().optional(),
   GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  GOOGLE_DRIVE_PARENT_FOLDER_ID: z.string().optional(),
 
   // Sharetribe — Integration API (queries + admin ops)
   SHARETRIBE_CLIENT_ID: z.string().optional(),
@@ -76,6 +77,7 @@ if (isServer) {
     IDEOGRAM_API_KEY: process.env.IDEOGRAM_API_KEY,
     HEYGEN_API_KEY: process.env.HEYGEN_API_KEY,
     GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON,
+    GOOGLE_DRIVE_PARENT_FOLDER_ID: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID,
     SHARETRIBE_CLIENT_ID: process.env.SHARETRIBE_CLIENT_ID,
     SHARETRIBE_CLIENT_SECRET: process.env.SHARETRIBE_CLIENT_SECRET,
     SHARETRIBE_MP_CLIENT_ID: process.env.SHARETRIBE_MP_CLIENT_ID,
