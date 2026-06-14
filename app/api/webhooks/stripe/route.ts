@@ -97,6 +97,70 @@ export async function POST(request: Request) {
           .eq('stripe_payment_intent', charge.payment_intent as string)
         break
       }
+      case 'account.updated': {
+        // Connect account status changed (KYC pass, restrictions, etc.)
+        const acc = event.data.object as Stripe.Account
+        const due = (acc.requirements?.currently_due?.length ?? 0) + (acc.requirements?.past_due?.length ?? 0)
+        let status: string = 'pending'
+        if (acc.charges_enabled && acc.payouts_enabled) status = 'active'
+        else if (acc.requirements?.disabled_reason) status = 'disabled'
+        else if (due > 0) status = 'restricted'
+        await supabase
+          .from('profiles')
+          .update({
+            stripe_connect_status: status,
+            stripe_connect_charges_enabled: Boolean(acc.charges_enabled),
+            stripe_connect_payouts_enabled: Boolean(acc.payouts_enabled),
+            stripe_connect_details_submitted: Boolean(acc.details_submitted),
+            stripe_connect_onboarded_at: status === 'active' ? new Date().toISOString() : null,
+          })
+          .eq('stripe_connect_account_id', acc.id)
+        break
+      }
+      case 'payout.created':
+      case 'payout.paid':
+      case 'payout.failed':
+      case 'payout.canceled': {
+        const payout = event.data.object as Stripe.Payout
+        // The Stripe event for connected accounts includes the account
+        // in event.account; for platform payouts it's absent.
+        const accountId = event.account
+        if (!accountId) break
+
+        // Resolve the user from the Connect account ID
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('stripe_connect_account_id', accountId)
+          .maybeSingle()
+        if (!profile) break
+
+        const status =
+          event.type === 'payout.paid'
+            ? 'paid'
+            : event.type === 'payout.failed'
+            ? 'failed'
+            : event.type === 'payout.canceled'
+            ? 'cancelled'
+            : payout.status ?? 'pending'
+
+        await supabase.from('talent_payouts').upsert(
+          {
+            user_id: profile.id,
+            stripe_payout_id: payout.id,
+            stripe_account_id: accountId,
+            amount_cents: payout.amount,
+            currency: payout.currency,
+            status,
+            arrival_date: payout.arrival_date
+              ? new Date(payout.arrival_date * 1000).toISOString()
+              : null,
+            failure_message: payout.failure_message ?? null,
+          },
+          { onConflict: 'stripe_payout_id' }
+        )
+        break
+      }
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
         // Mark linked orders as cancelled (we don't store subscription id yet, but track via metadata)

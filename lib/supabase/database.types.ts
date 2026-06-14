@@ -634,6 +634,12 @@ export type Database = {
           socials: Json
           sport: string | null
           street_address: string | null
+          stripe_connect_account_id: string | null
+          stripe_connect_charges_enabled: boolean | null
+          stripe_connect_details_submitted: boolean | null
+          stripe_connect_onboarded_at: string | null
+          stripe_connect_payouts_enabled: boolean | null
+          stripe_connect_status: string | null
           updated_at: string
           us_state: string | null
           user_type: Database["public"]["Enums"]["user_type"] | null
@@ -681,6 +687,12 @@ export type Database = {
           socials?: Json
           sport?: string | null
           street_address?: string | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_charges_enabled?: boolean | null
+          stripe_connect_details_submitted?: boolean | null
+          stripe_connect_onboarded_at?: string | null
+          stripe_connect_payouts_enabled?: boolean | null
+          stripe_connect_status?: string | null
           updated_at?: string
           us_state?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
@@ -728,6 +740,12 @@ export type Database = {
           socials?: Json
           sport?: string | null
           street_address?: string | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_charges_enabled?: boolean | null
+          stripe_connect_details_submitted?: boolean | null
+          stripe_connect_onboarded_at?: string | null
+          stripe_connect_payouts_enabled?: boolean | null
+          stripe_connect_status?: string | null
           updated_at?: string
           us_state?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
@@ -1722,6 +1740,48 @@ export type Database = {
           processing_error?: string | null
           received_at?: string
           type?: string
+        }
+        Relationships: []
+      }
+      talent_payouts: {
+        Row: {
+          amount_cents: number
+          arrival_date: string | null
+          created_at: string
+          currency: string
+          failure_message: string | null
+          id: string
+          metadata: Json
+          status: string
+          stripe_account_id: string
+          stripe_payout_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          arrival_date?: string | null
+          created_at?: string
+          currency?: string
+          failure_message?: string | null
+          id?: string
+          metadata?: Json
+          status?: string
+          stripe_account_id: string
+          stripe_payout_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          arrival_date?: string | null
+          created_at?: string
+          currency?: string
+          failure_message?: string | null
+          id?: string
+          metadata?: Json
+          status?: string
+          stripe_account_id?: string
+          stripe_payout_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

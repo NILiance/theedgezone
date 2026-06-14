@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
+import { platformFee } from '@/lib/stripe-connect'
 
 /**
  * Public checkout-session endpoint for revenue blocks on a rendered site.
@@ -89,10 +90,11 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient()
 
-  // Look up the site for slug + currency + name, and for the success URL host.
+  // Look up the site for slug + currency + name, the owner's Connect ID,
+  // and the success URL host.
   const { data: site } = await supabase
     .from('sites')
-    .select('id, slug, display_name, custom_domain, status')
+    .select('id, slug, display_name, custom_domain, status, user_id')
     .eq('id', parsed.data.site_id)
     .single()
   if (!site || site.status !== 'published') {
@@ -100,6 +102,36 @@ export async function POST(request: NextRequest) {
       { error: 'Site not available for purchases' },
       { status: 404 }
     )
+  }
+
+  // Pull the owner's Connect account state. If onboarded, charges route
+  // there with a platform application fee. If not, the charge stays on
+  // the platform (the talent is owed money manually).
+  let destinationAccount: string | null = null
+  if (site.user_id) {
+    const { data: ownerProfile } = await supabase
+      .from('profiles')
+      .select('stripe_connect_account_id, stripe_connect_charges_enabled')
+      .eq('id', site.user_id)
+      .maybeSingle()
+    if (
+      ownerProfile?.stripe_connect_account_id &&
+      ownerProfile.stripe_connect_charges_enabled
+    ) {
+      destinationAccount = ownerProfile.stripe_connect_account_id
+    }
+  }
+
+  const withConnect = (
+    amountCents: number,
+    extra: Record<string, unknown> = {}
+  ): Record<string, unknown> => {
+    if (!destinationAccount) return extra
+    return {
+      ...extra,
+      application_fee_amount: platformFee(amountCents),
+      transfer_data: { destination: destinationAccount },
+    }
   }
 
   const origin = request.headers.get('origin') ?? new URL(request.url).origin
@@ -149,6 +181,7 @@ export async function POST(request: NextRequest) {
             },
           },
         ],
+        payment_intent_data: withConnect(data.amount_cents) as import('stripe').Stripe.Checkout.SessionCreateParams.PaymentIntentData,
         success_url: successUrl,
         cancel_url: cancelUrl,
         customer_email: data.buyer_email,
@@ -208,6 +241,7 @@ export async function POST(request: NextRequest) {
             },
           },
         ],
+        payment_intent_data: withConnect(product.price_cents) as import('stripe').Stripe.Checkout.SessionCreateParams.PaymentIntentData,
         shipping_address_collection: { allowed_countries: ['US', 'CA', 'GB', 'AU'] },
         success_url: successUrl,
         cancel_url: cancelUrl,
@@ -263,6 +297,7 @@ export async function POST(request: NextRequest) {
             },
           },
         ],
+        payment_intent_data: withConnect(data.amount_cents) as import('stripe').Stripe.Checkout.SessionCreateParams.PaymentIntentData,
         customer_email: data.buyer_email,
         success_url: successUrl,
         cancel_url: cancelUrl,
@@ -320,6 +355,13 @@ export async function POST(request: NextRequest) {
             } as const,
           }
 
+      const subBase: import('stripe').Stripe.Checkout.SessionCreateParams.SubscriptionData = {
+        metadata: { ...baseMetadata, tier_id: tier.id, transaction_id: txn?.id ?? '' },
+      }
+      if (destinationAccount) {
+        subBase.application_fee_percent = 15
+        subBase.transfer_data = { destination: destinationAccount }
+      }
       const sessionParams: import('stripe').Stripe.Checkout.SessionCreateParams = {
         mode: 'subscription',
         line_items: [lineItem as import('stripe').Stripe.Checkout.SessionCreateParams.LineItem],
@@ -327,9 +369,7 @@ export async function POST(request: NextRequest) {
         success_url: successUrl,
         cancel_url: cancelUrl,
         metadata: { ...baseMetadata, tier_id: tier.id, transaction_id: txn?.id ?? '' },
-        subscription_data: {
-          metadata: { ...baseMetadata, tier_id: tier.id, transaction_id: txn?.id ?? '' },
-        },
+        subscription_data: subBase,
       }
       const session = await stripe.checkout.sessions.create(sessionParams)
 
