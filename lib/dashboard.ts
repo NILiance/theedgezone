@@ -89,10 +89,12 @@ export function getProductActions(
           ]
         : [{ label: 'My Sites', href: '/dashboard/sites' }]
     case 'electronic-press-kit':
-      return [
-        { label: 'View EPK', href: '#' },
-        { label: 'Edit EPK', href: '#' },
-      ]
+      return entityId
+        ? [
+            { label: 'Open EPK editor', href: `/dashboard/epks/${entityId}` },
+            { label: 'All EPKs', href: '/dashboard/epks' },
+          ]
+        : [{ label: 'My EPKs', href: '/dashboard/epks' }]
     case 'create-a-mobile-app':
       return [
         { label: 'View App', href: '#' },

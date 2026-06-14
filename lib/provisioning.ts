@@ -53,6 +53,8 @@ export async function provisionOrder(
     case 'personal-brand-design':
     case 'brand-lite':
       return provisionBrandDesign(supabase, order.user_id, order.id)
+    case 'electronic-press-kit':
+      return provisionEpk(supabase, order.user_id, order.id)
     default:
       return { status: 'paid' }
   }
@@ -155,6 +157,114 @@ export async function provisionSite(
   }
 
   return { status: 'ready', entity_id: site.id }
+}
+
+/**
+ * Creates an EPK row + seed blocks reflecting the talent's profile —
+ * hero, stats, schedule, contact CTA. Returns the EPK id so the caller
+ * can link to the editor.
+ */
+export async function provisionEpk(
+  supabase: Supabase,
+  userId: string,
+  orderId?: string
+): Promise<ProvisionResult> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select(
+      'display_name, sport, athletic_position, school, brand_primary_color, brand_secondary_color'
+    )
+    .eq('id', userId)
+    .maybeSingle()
+
+  const baseName = profile?.display_name ?? 'me'
+  let slug = slugify(baseName)
+  if (!slug) slug = 'epk'
+
+  const { data: existing } = await supabase
+    .from('epks')
+    .select('slug')
+    .eq('user_id', userId)
+  const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
+  if (existingSlugs.has(slug)) {
+    let suffix = (existing?.length ?? 0) + 1
+    while (existingSlugs.has(`${slug}-${suffix}`)) suffix += 1
+    slug = `${slug}-${suffix}`
+  }
+
+  const { data: epk, error } = await supabase
+    .from('epks')
+    .insert({
+      user_id: userId,
+      order_id: orderId ?? null,
+      slug,
+      display_name: profile?.display_name ?? null,
+      tagline: profile?.sport
+        ? `${profile.sport} · ${profile.athletic_position ?? 'NIL Athlete'}`
+        : 'NIL Athlete',
+      theme: {
+        primary: profile?.brand_primary_color ?? '#C8A84E',
+        secondary: profile?.brand_secondary_color ?? '#000000',
+      },
+      status: 'draft',
+    })
+    .select('id')
+    .single()
+
+  if (error || !epk) return { status: 'provisioning' }
+
+  await supabase.from('epk_blocks').insert([
+    {
+      epk_id: epk.id,
+      position: 0,
+      block_type: 'hero',
+      props: {
+        heading: profile?.display_name ?? 'Press Kit',
+        subheading: profile?.sport
+          ? `${profile.sport} · ${profile.school ?? ''}`.trim().replace(/·\s*$/, '')
+          : 'For brand + media inquiries',
+        cta_text: 'Inquiries',
+        cta_url: '#contact',
+        height: '60vh',
+      },
+    },
+    {
+      epk_id: epk.id,
+      position: 1,
+      block_type: 'stats',
+      props: {
+        title: 'At a glance',
+        layout: 'cards',
+        stats: [
+          { value: '—', label: 'Followers' },
+          { value: '—', label: 'Engagement' },
+          { value: '—', label: 'Career stat' },
+        ],
+      },
+    },
+    {
+      epk_id: epk.id,
+      position: 2,
+      block_type: 'text',
+      props: {
+        content:
+          'Use this section to introduce yourself to brands and media: positioning, what you stand for, why now.',
+        max_width: '720px',
+      },
+    },
+    {
+      epk_id: epk.id,
+      position: 3,
+      block_type: 'contact_form',
+      props: {
+        title: 'Inquiries',
+        submit_text: 'Send',
+        fields: ['name', 'email', 'subject', 'message'],
+      },
+    },
+  ])
+
+  return { status: 'ready', entity_id: epk.id }
 }
 
 /** Creates a brand_designs row pre-filled from the user's profile. */

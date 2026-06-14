@@ -406,6 +406,118 @@ export type Database = {
         }
         Relationships: []
       }
+      epk_blocks: {
+        Row: {
+          block_type: string
+          created_at: string
+          epk_id: string
+          id: string
+          position: number
+          props: Json
+          updated_at: string
+        }
+        Insert: {
+          block_type: string
+          created_at?: string
+          epk_id: string
+          id?: string
+          position?: number
+          props?: Json
+          updated_at?: string
+        }
+        Update: {
+          block_type?: string
+          created_at?: string
+          epk_id?: string
+          id?: string
+          position?: number
+          props?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epk_blocks_epk_id_fkey"
+            columns: ["epk_id"]
+            isOneToOne: false
+            referencedRelation: "epks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      epks: {
+        Row: {
+          created_at: string
+          custom_domain: string | null
+          default_meta: Json
+          display_name: string | null
+          footer: Json
+          header: Json
+          id: string
+          layout: string | null
+          onboarding_complete: boolean
+          order_id: string | null
+          published_at: string | null
+          slug: string
+          social: Json
+          status: string
+          tagline: string | null
+          template_id: string | null
+          theme: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_domain?: string | null
+          default_meta?: Json
+          display_name?: string | null
+          footer?: Json
+          header?: Json
+          id?: string
+          layout?: string | null
+          onboarding_complete?: boolean
+          order_id?: string | null
+          published_at?: string | null
+          slug: string
+          social?: Json
+          status?: string
+          tagline?: string | null
+          template_id?: string | null
+          theme?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_domain?: string | null
+          default_meta?: Json
+          display_name?: string | null
+          footer?: Json
+          header?: Json
+          id?: string
+          layout?: string | null
+          onboarding_complete?: boolean
+          order_id?: string | null
+          published_at?: string | null
+          slug?: string
+          social?: Json
+          status?: string
+          tagline?: string | null
+          template_id?: string | null
+          theme?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_flags: {
         Row: {
           description: string | null
