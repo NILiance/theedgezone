@@ -838,6 +838,104 @@ export type Database = {
         }
         Relationships: []
       }
+      resource_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          position: number
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          position?: number
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          position?: number
+          slug?: string
+        }
+        Relationships: []
+      }
+      resources: {
+        Row: {
+          audience: string
+          category_id: string | null
+          created_at: string
+          description: string | null
+          download_count: number
+          external_url: string | null
+          featured: boolean
+          file_url: string | null
+          id: string
+          position: number
+          published: boolean
+          slug: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          updated_by: string | null
+          view_count: number
+        }
+        Insert: {
+          audience?: string
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          download_count?: number
+          external_url?: string | null
+          featured?: boolean
+          file_url?: string | null
+          id?: string
+          position?: number
+          published?: boolean
+          slug: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          view_count?: number
+        }
+        Update: {
+          audience?: string
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          download_count?: number
+          external_url?: string | null
+          featured?: boolean
+          file_url?: string | null
+          id?: string
+          position?: number
+          published?: boolean
+          slug?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "resource_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_pricing: {
         Row: {
           active: boolean
