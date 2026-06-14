@@ -353,6 +353,60 @@ export type Database = {
         }
         Relationships: []
       }
+      climb_milestones: {
+        Row: {
+          audience: string
+          created_at: string
+          cta_label: string | null
+          cta_url: string | null
+          duration_min: number | null
+          hero_image_url: string | null
+          id: string
+          position: number
+          published: boolean
+          slides: Json
+          slug: string
+          summary: string | null
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          audience?: string
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          duration_min?: number | null
+          hero_image_url?: string | null
+          id?: string
+          position?: number
+          published?: boolean
+          slides?: Json
+          slug: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          duration_min?: number | null
+          hero_image_url?: string | null
+          id?: string
+          position?: number
+          published?: boolean
+          slides?: Json
+          slug?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       custom_domains: {
         Row: {
           cert_status: string
@@ -2359,6 +2413,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_climb_progress: {
+        Row: {
+          completed_at: string
+          milestone_id: string
+          notes: string | null
+          user_id: string
+          watched_seconds: number
+        }
+        Insert: {
+          completed_at?: string
+          milestone_id: string
+          notes?: string | null
+          user_id: string
+          watched_seconds?: number
+        }
+        Update: {
+          completed_at?: string
+          milestone_id?: string
+          notes?: string | null
+          user_id?: string
+          watched_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_climb_progress_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "climb_milestones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roadmap_progress: {
         Row: {
