@@ -27,6 +27,9 @@ const envSchema = z.object({
   VERCEL_TEAM_ID: z.string().optional(),
   VERCEL_ACCESS_TOKEN: z.string().optional(),
 
+  // Cron auth (Vercel-cron Bearer token)
+  CRON_SECRET: z.string().optional(),
+
   // Integrations
   ANTHROPIC_API_KEY: z.string().optional(),
   IDEOGRAM_API_KEY: z.string().optional(),
@@ -68,6 +71,7 @@ if (isServer) {
     VERCEL_PROJECT_ID: process.env.VERCEL_PROJECT_ID,
     VERCEL_TEAM_ID: process.env.VERCEL_TEAM_ID,
     VERCEL_ACCESS_TOKEN: process.env.VERCEL_ACCESS_TOKEN,
+    CRON_SECRET: process.env.CRON_SECRET,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     IDEOGRAM_API_KEY: process.env.IDEOGRAM_API_KEY,
     HEYGEN_API_KEY: process.env.HEYGEN_API_KEY,

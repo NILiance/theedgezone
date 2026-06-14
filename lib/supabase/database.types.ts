@@ -391,6 +391,36 @@ export type Database = {
           },
         ]
       }
+      niliance_poll_state: {
+        Row: {
+          id: number
+          last_error: string | null
+          last_opp_poll: string | null
+          last_user_poll: string | null
+          opp_cursor: string | null
+          updated_at: string
+          user_cursor: string | null
+        }
+        Insert: {
+          id?: number
+          last_error?: string | null
+          last_opp_poll?: string | null
+          last_user_poll?: string | null
+          opp_cursor?: string | null
+          updated_at?: string
+          user_cursor?: string | null
+        }
+        Update: {
+          id?: number
+          last_error?: string | null
+          last_opp_poll?: string | null
+          last_user_poll?: string | null
+          opp_cursor?: string | null
+          updated_at?: string
+          user_cursor?: string | null
+        }
+        Relationships: []
+      }
       niliance_sync_events: {
         Row: {
           created_at: string
@@ -418,6 +448,72 @@ export type Database = {
           message?: string
           metadata?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      opportunities: {
+        Row: {
+          audience: string
+          cached_at: string
+          category: string | null
+          contact_email: string | null
+          created_at: string
+          currency: string
+          deadline_at: string | null
+          description: string
+          external_url: string | null
+          id: string
+          listing_uuid: string | null
+          location: string | null
+          meta: Json
+          posted_by: string | null
+          posted_by_uuid: string | null
+          price_cents: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          cached_at?: string
+          category?: string | null
+          contact_email?: string | null
+          created_at?: string
+          currency?: string
+          deadline_at?: string | null
+          description: string
+          external_url?: string | null
+          id?: string
+          listing_uuid?: string | null
+          location?: string | null
+          meta?: Json
+          posted_by?: string | null
+          posted_by_uuid?: string | null
+          price_cents?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          cached_at?: string
+          category?: string | null
+          contact_email?: string | null
+          created_at?: string
+          currency?: string
+          deadline_at?: string | null
+          description?: string
+          external_url?: string | null
+          id?: string
+          listing_uuid?: string | null
+          location?: string | null
+          meta?: Json
+          posted_by?: string | null
+          posted_by_uuid?: string | null
+          price_cents?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
