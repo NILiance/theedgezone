@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { ProfileEditor, type SectionKey } from '@/components/dashboard/profile-editor'
+import { PhylloConnectCard } from '@/components/dashboard/phyllo-connect-card'
 import { Button } from '@/components/ui/button'
 
 export const metadata = { title: 'Profile' }
@@ -119,7 +120,11 @@ export default async function ProfilePage({ searchParams }: PageProps) {
         }}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <PhylloConnectCard
+          connected={Boolean(p.phyllo_user_id)}
+          connectedAt={(p.phyllo_connected_at as string | null) ?? null}
+        />
         <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
           <p className="text-eyebrow text-primary">NILiance</p>
           <p className="mt-2 text-sm text-muted-foreground">

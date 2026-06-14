@@ -18,6 +18,7 @@ import {
   selectFinalConcept,
 } from '@/app/dashboard/brand-design/actions'
 import { AssembleKitButton } from './assemble-kit'
+import { AddonsSection } from './addons-section'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -55,6 +56,17 @@ export default async function BrandDesignStudioPage({ params }: PageProps) {
     (c) => c.is_shortlisted && c.round === currentRound
   ).length
   const selectedConcept = (concepts ?? []).find((c) => c.is_selected) ?? null
+
+  const { data: addonsData } = await supabase
+    .from('brand_design_addons')
+    .select('kind, url, metadata, created_at')
+    .eq('brand_design_id', id)
+  const addons = (addonsData ?? []).map((a) => ({
+    kind: a.kind,
+    url: a.url ?? null,
+    metadata: (a.metadata as Record<string, unknown>) ?? {},
+    created_at: a.created_at,
+  }))
 
   return (
     <div className="space-y-8">
@@ -240,6 +252,12 @@ export default async function BrandDesignStudioPage({ params }: PageProps) {
           </CardContent>
         </Card>
       ) : null}
+
+      <AddonsSection
+        brandId={brand.id}
+        hasSelected={Boolean(selectedConcept)}
+        existing={addons}
+      />
     </div>
   )
 }
