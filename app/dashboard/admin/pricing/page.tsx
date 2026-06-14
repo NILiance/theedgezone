@@ -1,21 +1,48 @@
-import { AdminStub } from '@/components/admin/admin-stub'
+import { requireAdmin } from '@/lib/auth'
+import { SERVICES, CATEGORIES } from '@/lib/services-data'
+import { getAllServicePricing } from '@/lib/service-pricing'
+import { PricingTable } from './pricing-table'
 
 export const metadata = { title: 'Pricing' }
 
-export default function Page() {
+export default async function PricingAdminPage() {
+  await requireAdmin()
+  const overrides = await getAllServicePricing()
+
+  const rows = SERVICES.map((s) => {
+    const o = overrides.get(s.id) ?? null
+    return {
+      service_slug: s.id,
+      title: s.title,
+      category: s.category,
+      audience: s.audience.join(', '),
+      defaultLabel: s.price,
+      plan_monthly_cents: o?.plan_monthly_cents ?? null,
+      plan_annual_cents: o?.plan_annual_cents ?? null,
+      plan_onetime_cents: o?.plan_onetime_cents ?? null,
+      custom_label: o?.custom_label ?? null,
+      active: o?.active ?? true,
+      hasOverride: Boolean(o),
+    }
+  })
+
+  const categoriesByKey = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]))
+
   return (
-    <AdminStub
-      title="Service Pricing & Tiers"
-      description="Per-service pricing across monthly, annual, and one-time tiers. Optional Basic/Pro/Premium tier bundles."
-      features={[
-        'Pricing inputs for all 54 services in the catalog',
-        'Monthly / Yearly / One-time fields per service',
-        '+ Tiers for Basic/Pro/Premium bundle packs',
-        'Grouped by category (Digital Presence, Brand & Design, etc.)',
-        'Employee Benefits group (Financial Wellness / Legal Support / etc.)',
-        'Separate Brand Design pricing block: asset credits, revision price, custom graphic price, logo modification, additional logo, concept logo, extra concept batch',
-      ]}
-      module="EdgeZoneMarketplace + EdgeZoneFulfillment"
-    />
+    <div className="space-y-6">
+      <div>
+        <p className="text-eyebrow text-primary">Pricing</p>
+        <h2 className="text-display mt-1 text-2xl font-black tracking-tight">
+          Service catalog pricing
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          One row per catalog service. Set monthly / annual / one-time amounts in dollars.
+          Leaving every plan blank falls back to the catalog default. The override changes
+          both the marketplace tile and the PDP price.
+        </p>
+      </div>
+
+      <PricingTable rows={rows} categoriesByKey={categoriesByKey} />
+    </div>
   )
 }

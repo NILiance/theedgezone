@@ -427,6 +427,7 @@ export type Database = {
           created_at: string
           crm_synced_at: string | null
           currency: string
+          fulfillment_notes: string | null
           id: string
           plan: string | null
           product_slug: string
@@ -445,6 +446,7 @@ export type Database = {
           created_at?: string
           crm_synced_at?: string | null
           currency?: string
+          fulfillment_notes?: string | null
           id?: string
           plan?: string | null
           product_slug: string
@@ -463,6 +465,7 @@ export type Database = {
           created_at?: string
           crm_synced_at?: string | null
           currency?: string
+          fulfillment_notes?: string | null
           id?: string
           plan?: string | null
           product_slug?: string
@@ -619,6 +622,39 @@ export type Database = {
           user_type?: Database["public"]["Enums"]["user_type"] | null
           website_url?: string | null
           weight_lbs?: number | null
+        }
+        Relationships: []
+      }
+      service_pricing: {
+        Row: {
+          active: boolean
+          custom_label: string | null
+          plan_annual_cents: number | null
+          plan_monthly_cents: number | null
+          plan_onetime_cents: number | null
+          service_slug: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          custom_label?: string | null
+          plan_annual_cents?: number | null
+          plan_monthly_cents?: number | null
+          plan_onetime_cents?: number | null
+          service_slug: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          custom_label?: string | null
+          plan_annual_cents?: number | null
+          plan_monthly_cents?: number | null
+          plan_onetime_cents?: number | null
+          service_slug?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { CATEGORIES, SERVICES, type Service } from '@/lib/services-data'
 import { getServiceContent, type PricingTier } from '@/lib/services-rich-content'
 import { getCurrentUser } from '@/lib/auth'
+import { getServicePricing, pricingLabel } from '@/lib/service-pricing'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -51,6 +52,36 @@ function inferTiersFromPrice(price: string): PricingTier[] {
   return [{ label: 'One-time', amount: price, period: 'one-time payment' }]
 }
 
+function buildTiersFromOverride(
+  override: { plan_monthly_cents: number | null; plan_annual_cents: number | null; plan_onetime_cents: number | null },
+  contentTiers?: PricingTier[]
+): PricingTier[] {
+  const out: PricingTier[] = []
+  if (override.plan_monthly_cents != null && override.plan_monthly_cents > 0) {
+    out.push({
+      label: 'Monthly',
+      amount: `$${(override.plan_monthly_cents / 100).toFixed(0)}`,
+      period: 'per month',
+    })
+  }
+  if (override.plan_annual_cents != null && override.plan_annual_cents > 0) {
+    const perMonth = (override.plan_annual_cents / 12 / 100).toFixed(2)
+    out.push({
+      label: 'Annual',
+      amount: `$${perMonth}`,
+      period: 'per month, billed annually',
+    })
+  }
+  if (override.plan_onetime_cents != null && override.plan_onetime_cents > 0) {
+    out.push({
+      label: 'One-time',
+      amount: `$${(override.plan_onetime_cents / 100).toFixed(0)}`,
+      period: 'one-time payment',
+    })
+  }
+  return out.length > 0 ? out : contentTiers ?? []
+}
+
 function defaultStats(service: Service) {
   const baseStats = [
     { value: service.autoCreated ? '✓' : '—', label: 'Auto-Created' },
@@ -72,7 +103,13 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     (s) => s.category === service.category && s.id !== slug
   ).slice(0, 3)
 
-  const tiers = content?.pricing ?? inferTiersFromPrice(service.price)
+  const pricingOverride = await getServicePricing(slug)
+  const tiers = pricingOverride
+    ? buildTiersFromOverride(pricingOverride, content?.pricing)
+    : content?.pricing ?? inferTiersFromPrice(service.price)
+  const displayedFallback = pricingOverride
+    ? pricingLabel(pricingOverride, service.price)
+    : service.price
   const stats = content?.stats ?? defaultStats(service)
   const user = await getCurrentUser()
 
@@ -136,7 +173,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 slug={slug}
                 tiers={tiers}
                 ctaLabel={content?.ctaLabel ?? 'GET STARTED →'}
-                fallbackPrice={service.price}
+                fallbackPrice={displayedFallback}
                 authed={!!user}
               />
             </aside>
