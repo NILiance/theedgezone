@@ -96,10 +96,12 @@ export function getProductActions(
           ]
         : [{ label: 'My EPKs', href: '/dashboard/epks' }]
     case 'create-a-mobile-app':
-      return [
-        { label: 'View App', href: '#' },
-        { label: 'Edit App', href: '#' },
-      ]
+      return entityId
+        ? [
+            { label: 'Open App Builder', href: `/dashboard/apps/${entityId}` },
+            { label: 'All Apps', href: '/dashboard/apps' },
+          ]
+        : [{ label: 'My Apps', href: '/dashboard/apps' }]
     case 'personal-brand-design':
     case 'brand-lite':
       return entityId

@@ -2292,6 +2292,83 @@ export type Database = {
         }
         Relationships: []
       }
+      talent_apps: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon_url: string | null
+          id: string
+          last_build_at: string | null
+          name: string
+          order_id: string | null
+          package_id: string | null
+          primary_color: string
+          privacy_policy_url: string | null
+          screens: Json
+          secondary_color: string
+          settings: Json
+          slug: string
+          splash_url: string | null
+          status: string
+          tagline: string | null
+          theme_mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          last_build_at?: string | null
+          name: string
+          order_id?: string | null
+          package_id?: string | null
+          primary_color?: string
+          privacy_policy_url?: string | null
+          screens?: Json
+          secondary_color?: string
+          settings?: Json
+          slug: string
+          splash_url?: string | null
+          status?: string
+          tagline?: string | null
+          theme_mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          last_build_at?: string | null
+          name?: string
+          order_id?: string | null
+          package_id?: string | null
+          primary_color?: string
+          privacy_policy_url?: string | null
+          screens?: Json
+          secondary_color?: string
+          settings?: Json
+          slug?: string
+          splash_url?: string | null
+          status?: string
+          tagline?: string | null
+          theme_mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "talent_apps_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       talent_payouts: {
         Row: {
           amount_cents: number

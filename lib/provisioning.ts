@@ -55,6 +55,8 @@ export async function provisionOrder(
       return provisionBrandDesign(supabase, order.user_id, order.id)
     case 'electronic-press-kit':
       return provisionEpk(supabase, order.user_id, order.id)
+    case 'create-a-mobile-app':
+      return provisionTalentApp(supabase, order.user_id, order.id)
     default:
       return { status: 'paid' }
   }
@@ -265,6 +267,102 @@ export async function provisionEpk(
   ])
 
   return { status: 'ready', entity_id: epk.id }
+}
+
+/**
+ * Provisions a starter mobile app: slug, name, default theme + 4 screens
+ * (Home, About, Schedule, Tip). Returns the app id so the dashboard can
+ * deep-link straight in.
+ */
+export async function provisionTalentApp(
+  supabase: Supabase,
+  userId: string,
+  orderId?: string
+): Promise<ProvisionResult> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, brand_primary_color, brand_secondary_color, sport')
+    .eq('id', userId)
+    .maybeSingle()
+
+  const baseName = profile?.display_name ?? 'app'
+  let slug = slugify(baseName)
+  if (!slug) slug = 'app'
+
+  const { data: existing } = await supabase
+    .from('talent_apps')
+    .select('slug')
+    .eq('user_id', userId)
+  const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
+  if (existingSlugs.has(slug)) {
+    let suffix = (existing?.length ?? 0) + 1
+    while (existingSlugs.has(`${slug}-${suffix}`)) suffix += 1
+    slug = `${slug}-${suffix}`
+  }
+
+  const startingScreens = [
+    {
+      id: 'home',
+      title: 'Home',
+      icon: 'home',
+      type: 'home',
+      content: {
+        hero_headline: profile?.display_name ?? 'My App',
+        hero_subhead: profile?.sport
+          ? `${profile.sport} · NIL Athlete`
+          : 'NIL Athlete',
+      },
+    },
+    {
+      id: 'about',
+      title: 'About',
+      icon: 'info',
+      type: 'text',
+      content: {
+        body: 'Tell your story. This screen renders plain text — edit it in the dashboard.',
+      },
+    },
+    {
+      id: 'schedule',
+      title: 'Schedule',
+      icon: 'calendar',
+      type: 'list',
+      content: {
+        items: [{ title: 'Add your first game or event' }],
+      },
+    },
+    {
+      id: 'support',
+      title: 'Support',
+      icon: 'heart',
+      type: 'tip',
+      content: {
+        title: 'Send a tip',
+        amounts: [5, 10, 25, 50],
+      },
+    },
+  ]
+
+  const { data: app, error } = await supabase
+    .from('talent_apps')
+    .insert({
+      user_id: userId,
+      order_id: orderId ?? null,
+      slug,
+      name: profile?.display_name ?? 'My App',
+      tagline: profile?.sport ? `${profile.sport} · official app` : 'Official app',
+      package_id: `com.edgezone.${slug.replace(/-/g, '')}`,
+      primary_color: profile?.brand_primary_color ?? '#C8A84E',
+      secondary_color: profile?.brand_secondary_color ?? '#000000',
+      theme_mode: 'dark',
+      screens: startingScreens,
+      status: 'draft',
+    })
+    .select('id')
+    .single()
+
+  if (error || !app) return { status: 'provisioning' }
+  return { status: 'ready', entity_id: app.id }
 }
 
 /** Creates a brand_designs row pre-filled from the user's profile. */
