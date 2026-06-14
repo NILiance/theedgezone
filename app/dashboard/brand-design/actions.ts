@@ -245,6 +245,69 @@ export async function selectFinalConcept(formData: FormData) {
   revalidatePath(`/dashboard/brand-design/${concept.brand_design_id}`)
 }
 
+const saveCanvasSchema = z.object({
+  brand_id: z.string().uuid(),
+  data_url: z.string().regex(/^data:image\/png;base64,/),
+  filename: z.string().max(120).optional(),
+  layers_meta: z.string().optional(),
+})
+
+/** Receives a base64 PNG from the canvas editor, uploads it to Storage, records in brand_assets. */
+export async function saveCanvasOutput(
+  formData: FormData
+): Promise<{ ok: boolean; url?: string; message?: string }> {
+  const user = await requireUser()
+  const parsed = saveCanvasSchema.safeParse({
+    brand_id: formData.get('brand_id'),
+    data_url: formData.get('data_url'),
+    filename: formData.get('filename') || undefined,
+    layers_meta: formData.get('layers_meta') || undefined,
+  })
+  if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
+
+  const supabase = await createClient()
+  const { data: brand } = await supabase
+    .from('brand_designs')
+    .select('id, user_id')
+    .eq('id', parsed.data.brand_id)
+    .single()
+  if (!brand || brand.user_id !== user.id) return { ok: false, message: 'Brand design not found' }
+
+  const buffer = Buffer.from(
+    parsed.data.data_url.replace(/^data:image\/png;base64,/, ''),
+    'base64'
+  )
+  const filename =
+    parsed.data.filename?.replace(/[^a-z0-9.-]/gi, '-') ?? `logo-overlay-${Date.now()}.png`
+  const path = `${user.id}/brand-overlays/${brand.id}/${filename}`
+
+  const { error: upErr } = await supabase.storage
+    .from('site-assets')
+    .upload(path, buffer, { contentType: 'image/png', upsert: true })
+  if (upErr) return { ok: false, message: upErr.message }
+  const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
+  const url = pub.publicUrl
+
+  let meta: Record<string, unknown> | null = null
+  if (parsed.data.layers_meta) {
+    try {
+      meta = JSON.parse(parsed.data.layers_meta)
+    } catch {
+      /* swallow */
+    }
+  }
+
+  await supabase.from('brand_assets').insert({
+    brand_design_id: brand.id,
+    asset_type: 'logo_overlay',
+    url,
+    metadata: meta as unknown as Record<string, unknown>,
+  })
+
+  revalidatePath(`/dashboard/brand-design/${brand.id}`)
+  return { ok: true, url }
+}
+
 const assembleKitSchema = z.object({ brand_id: z.string().uuid() })
 
 export async function assembleAndUploadKit(

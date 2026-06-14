@@ -166,8 +166,14 @@ export default async function BrandDesignStudioPage({ params }: PageProps) {
                 Assemble the kit to get the logo on white + transparent + 6 social avatar sizes
                 + color tokens, packaged in a ZIP.
               </p>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <AssembleKitButton brandId={brand.id} existingKitUrl={brand.brand_kit_url ?? null} />
+                <Link
+                  href={`/dashboard/brand-design/${brand.id}/canvas`}
+                  className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-1.5 text-xs font-bold uppercase tracking-widest hover:bg-panel"
+                >
+                  Canvas editor →
+                </Link>
               </div>
             </div>
             <a
