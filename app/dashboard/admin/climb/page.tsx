@@ -17,7 +17,7 @@ export default async function ClimbAdminPage() {
   const { data: milestones } = await supabase
     .from('climb_milestones')
     .select(
-      'id, slug, title, summary, position, hero_image_url, video_url, slides, cta_label, cta_url, duration_min, audience, published'
+      'id, slug, title, summary, position, hero_image_url, video_url, slides, cta_label, cta_url, duration_min, audience, published, heygen_job_id, heygen_status, heygen_prompt, heygen_error, heygen_started_at, heygen_completed_at'
     )
     .order('position', { ascending: true })
 
@@ -48,6 +48,12 @@ export default async function ClimbAdminPage() {
           duration_min: number | null
           audience: string
           published: boolean
+          heygen_job_id?: string | null
+          heygen_status?: string | null
+          heygen_prompt?: string | null
+          heygen_error?: string | null
+          heygen_started_at?: string | null
+          heygen_completed_at?: string | null
         }>}
       />
     </div>

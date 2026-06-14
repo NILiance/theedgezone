@@ -1,10 +1,15 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useActionState, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { upsertMilestone, deleteMilestone } from './actions'
+import {
+  startMilestoneVideo,
+  pollMilestoneVideo,
+  type HeyGenState,
+} from './heygen-actions'
 
 interface Milestone {
   id: string
@@ -20,6 +25,12 @@ interface Milestone {
   duration_min: number | null
   audience: string
   published: boolean
+  heygen_job_id?: string | null
+  heygen_status?: string | null
+  heygen_prompt?: string | null
+  heygen_error?: string | null
+  heygen_started_at?: string | null
+  heygen_completed_at?: string | null
 }
 
 export function ClimbAdminClient({ milestones }: { milestones: Milestone[] }) {
@@ -234,6 +245,105 @@ function MilestoneEditor({ milestone, onClose }: { milestone: Milestone | null; 
           Cancel
         </Button>
       </div>
+      {milestone?.id && <HeyGenPanel milestone={milestone} />}
     </form>
+  )
+}
+
+function HeyGenPanel({ milestone }: { milestone: Milestone }) {
+  const [startState, startAction, startPending] = useActionState<HeyGenState, FormData>(
+    startMilestoneVideo,
+    {}
+  )
+  const [pollState, pollAction, pollPending] = useActionState<HeyGenState, FormData>(
+    pollMilestoneVideo,
+    {}
+  )
+  const status = startState.status ?? pollState.status ?? milestone.heygen_status ?? null
+  const inFlight = status === 'pending' || status === 'processing' || status === 'waiting'
+
+  return (
+    <section className="mt-6 rounded-[var(--radius)] border border-border bg-panel/40 p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-eyebrow text-primary">Generate narrator video (HeyGen)</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Spin up an AI avatar reading the script below. Status writes back to{' '}
+            <code className="font-mono">video_url</code> once complete.
+          </p>
+        </div>
+        {status && (
+          <span
+            className={`text-display rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
+              status === 'completed'
+                ? 'bg-success/20 text-success'
+                : status === 'failed'
+                ? 'bg-destructive/20 text-destructive'
+                : 'bg-accent/20 text-accent'
+            }`}
+          >
+            {status}
+          </span>
+        )}
+      </div>
+      <form action={startAction} className="mt-3 space-y-3">
+        <input type="hidden" name="milestone_id" value={milestone.id} />
+        <textarea
+          name="prompt"
+          rows={4}
+          defaultValue={milestone.heygen_prompt ?? milestone.summary ?? ''}
+          placeholder="Welcome to the Climb. Today's milestone is…"
+          required
+          minLength={30}
+          className="w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm"
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            name="avatar_id"
+            placeholder="Avatar ID (optional)"
+            className="rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs font-mono"
+          />
+          <input
+            name="voice_id"
+            placeholder="Voice ID (optional)"
+            className="rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs font-mono"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" size="sm" disabled={startPending || inFlight}>
+            {startPending ? 'Starting…' : inFlight ? 'In flight…' : milestone.heygen_job_id ? 'Re-generate' : 'Generate video'}
+          </Button>
+          {milestone.heygen_job_id && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const fd = new FormData()
+                fd.set('milestone_id', milestone.id)
+                pollAction(fd)
+              }}
+              disabled={pollPending}
+            >
+              {pollPending ? 'Checking…' : 'Refresh status'}
+            </Button>
+          )}
+        </div>
+      </form>
+      {startState.error && <p className="mt-2 text-xs text-destructive">{startState.error}</p>}
+      {pollState.error && <p className="mt-2 text-xs text-destructive">{pollState.error}</p>}
+      {milestone.heygen_error && (
+        <p className="mt-2 text-xs text-destructive">
+          HeyGen error: {milestone.heygen_error}
+        </p>
+      )}
+      {milestone.heygen_started_at && (
+        <p className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+          Started {new Date(milestone.heygen_started_at).toLocaleString()}
+          {milestone.heygen_completed_at &&
+            ` · finished ${new Date(milestone.heygen_completed_at).toLocaleString()}`}
+        </p>
+      )}
+    </section>
   )
 }
