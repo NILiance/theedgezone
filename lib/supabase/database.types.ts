@@ -992,6 +992,8 @@ export type Database = {
           niliance_synced_at: string | null
           niliance_user_id: string | null
           phone: string | null
+          phyllo_connected_at: string | null
+          phyllo_user_id: string | null
           points: number
           profile_completion_pct: number | null
           school: string | null
@@ -1045,6 +1047,8 @@ export type Database = {
           niliance_synced_at?: string | null
           niliance_user_id?: string | null
           phone?: string | null
+          phyllo_connected_at?: string | null
+          phyllo_user_id?: string | null
           points?: number
           profile_completion_pct?: number | null
           school?: string | null
@@ -1098,6 +1102,8 @@ export type Database = {
           niliance_synced_at?: string | null
           niliance_user_id?: string | null
           phone?: string | null
+          phyllo_connected_at?: string | null
+          phyllo_user_id?: string | null
           points?: number
           profile_completion_pct?: number | null
           school?: string | null
@@ -1300,6 +1306,33 @@ export type Database = {
           position?: number
           published?: boolean
           slug?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          allowed: boolean
+          capability: string
+          description: string | null
+          role: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed?: boolean
+          capability: string
+          description?: string | null
+          role: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed?: boolean
+          capability?: string
+          description?: string | null
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
