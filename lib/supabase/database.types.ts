@@ -119,6 +119,121 @@ export type Database = {
           },
         ]
       }
+      brand_client_assets: {
+        Row: {
+          brand_client_id: string
+          created_at: string
+          description: string | null
+          filename: string
+          id: string
+          kind: string
+          size_bytes: number | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          brand_client_id: string
+          created_at?: string
+          description?: string | null
+          filename: string
+          id?: string
+          kind?: string
+          size_bytes?: number | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          brand_client_id?: string
+          created_at?: string
+          description?: string | null
+          filename?: string
+          id?: string
+          kind?: string
+          size_bytes?: number | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_client_assets_brand_client_id_fkey"
+            columns: ["brand_client_id"]
+            isOneToOne: false
+            referencedRelation: "brand_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_client_tokens: {
+        Row: {
+          brand_client_id: string
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          token: string
+        }
+        Insert: {
+          brand_client_id: string
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at: string
+          token: string
+        }
+        Update: {
+          brand_client_id?: string
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_client_tokens_brand_client_id_fkey"
+            columns: ["brand_client_id"]
+            isOneToOne: false
+            referencedRelation: "brand_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_clients: {
+        Row: {
+          company: string | null
+          contact_email: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          contact_email: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          contact_email?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       brand_designs: {
         Row: {
           active_logo_id: string | null
