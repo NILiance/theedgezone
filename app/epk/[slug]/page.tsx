@@ -4,6 +4,7 @@ import { BlockRenderer, type SiteBlock, type SiteData } from '@/components/site/
 
 interface PageProps {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ print?: string }>
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -23,8 +24,10 @@ export async function generateMetadata({ params }: PageProps) {
   }
 }
 
-export default async function PublicEpkPage({ params }: PageProps) {
+export default async function PublicEpkPage({ params, searchParams }: PageProps) {
   const { slug } = await params
+  const { print } = await searchParams
+  const isPrint = print === '1'
   const supabase = await createClient()
 
   const { data: epk } = await supabase
@@ -53,7 +56,23 @@ export default async function PublicEpkPage({ params }: PageProps) {
   const siteData: SiteData = { siteId: epk.id }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className={isPrint ? 'epk-print-mode' : 'min-h-screen bg-background text-foreground'}>
+      <style>{`
+        @media print {
+          @page { size: letter; margin: 0.5in; }
+          body { background: white !important; color: black !important; }
+          .epk-print-hide { display: none !important; }
+          section { break-inside: avoid; page-break-inside: avoid; }
+        }
+        .epk-print-mode {
+          background: white;
+          color: black;
+          min-height: 100vh;
+        }
+        .epk-print-mode section {
+          break-inside: avoid;
+        }
+      `}</style>
       {(blocks ?? []).map((b) => (
         <BlockRenderer
           key={b.id}
@@ -61,14 +80,22 @@ export default async function PublicEpkPage({ params }: PageProps) {
           theme={resolvedTheme as Parameters<typeof BlockRenderer>[0]['theme']}
           social={social}
           siteData={siteData}
-          interactive
+          interactive={!isPrint}
         />
       ))}
-      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
+      <footer
+        className={`border-t border-border py-8 text-center text-xs ${
+          isPrint ? 'text-gray-500' : 'text-muted-foreground epk-print-hide'
+        }`}
+      >
         © {new Date().getFullYear()} {epk.display_name ?? epk.slug}. Press Kit powered by{' '}
-        <a href="https://theedgezone.com" className="text-primary hover:underline">
-          The Edge Zone
-        </a>
+        {isPrint ? (
+          'The Edge Zone'
+        ) : (
+          <a href="https://theedgezone.com" className="text-primary hover:underline">
+            The Edge Zone
+          </a>
+        )}
         .
       </footer>
     </main>

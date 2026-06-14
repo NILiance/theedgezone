@@ -7,6 +7,7 @@ import { BLOCK_TYPES } from '@/lib/site-builder/block-types'
 import { defaultTokens, type ThemeTokens } from '@/lib/site-builder/theme-presets'
 import { EpkBlockEditor } from './block-editor-wrapper'
 import { EpkSettingsForm } from './settings-form'
+import { SharePanel } from './share-panel'
 import { addEpkBlock, publishEpk, unpublishEpk } from '../actions'
 import type { SiteBlock } from '@/components/site/block-renderer'
 
@@ -38,6 +39,16 @@ export default async function EpkEditorPage({ params }: PageProps) {
 
   const tokens: ThemeTokens = { ...defaultTokens(), ...(epk.theme as object) } as ThemeTokens
   const social = (epk.social ?? {}) as Record<string, string>
+
+  const { data: shareLinks } = await supabase
+    .from('epk_share_links')
+    .select(
+      'id, token, label, recipient_email, expires_at, revoked_at, view_count, last_viewed_at, created_at'
+    )
+    .eq('epk_id', id)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  const publicUrl = `/epk/${epk.slug}`
 
   return (
     <div className="space-y-6">
@@ -93,6 +104,8 @@ export default async function EpkEditorPage({ params }: PageProps) {
         primary={tokens.primary}
         secondary={tokens.secondary}
       />
+
+      <SharePanel epkId={epk.id} publicUrl={publicUrl} shareLinks={shareLinks ?? []} />
 
       <div className="space-y-3">
         {blocks.map((b, idx) => (
