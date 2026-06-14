@@ -322,6 +322,90 @@ export type Database = {
         }
         Relationships: []
       }
+      enrollment_invitations: {
+        Row: {
+          converted_user_id: string | null
+          display_name: string | null
+          email: string
+          enrolled_at: string
+          enrolled_by: string | null
+          failure_message: string | null
+          id: string
+          metadata: Json
+          notes: string | null
+          opened_at: string | null
+          programs: string[]
+          resend_id: string | null
+          school: string | null
+          sent_at: string | null
+          sport: string | null
+          status: string
+        }
+        Insert: {
+          converted_user_id?: string | null
+          display_name?: string | null
+          email: string
+          enrolled_at?: string
+          enrolled_by?: string | null
+          failure_message?: string | null
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          opened_at?: string | null
+          programs?: string[]
+          resend_id?: string | null
+          school?: string | null
+          sent_at?: string | null
+          sport?: string | null
+          status?: string
+        }
+        Update: {
+          converted_user_id?: string | null
+          display_name?: string | null
+          email?: string
+          enrolled_at?: string
+          enrolled_by?: string | null
+          failure_message?: string | null
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          opened_at?: string | null
+          programs?: string[]
+          resend_id?: string | null
+          school?: string | null
+          sent_at?: string | null
+          sport?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      enrollment_template: {
+        Row: {
+          body: string
+          id: number
+          reply_to: string | null
+          subject: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: string
+          id?: number
+          reply_to?: string | null
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          id?: number
+          reply_to?: string | null
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           description: string | null
