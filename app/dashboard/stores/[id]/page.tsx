@@ -59,11 +59,19 @@ export default async function StoreManagerPage({ params }: PageProps) {
               </span>
             </p>
           </div>
-          <Link href={`/store/${store.slug}`} target="_blank">
-            <button className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-2 text-xs font-bold uppercase tracking-widest hover:bg-panel">
-              View store
-            </button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/dashboard/stores/${store.id}/catalog`}
+              className="text-display rounded-[var(--radius-sm)] border border-primary bg-primary/10 px-3 py-2 text-xs font-bold uppercase tracking-widest text-primary"
+            >
+              + From catalog
+            </Link>
+            <Link href={`/store/${store.slug}`} target="_blank">
+              <button className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-2 text-xs font-bold uppercase tracking-widest hover:bg-panel">
+                View store
+              </button>
+            </Link>
+          </div>
         </div>
       </div>
 
