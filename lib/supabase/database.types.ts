@@ -936,6 +936,92 @@ export type Database = {
           },
         ]
       }
+      roadmap_items: {
+        Row: {
+          audience: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          phase_id: string | null
+          position: number
+          published: boolean
+          recommended_action_label: string | null
+          recommended_action_url: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          phase_id?: string | null
+          position?: number
+          published?: boolean
+          recommended_action_label?: string | null
+          recommended_action_url?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          phase_id?: string | null
+          position?: number
+          published?: boolean
+          recommended_action_label?: string | null
+          recommended_action_url?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_items_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roadmap_phases: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          position: number
+          published: boolean
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          position?: number
+          published?: boolean
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          position?: number
+          published?: boolean
+          slug?: string
+        }
+        Relationships: []
+      }
       service_pricing: {
         Row: {
           active: boolean
@@ -1966,6 +2052,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_roadmap_progress: {
+        Row: {
+          completed_at: string
+          item_id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          item_id: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          item_id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roadmap_progress_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
