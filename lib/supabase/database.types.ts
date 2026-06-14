@@ -1379,6 +1379,104 @@ export type Database = {
           },
         ]
       }
+      site_transactions: {
+        Row: {
+          affiliate_code: string | null
+          amount_cents: number
+          block_id: string | null
+          buyer_email: string | null
+          buyer_name: string | null
+          created_at: string
+          currency: string
+          id: string
+          kind: string
+          message: string | null
+          metadata: Json
+          paid_at: string | null
+          product_id: string | null
+          site_id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_payment_intent: string | null
+          stripe_session_id: string | null
+          stripe_subscription_id: string | null
+          tier_id: string | null
+        }
+        Insert: {
+          affiliate_code?: string | null
+          amount_cents?: number
+          block_id?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          kind: string
+          message?: string | null
+          metadata?: Json
+          paid_at?: string | null
+          product_id?: string | null
+          site_id: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          tier_id?: string | null
+        }
+        Update: {
+          affiliate_code?: string | null
+          amount_cents?: number
+          block_id?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          kind?: string
+          message?: string | null
+          metadata?: Json
+          paid_at?: string | null
+          product_id?: string | null
+          site_id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent?: string | null
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          tier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_transactions_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "site_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_transactions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "site_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_transactions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_transactions_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "site_membership_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           created_at: string

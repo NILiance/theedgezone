@@ -6,6 +6,12 @@ import {
   EmailCaptureForm,
   ContactForm,
 } from '@/components/site/public-forms'
+import {
+  TipJarCheckout,
+  MerchBuyButton,
+  TierJoinButton,
+  ShoutoutForm as ShoutoutCheckoutForm,
+} from '@/components/site/checkout-buttons'
 
 export interface SiteBlock {
   id: string
@@ -148,7 +154,15 @@ export function BlockRenderer({ block, theme, social, siteData, interactive }: B
 
     // ── Fan blocks ──────────────────────────────────────────────────────
     case 'tip_jar':
-      return <TipJarBlock props={block.props} tokens={tokens} />
+      return (
+        <TipJarBlock
+          props={block.props}
+          tokens={tokens}
+          siteId={siteData?.siteId}
+          blockId={block.id}
+          interactive={interactive}
+        />
+      )
     case 'fan_poll':
       return (
         <FanPollBlock
@@ -207,11 +221,35 @@ export function BlockRenderer({ block, theme, social, siteData, interactive }: B
 
     // ── Revenue blocks ──────────────────────────────────────────────────
     case 'merch':
-      return <MerchBlock props={block.props} tokens={tokens} products={siteData?.products} />
+      return (
+        <MerchBlock
+          props={block.props}
+          tokens={tokens}
+          products={siteData?.products}
+          siteId={siteData?.siteId}
+          interactive={interactive}
+        />
+      )
     case 'shoutout_request':
-      return <ShoutoutRequestBlock props={block.props} tokens={tokens} />
+      return (
+        <ShoutoutRequestBlock
+          props={block.props}
+          tokens={tokens}
+          siteId={siteData?.siteId}
+          blockId={block.id}
+          interactive={interactive}
+        />
+      )
     case 'membership_tiers':
-      return <MembershipTiersBlock props={block.props} tokens={tokens} tiers={siteData?.tiers} />
+      return (
+        <MembershipTiersBlock
+          props={block.props}
+          tokens={tokens}
+          tiers={siteData?.tiers}
+          siteId={siteData?.siteId}
+          interactive={interactive}
+        />
+      )
 
     default:
       return null
@@ -1305,9 +1343,15 @@ function FanScopedBlock({
 function TipJarBlock({
   props,
   tokens,
+  siteId,
+  blockId,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  siteId?: string
+  blockId?: string
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title', 'Send a tip')
   const description = getStr(props, 'description')
@@ -1323,48 +1367,39 @@ function TipJarBlock({
           {description}
         </p>
       )}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {amounts.map((amt) => (
-          <button
-            key={amt}
-            type="button"
-            className="rounded-md px-4 py-3 text-sm font-bold transition hover:opacity-90"
-            style={{
-              background: tokens.primary,
-              color: tokens.secondary,
-              borderRadius: tokens.button_radius,
-              fontFamily: tokens.font_heading,
-            }}
-          >
-            ${amt}
-          </button>
-        ))}
-      </div>
-      {allowCustom && (
-        <div className="mt-4 flex gap-2">
-          <input
-            type="number"
-            placeholder="Custom amount"
-            min={1}
-            className="flex-1 rounded-md border p-3 text-sm"
-            style={{
-              borderColor: tokens.border_color,
-              background: tokens.bg_color,
-              color: tokens.text_color,
-            }}
-          />
-          <button
-            type="button"
-            className="rounded-md px-6 text-sm font-bold"
-            style={{
-              background: tokens.primary,
-              color: tokens.secondary,
-              borderRadius: tokens.button_radius,
-            }}
-          >
-            Send
-          </button>
-        </div>
+      {interactive && siteId && blockId ? (
+        <TipJarCheckout
+          siteId={siteId}
+          blockId={blockId}
+          amounts={amounts}
+          allowCustom={allowCustom}
+          tokens={tokens}
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {amounts.map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                className="rounded-md px-4 py-3 text-sm font-bold transition hover:opacity-90"
+                style={{
+                  background: tokens.primary,
+                  color: tokens.secondary,
+                  borderRadius: tokens.button_radius,
+                  fontFamily: tokens.font_heading,
+                }}
+              >
+                ${amt}
+              </button>
+            ))}
+          </div>
+          {allowCustom && (
+            <p className="mt-3 text-xs text-center" style={{ color: tokens.muted_color }}>
+              Live preview shows the static UI. Real checkout fires on the published site.
+            </p>
+          )}
+        </>
       )}
     </FanCardShell>
   )
@@ -1980,6 +2015,8 @@ function MerchBlock({
   props,
   tokens,
   products,
+  siteId,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
@@ -1991,6 +2028,8 @@ function MerchBlock({
     currency: string
     image_url: string | null
   }>
+  siteId?: string
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title', 'Shop merch')
   if (!products || products.length === 0) {
@@ -2048,18 +2087,29 @@ function MerchBlock({
               <p className="mt-3 text-xl font-black" style={{ color: tokens.primary, fontFamily: tokens.font_heading }}>
                 ${(p.price_cents / 100).toFixed(2)}
               </p>
-              <button
-                type="button"
-                className="mt-3 w-full rounded-md px-4 py-2 text-xs font-bold uppercase tracking-widest"
-                style={{
-                  background: tokens.primary,
-                  color: tokens.secondary,
-                  borderRadius: tokens.button_radius,
-                  fontFamily: tokens.font_heading,
-                }}
-              >
-                Add to cart
-              </button>
+              <div className="mt-3">
+                {interactive && siteId ? (
+                  <MerchBuyButton
+                    siteId={siteId}
+                    productId={p.id}
+                    label="Buy now"
+                    tokens={tokens}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full rounded-md px-4 py-2 text-xs font-bold uppercase tracking-widest"
+                    style={{
+                      background: tokens.primary,
+                      color: tokens.secondary,
+                      borderRadius: tokens.button_radius,
+                      fontFamily: tokens.font_heading,
+                    }}
+                  >
+                    Buy now
+                  </button>
+                )}
+              </div>
             </div>
           </article>
         ))}
@@ -2071,9 +2121,15 @@ function MerchBlock({
 function ShoutoutRequestBlock({
   props,
   tokens,
+  siteId,
+  blockId,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
+  siteId?: string
+  blockId?: string
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title', 'Get a personalized shoutout')
   const description = getStr(props, 'description')
@@ -2095,18 +2151,28 @@ function ShoutoutRequestBlock({
           per video · {deliveryDays}-day delivery
         </span>
       </p>
-      <button
-        type="button"
-        className="mt-4 rounded-md px-6 py-3 text-sm font-bold uppercase tracking-widest"
-        style={{
-          background: tokens.primary,
-          color: tokens.secondary,
-          borderRadius: tokens.button_radius,
-          fontFamily: tokens.font_heading,
-        }}
-      >
-        Request a shoutout
-      </button>
+      {interactive && siteId && blockId ? (
+        <ShoutoutCheckoutForm
+          siteId={siteId}
+          blockId={blockId}
+          priceCents={priceCents}
+          label="Request a shoutout"
+          tokens={tokens}
+        />
+      ) : (
+        <button
+          type="button"
+          className="mt-4 rounded-md px-6 py-3 text-sm font-bold uppercase tracking-widest"
+          style={{
+            background: tokens.primary,
+            color: tokens.secondary,
+            borderRadius: tokens.button_radius,
+            fontFamily: tokens.font_heading,
+          }}
+        >
+          Request a shoutout
+        </button>
+      )}
     </FanCardShell>
   )
 }
@@ -2115,6 +2181,8 @@ function MembershipTiersBlock({
   props,
   tokens,
   tiers,
+  siteId,
+  interactive,
 }: {
   props: Record<string, unknown>
   tokens: ThemeTokens
@@ -2126,6 +2194,8 @@ function MembershipTiersBlock({
     billing_interval: string
     perks: string[]
   }>
+  siteId?: string
+  interactive?: boolean
 }) {
   const title = getStr(props, 'title', 'Join the membership')
   const list =
@@ -2176,18 +2246,22 @@ function MembershipTiersBlock({
                 <li key={i}>✓ {p}</li>
               ))}
             </ul>
-            <button
-              type="button"
-              className="mt-4 w-full rounded-md px-4 py-2 text-sm font-bold uppercase tracking-widest"
-              style={{
-                background: tokens.primary,
-                color: tokens.secondary,
-                borderRadius: tokens.button_radius,
-                fontFamily: tokens.font_heading,
-              }}
-            >
-              Join
-            </button>
+            {interactive && siteId && tiers && tiers.length > 0 ? (
+              <TierJoinButton siteId={siteId} tierId={t.id} label="Join" tokens={tokens} />
+            ) : (
+              <button
+                type="button"
+                className="mt-4 w-full rounded-md px-4 py-2 text-sm font-bold uppercase tracking-widest"
+                style={{
+                  background: tokens.primary,
+                  color: tokens.secondary,
+                  borderRadius: tokens.button_radius,
+                  fontFamily: tokens.font_heading,
+                }}
+              >
+                Join
+              </button>
+            )}
           </div>
         ))}
       </div>

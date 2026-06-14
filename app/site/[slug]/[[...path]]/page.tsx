@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BlockRenderer, type SiteBlock, type SiteData } from '@/components/site/block-renderer'
 import { TrackView } from '@/components/site/track-view'
+import { AffiliateRefCapture } from '@/components/site/checkout-buttons'
 
 interface PageProps {
   params: Promise<{ slug: string; path?: string[] }>
@@ -117,6 +118,7 @@ export default async function PublicSitePage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <TrackView siteId={site.id} pageId={page.id} path={requestedPath} />
+      <AffiliateRefCapture />
       <SiteNav site={{ display_name: site.display_name, slug: site.slug }} pages={pages ?? []} />
       {(blocks ?? []).map((b) => (
         <BlockRenderer

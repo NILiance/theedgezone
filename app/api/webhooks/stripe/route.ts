@@ -91,6 +91,10 @@ export async function POST(request: Request) {
           .from('orders')
           .update({ status: 'refunded' })
           .eq('stripe_payment_intent', charge.payment_intent as string)
+        await supabase
+          .from('site_transactions')
+          .update({ status: 'refunded' })
+          .eq('stripe_payment_intent', charge.payment_intent as string)
         break
       }
       case 'customer.subscription.deleted': {
@@ -103,6 +107,12 @@ export async function POST(request: Request) {
             .eq('user_id', sub.metadata.user_id)
             .eq('product_slug', sub.metadata.product_slug ?? '')
         }
+        // Public-site tier subscription cancelled — mark the matching
+        // site_transactions row.
+        await supabase
+          .from('site_transactions')
+          .update({ status: 'cancelled' })
+          .eq('stripe_subscription_id', sub.id)
         break
       }
       default:
@@ -131,6 +141,17 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session
 ) {
   const metadata = session.metadata ?? {}
+
+  // Public-site purchase (tip_jar, merch, shoutout, membership tier).
+  // These come from /api/site-checkout and never have a user_id — the
+  // buyer is anonymous to the platform. Stamp the matching
+  // site_transactions row as paid; subscription kinds also store the
+  // sub id so the cancellation webhook can match.
+  if (typeof metadata.kind === 'string' && metadata.kind.startsWith('site_')) {
+    await handleSiteCheckoutCompleted(supabase, session)
+    return
+  }
+
   const userId = metadata.user_id
   const productSlug = metadata.product_slug
   const productTitle = metadata.product_title
@@ -188,5 +209,62 @@ async function handleCheckoutCompleted(
       .update({ status: 'provisioning' })
       .eq('id', inserted.id as string)
     console.error('[stripe-webhook] provisioning failed', errMsg)
+  }
+}
+
+/**
+ * Public-site checkout (tip_jar, merch, shoutout, membership tier).
+ * Promotes site_transactions to paid, stamps payment intent / subscription
+ * IDs, and (for affiliates) bumps the credited affiliate counters.
+ */
+async function handleSiteCheckoutCompleted(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const metadata = session.metadata ?? {}
+  const transactionId = typeof metadata.transaction_id === 'string' ? metadata.transaction_id : ''
+  if (!transactionId) return
+
+  const paymentIntent =
+    typeof session.payment_intent === 'string' ? session.payment_intent : null
+  const subscriptionId =
+    typeof session.subscription === 'string' ? session.subscription : null
+  const customerId = typeof session.customer === 'string' ? session.customer : null
+
+  const { data: existing } = await supabase
+    .from('site_transactions')
+    .select('id, status, affiliate_code, site_id, amount_cents')
+    .eq('id', transactionId)
+    .maybeSingle()
+  if (!existing || existing.status === 'paid') return
+
+  await supabase
+    .from('site_transactions')
+    .update({
+      status: 'paid',
+      stripe_payment_intent: paymentIntent,
+      stripe_subscription_id: subscriptionId,
+      stripe_customer_id: customerId,
+      paid_at: new Date().toISOString(),
+    })
+    .eq('id', transactionId)
+
+  if (existing.affiliate_code) {
+    const { data: affiliate } = await supabase
+      .from('site_affiliates')
+      .select('id, lifetime_revenue_cents, signups')
+      .eq('site_id', existing.site_id)
+      .eq('code', existing.affiliate_code)
+      .maybeSingle()
+    if (affiliate) {
+      await supabase
+        .from('site_affiliates')
+        .update({
+          lifetime_revenue_cents:
+            (affiliate.lifetime_revenue_cents ?? 0) + (existing.amount_cents ?? 0),
+          signups: (affiliate.signups ?? 0) + 1,
+        })
+        .eq('id', affiliate.id)
+    }
   }
 }
