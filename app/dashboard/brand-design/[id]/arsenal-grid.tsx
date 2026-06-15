@@ -2,6 +2,12 @@
 
 import { useActionState, useState } from 'react'
 import { generateArsenalAsset, type ArsenalGenState } from './arsenal-actions'
+import { generateLogoOnPhotoAction, type LogoOnPhotoState } from './logo-on-photo-actions'
+import {
+  UNIFORM_SPORTS,
+  UNIFORM_ITEMS_BY_SPORT,
+  UNIFORM_ITEM_LABELS,
+} from '@/lib/arsenal-prompts'
 
 interface CategoryDef {
   id: string
@@ -15,47 +21,28 @@ interface CategoryDef {
   optionLabel?: string
   /** Optional secondary text input (e.g. uniform notes). */
   notesLabel?: string
+  /** Special UI variant — 'uniforms' = sport + item two-step picker, 'logo_on_photo' = file upload. */
+  variant?: 'uniforms' | 'logo_on_photo'
 }
 
 const FEATURED: CategoryDef[] = [
+  {
+    id: 'logo_on_photo',
+    label: 'Logo On Your Photo',
+    icon: '📸',
+    color: '#00BCD4',
+    blurb:
+      'Upload a photo and stamp your logo anywhere — 10 placement spots + watermark mode.',
+    variant: 'logo_on_photo',
+  },
   {
     id: 'sport_uniform',
     label: 'Sport Uniforms',
     icon: '🏈',
     color: '#e91e63',
     blurb:
-      'See your logo on jerseys, helmets, cleats and game gear — pick the piece you want a mockup of.',
-    optionLabel: 'Item',
-    options: [
-      { val: 'full_uniform', name: 'Full Uniform Set' },
-      { val: 'home_jersey', name: 'Home Jersey' },
-      { val: 'away_jersey', name: 'Away Jersey' },
-      { val: 'warm_up', name: 'Warm-Up' },
-      { val: 'practice_jersey', name: 'Practice Jersey' },
-      { val: 'alternate_jersey', name: 'Alt / City Edition' },
-      { val: 'game_shorts', name: 'Game Shorts' },
-      { val: 'compression', name: 'Compression Gear' },
-      { val: 'team_jacket', name: 'Team Jacket' },
-      { val: 'helmet', name: 'Helmet' },
-      { val: 'cleats', name: 'Branded Cleats' },
-      { val: 'headband_game', name: 'Game Headband' },
-      { val: 'shooting_shirt', name: 'Shooting / Warm-Up Shirt' },
-      { val: 'track_suit', name: 'Track Suit' },
-      { val: 'sideline_gear', name: 'Sideline Gear' },
-      { val: 'letterman_jacket', name: 'Letterman Jacket' },
-      { val: 'game_socks', name: 'Game Socks' },
-      { val: 'batting_gloves', name: 'Batting Gloves' },
-      { val: 'goalkeeper_kit', name: 'Goalkeeper Kit' },
-      { val: 'swim_cap', name: 'Swim Cap' },
-      { val: 'wrestling_singlet', name: 'Wrestling Singlet' },
-      { val: 'lacrosse_pinnie', name: 'Lacrosse Pinnie' },
-      { val: 'golf_polo', name: 'Golf Polo' },
-      { val: 'tennis_skirt', name: 'Tennis Skirt / Dress' },
-      { val: 'cheerleader', name: 'Cheerleader Uniform' },
-      { val: 'dance_leotard', name: 'Dance / Gymnastics Leotard' },
-      { val: 'boxing_robe', name: 'Boxing Robe / Trunks' },
-      { val: 'ski_suit', name: 'Ski / Snowboard Suit' },
-    ],
+      'See your logo on jerseys, helmets, cleats and game gear — pick your sport then the specific piece.',
+    variant: 'uniforms',
     notesLabel: 'Optional notes',
   },
   {
@@ -267,6 +254,26 @@ function CategoryCard({
   def: CategoryDef
   featured?: boolean
 }) {
+  // Specialty variants route to dedicated forms — keeps hooks out of the
+  // branching path so rules-of-hooks stays happy.
+  if (def.variant === 'logo_on_photo') {
+    return <LogoOnPhotoCard brandId={brandId} def={def} featured={featured} />
+  }
+  if (def.variant === 'uniforms') {
+    return <UniformsCard brandId={brandId} def={def} featured={featured} />
+  }
+  return <StandardCategoryCard brandId={brandId} def={def} featured={featured} />
+}
+
+function StandardCategoryCard({
+  brandId,
+  def,
+  featured,
+}: {
+  brandId: string
+  def: CategoryDef
+  featured?: boolean
+}) {
   const [state, action, pending] = useActionState<ArsenalGenState, FormData>(
     generateArsenalAsset,
     {}
@@ -285,20 +292,7 @@ function CategoryCard({
       <input type="hidden" name="category" value={def.id} />
       <input type="hidden" name="option" value={option} />
       <input type="hidden" name="notes" value={notes} />
-      <div className="flex items-start gap-3">
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-base"
-          style={{ background: `${def.color}22`, color: def.color }}
-        >
-          {def.icon}
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-display font-bold" style={{ color: def.color }}>
-            {def.label}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{def.blurb}</p>
-        </div>
-      </div>
+      <CategoryHeader def={def} />
 
       {def.options && def.options.length > 0 && (
         <label className="block">
@@ -362,6 +356,274 @@ function CategoryCard({
       {state.error && (
         <p className="text-xs text-destructive">{state.error}</p>
       )}
+    </form>
+  )
+}
+
+function CategoryHeader({ def }: { def: CategoryDef }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-base"
+        style={{ background: `${def.color}22`, color: def.color }}
+      >
+        {def.icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-display font-bold" style={{ color: def.color }}>
+          {def.label}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{def.blurb}</p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Sport Uniforms — two-step picker. The talent picks a sport, then the
+ * item dropdown narrows to that sport's gear (football has 15 items,
+ * golf has 5, etc.). Mirrors the legacy WP picker layout.
+ */
+function UniformsCard({
+  brandId,
+  def,
+  featured,
+}: {
+  brandId: string
+  def: CategoryDef
+  featured?: boolean
+}) {
+  const [state, action, pending] = useActionState<ArsenalGenState, FormData>(
+    generateArsenalAsset,
+    {}
+  )
+  const [sport, setSport] = useState(UNIFORM_SPORTS[0]!)
+  const itemKeys = UNIFORM_ITEMS_BY_SPORT[sport] ?? []
+  const [item, setItem] = useState(itemKeys[0] ?? '')
+  // When sport changes, snap the item to the first one in the new list if
+  // the current one isn't valid for the new sport.
+  const onSportChange = (next: string) => {
+    setSport(next)
+    const list = UNIFORM_ITEMS_BY_SPORT[next] ?? []
+    if (!list.includes(item)) setItem(list[0] ?? '')
+  }
+  const [notes, setNotes] = useState('')
+  const url = state.url
+  return (
+    <form
+      action={action}
+      className={`flex flex-col gap-3 rounded-[var(--radius)] border bg-panel/40 p-4 ${
+        featured ? 'border-accent/40' : 'border-border'
+      }`}
+    >
+      <input type="hidden" name="brand_id" value={brandId} />
+      <input type="hidden" name="category" value={def.id} />
+      <input type="hidden" name="option" value={item} />
+      <input type="hidden" name="notes" value={notes} />
+      <input type="hidden" name="sport" value={sport} />
+      <CategoryHeader def={def} />
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Sport
+          </span>
+          <select
+            value={sport}
+            onChange={(e) => onSportChange(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+          >
+            {UNIFORM_SPORTS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Item ({itemKeys.length})
+          </span>
+          <select
+            value={item}
+            onChange={(e) => setItem(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+          >
+            {itemKeys.map((k) => (
+              <option key={k} value={k}>
+                {UNIFORM_ITEM_LABELS[k] ?? k}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {def.notesLabel && (
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {def.notesLabel}
+          </span>
+          <input
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="e.g. add red trim, retro feel"
+            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+          />
+        </label>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="text-display rounded-[var(--radius-sm)] bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-60"
+        >
+          {pending ? 'Generating…' : url ? 'Regenerate' : 'Generate'}
+        </button>
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-success"
+          >
+            ⬇ Download
+          </a>
+        )}
+      </div>
+      {pending && (
+        <p className="text-[10px] text-muted-foreground">
+          Our designer renders this in ~30–60 seconds. Stay on the page.
+        </p>
+      )}
+      {state.error && <p className="text-xs text-destructive">{state.error}</p>}
+    </form>
+  )
+}
+
+/**
+ * Logo On Your Photo — uploads a user photo, composites the talent's
+ * final logo over it at the chosen placement + size, returns a saved
+ * URL. NOT a generative call — sharp does the compositing server-side.
+ */
+const PLACEMENTS = [
+  { val: 'top_left', name: 'Top Left' },
+  { val: 'top_center', name: 'Top Center' },
+  { val: 'top_right', name: 'Top Right' },
+  { val: 'center_left', name: 'Center Left' },
+  { val: 'center', name: 'Center' },
+  { val: 'center_right', name: 'Center Right' },
+  { val: 'bottom_left', name: 'Bottom Left' },
+  { val: 'bottom_center', name: 'Bottom Center' },
+  { val: 'bottom_right', name: 'Bottom Right' },
+  { val: 'watermark', name: 'Watermark (Semi-transparent)' },
+]
+
+const SIZES = [
+  { val: 'small', name: 'Small (10%)' },
+  { val: 'medium', name: 'Medium (20%)' },
+  { val: 'large', name: 'Large (35%)' },
+]
+
+function LogoOnPhotoCard({
+  brandId,
+  def,
+  featured,
+}: {
+  brandId: string
+  def: CategoryDef
+  featured?: boolean
+}) {
+  const [state, action, pending] = useActionState<LogoOnPhotoState, FormData>(
+    generateLogoOnPhotoAction,
+    {}
+  )
+  const [placement, setPlacement] = useState(PLACEMENTS[8]!.val) // bottom_right
+  const [size, setSize] = useState(SIZES[1]!.val)
+  const url = state.url
+  return (
+    <form
+      action={action}
+      className={`flex flex-col gap-3 rounded-[var(--radius)] border bg-panel/40 p-4 ${
+        featured ? 'border-accent/40' : 'border-border'
+      }`}
+    >
+      <input type="hidden" name="brand_id" value={brandId} />
+      <CategoryHeader def={def} />
+
+      <label className="block">
+        <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          Your photo (PNG / JPG)
+        </span>
+        <input
+          type="file"
+          name="photo"
+          accept="image/png,image/jpeg"
+          required
+          className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs file:mr-3 file:rounded file:border-0 file:bg-primary/20 file:px-2 file:py-1 file:text-[10px] file:font-bold file:uppercase file:tracking-widest file:text-primary"
+        />
+      </label>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Placement
+          </span>
+          <select
+            name="placement"
+            value={placement}
+            onChange={(e) => setPlacement(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+          >
+            {PLACEMENTS.map((p) => (
+              <option key={p.val} value={p.val}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Logo size
+          </span>
+          <select
+            name="size"
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+          >
+            {SIZES.map((s) => (
+              <option key={s.val} value={s.val}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="text-display rounded-[var(--radius-sm)] bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-60"
+        >
+          {pending ? 'Compositing…' : url ? 'Re-composite' : 'Place logo on photo'}
+        </button>
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-success"
+          >
+            ⬇ Download
+          </a>
+        )}
+      </div>
+      {state.error && <p className="text-xs text-destructive">{state.error}</p>}
     </form>
   )
 }

@@ -74,6 +74,9 @@ export async function generateArsenalAsset(
   const option = String(form.get('option') ?? '')
   const styleOpt = String(form.get('style') ?? 'announcement')
   const notes = String(form.get('notes') ?? '')
+  // Optional sport override — used by the Sport Uniforms two-step picker.
+  // Falls back to the brand row's sport if not supplied.
+  const sportOverride = String(form.get('sport') ?? '')
 
   if (!brandId) return { error: 'Missing brand id' }
   if (!VALID.includes(category)) return { error: 'Unknown arsenal category' }
@@ -116,7 +119,7 @@ export async function generateArsenalAsset(
     tone: null,
     colorMode: 'dark',
     styleWords: 'bold, modern, dynamic',
-    sport: brand.sport,
+    sport: sportOverride || brand.sport,
     position: brand.athletic_position,
     email: profile?.email ?? null,
     phone: (profile as { phone?: string | null } | null)?.phone ?? null,
