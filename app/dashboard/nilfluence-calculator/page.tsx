@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { LocalTime } from '@/components/ui/local-time'
+import { autoPopularityFromProfile } from '@/lib/nilfluence-autocalc'
 import { CalculatorForm } from './form'
 
 export const metadata = { title: 'NILfluence Calculator' }
@@ -10,10 +12,22 @@ export default async function NilfluenceCalculatorPage() {
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('socials')
+    .select(
+      'display_name, sport, athletic_position, school, conference, division, jersey_number, hometown, city, us_state, bio, achievements, socials, phyllo_user_id'
+    )
     .eq('id', user.id)
     .maybeSingle()
-  const socials = (profile?.socials as Record<string, string> | null) ?? {}
+  const profileLike = (profile ?? {}) as Parameters<typeof autoPopularityFromProfile>[0]
+  const autoPop = autoPopularityFromProfile(profileLike)
+
+  // Pull the most recent calculation to hydrate the form with prior inputs.
+  const { data: latest } = await supabase
+    .from('nilfluence_calculations')
+    .select('inputs, result, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   const { data: recent } = await supabase
     .from('nilfluence_calculations')
@@ -21,6 +35,10 @@ export default async function NilfluenceCalculatorPage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(5)
+
+  const lastInputs =
+    (latest?.inputs as Record<string, unknown> | null)?.nilfluence ?? null
+  const lastBms = (latest?.inputs as Record<string, unknown> | null)?.bms ?? null
 
   return (
     <div className="space-y-8">
@@ -36,19 +54,17 @@ export default async function NilfluenceCalculatorPage() {
           Your NIL value, scored.
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Plug in your social numbers and a few popularity dimensions. We&apos;ll calculate your
-          NILfluence Score, suggest a per-post value, and (optionally) push the result over to
-          NILiance so brands can see it.
+          Plug in your social numbers. We pre-fill popularity inputs from your profile so the
+          first score is meaningful; tweak any number to refine. Save the result and brands can see
+          it through NILiance.
         </p>
-        {Object.values(socials).some(Boolean) && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Tip: you already have socials on your profile — we&apos;ll cross-reference them when
-            we submit.
-          </p>
-        )}
       </div>
 
-      <CalculatorForm />
+      <CalculatorForm
+        lastInputs={lastInputs as Record<string, unknown> | null}
+        lastBms={lastBms as Record<string, unknown> | null}
+        autoPopularity={autoPop}
+      />
 
       {(recent ?? []).length > 0 && (
         <section>
@@ -65,7 +81,7 @@ export default async function NilfluenceCalculatorPage() {
                 >
                   <div>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(r.created_at).toLocaleString()}
+                      <LocalTime value={r.created_at} mode="datetime" />
                     </p>
                     <p className="mt-1">
                       NILfluence{' '}

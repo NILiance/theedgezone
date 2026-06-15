@@ -1576,6 +1576,50 @@ export type Database = {
         }
         Relationships: []
       }
+      phyllo_social_stats: {
+        Row: {
+          avg_comments: number
+          avg_likes: number
+          avg_shares: number
+          engagement_rate: number
+          fetched_at: string
+          followers: number
+          handle: string | null
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          avg_comments?: number
+          avg_likes?: number
+          avg_shares?: number
+          engagement_rate?: number
+          fetched_at?: string
+          followers?: number
+          handle?: string | null
+          platform: string
+          user_id: string
+        }
+        Update: {
+          avg_comments?: number
+          avg_likes?: number
+          avg_shares?: number
+          engagement_rate?: number
+          fetched_at?: string
+          followers?: number
+          handle?: string | null
+          platform?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phyllo_social_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       podcast_episodes: {
         Row: {
           audio_url: string | null

@@ -2,6 +2,9 @@
 
 import { useActionState, useMemo, useState } from 'react'
 import { computeNilfluence, computeBMS } from '@/lib/nilfluence'
+import type { AutoPopularity } from '@/lib/nilfluence-autocalc'
+import { ScoreRing } from '@/components/dashboard/score-ring'
+import { Button } from '@/components/ui/button'
 import { runCalculator, type CalcState } from './actions'
 
 const PLATFORMS = [
@@ -18,9 +21,56 @@ const FOLLOWER_FIELD: Record<(typeof PLATFORMS)[number]['key'], string> = {
   yt: 'yt_subscribers',
 }
 
-export function CalculatorForm() {
+interface SavedPlatform {
+  followers?: number
+  likes_per_post?: number
+  comments_per_post?: number
+  shares_per_post?: number
+}
+
+interface FormProps {
+  lastInputs: Record<string, unknown> | null
+  lastBms: Record<string, unknown> | null
+  autoPopularity: AutoPopularity
+}
+
+export function CalculatorForm({ lastInputs, lastBms, autoPopularity }: FormProps) {
   const [state, action, pending] = useActionState<CalcState, FormData>(runCalculator, {})
-  const [snapshot, setSnapshot] = useState<Record<string, number>>({})
+
+  // Initial snapshot pulls from the last saved calculation, falling back to
+  // auto-calculated popularity from the profile.
+  const initial = useMemo<Record<string, number>>(() => {
+    const platforms = (lastInputs ?? {}) as Record<string, SavedPlatform>
+    const li = lastInputs as Record<string, unknown> | null
+    const bms = lastBms as Record<string, number> | null
+    return {
+      ig_followers: platforms.instagram?.followers ?? 0,
+      ig_likes: platforms.instagram?.likes_per_post ?? 0,
+      ig_comments: platforms.instagram?.comments_per_post ?? 0,
+      ig_shares: platforms.instagram?.shares_per_post ?? 0,
+      tt_followers: platforms.tiktok?.followers ?? 0,
+      tt_likes: platforms.tiktok?.likes_per_post ?? 0,
+      tt_comments: platforms.tiktok?.comments_per_post ?? 0,
+      tt_shares: platforms.tiktok?.shares_per_post ?? 0,
+      tw_followers: platforms.twitter?.followers ?? 0,
+      tw_likes: platforms.twitter?.likes_per_post ?? 0,
+      tw_comments: platforms.twitter?.comments_per_post ?? 0,
+      tw_shares: platforms.twitter?.shares_per_post ?? 0,
+      yt_subscribers: platforms.youtube?.followers ?? 0,
+      yt_likes: platforms.youtube?.likes_per_post ?? 0,
+      yt_comments: platforms.youtube?.comments_per_post ?? 0,
+      yt_shares: platforms.youtube?.shares_per_post ?? 0,
+      athlete_popularity: (li?.['athlete_popularity'] as number | undefined) ?? autoPopularity.athlete,
+      team_popularity: (li?.['team_popularity'] as number | undefined) ?? autoPopularity.team,
+      market_size: (li?.['market_size'] as number | undefined) ?? autoPopularity.market,
+      adjustment_factor: (li?.['adjustment_factor'] as number | undefined) ?? 0,
+      bms_i: bms?.i ?? 0,
+      bms_d: bms?.d ?? 0,
+      bms_o: bms?.o ?? 0,
+    }
+  }, [lastInputs, lastBms, autoPopularity])
+
+  const [snapshot, setSnapshot] = useState<Record<string, number>>(initial)
 
   const liveResult = useMemo(() => {
     const get = (k: string) => snapshot[k] ?? 0
@@ -53,9 +103,6 @@ export function CalculatorForm() {
       team_popularity: get('team_popularity'),
       market_size: get('market_size'),
       adjustment_factor: get('adjustment_factor'),
-      profit_per_product: get('profit_per_product') || undefined,
-      purchase_conversion_rate:
-        get('purchase_conversion_rate') > 0 ? get('purchase_conversion_rate') / 100 : undefined,
     })
     const bms = computeBMS({ i: get('bms_i'), d: get('bms_d'), o: get('bms_o') })
     return { result, bms }
@@ -71,27 +118,51 @@ export function CalculatorForm() {
       <form action={action} className="space-y-6">
         {/* Social platforms */}
         <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-5">
-          <p className="text-eyebrow text-primary">Social numbers</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Per-post averages over the last ~30 days work best.
-          </p>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <p className="text-eyebrow text-primary">Social numbers</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Per-post averages over the last ~30 days work best.
+              </p>
+            </div>
+            <PullFromPhylloButton
+              onPulled={(pulled) => {
+                setSnapshot((prev) => ({ ...prev, ...pulled }))
+              }}
+            />
+          </div>
           <div className="mt-4 space-y-4">
             {PLATFORMS.map((p) => (
-              <div key={p.key} className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-3">
+              <div
+                key={p.key}
+                className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-3"
+              >
                 <p className="text-display text-sm font-bold">{p.label}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <FieldNumber
                     name={FOLLOWER_FIELD[p.key]}
                     label={p.followerLabel}
+                    value={snapshot[FOLLOWER_FIELD[p.key]] ?? 0}
                     onChange={update}
                   />
-                  <FieldNumber name={`${p.key}_likes`} label="Likes / post" onChange={update} />
+                  <FieldNumber
+                    name={`${p.key}_likes`}
+                    label="Likes / post"
+                    value={snapshot[`${p.key}_likes`] ?? 0}
+                    onChange={update}
+                  />
                   <FieldNumber
                     name={`${p.key}_comments`}
                     label="Comments / post"
+                    value={snapshot[`${p.key}_comments`] ?? 0}
                     onChange={update}
                   />
-                  <FieldNumber name={`${p.key}_shares`} label="Shares / post" onChange={update} />
+                  <FieldNumber
+                    name={`${p.key}_shares`}
+                    label="Shares / post"
+                    value={snapshot[`${p.key}_shares`] ?? 0}
+                    onChange={update}
+                  />
                 </div>
               </div>
             ))}
@@ -102,57 +173,35 @@ export function CalculatorForm() {
         <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-5">
           <p className="text-eyebrow text-primary">Popularity inputs</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            All on a 0–100 scale. Don&apos;t guess — leave at 50 for an average baseline.
+            We pre-fill from your profile. Tweak if you know better than our auto-estimate.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <FieldRange
+            <FieldNumber
               name="athlete_popularity"
               label="Athlete popularity"
-              hint="Awards, search trends, media presence"
+              value={snapshot.athlete_popularity ?? 0}
+              hint={`Auto: ${autoPopularity.athlete} (${autoPopularity.notes.athlete})`}
               onChange={update}
-              defaultValue={50}
             />
-            <FieldRange
+            <FieldNumber
               name="team_popularity"
               label="Team popularity"
-              hint="Conference, fanbase, TV coverage"
+              value={snapshot.team_popularity ?? 0}
+              hint={`Auto: ${autoPopularity.team} (${autoPopularity.notes.team})`}
               onChange={update}
-              defaultValue={50}
             />
-            <FieldRange
+            <FieldNumber
               name="market_size"
               label="Market size"
-              hint="Local + regional NIL potential"
+              value={snapshot.market_size ?? 0}
+              hint={`Auto: ${autoPopularity.market} (${autoPopularity.notes.market})`}
               onChange={update}
-              defaultValue={50}
             />
-            <FieldRange
+            <FieldNumber
               name="adjustment_factor"
-              label="Adjustment factor"
-              hint="Brand-friendliness nudge, –48 to +48"
-              min={-48}
-              max={48}
-              defaultValue={0}
-              onChange={update}
-            />
-          </div>
-        </section>
-
-        {/* Optional monetization */}
-        <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-5">
-          <p className="text-eyebrow text-primary">Optional: monetization</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <FieldNumber
-              name="profit_per_product"
-              label="Profit / product sold ($)"
-              hint="Net margin after COGS"
-              onChange={update}
-            />
-            <FieldNumber
-              name="purchase_conversion_rate"
-              label="Engagement → purchase rate (%)"
-              hint="Industry default is 0.5%"
-              step={0.1}
+              label="Adjustment factor (–48 to +48)"
+              value={snapshot.adjustment_factor ?? 0}
+              hint="Brand-friendliness nudge"
               onChange={update}
             />
           </div>
@@ -163,34 +212,28 @@ export function CalculatorForm() {
           <p className="text-eyebrow text-primary">Brand Match (optional)</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Score a hypothetical brand pairing on industry fit, demographic match, and objective
-            match. Each is 0–2.
+            match (0–2 each).
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <FieldRange
+            <FieldNumber
               name="bms_i"
               label="Industry fit (I)"
-              min={0}
-              max={2}
+              value={snapshot.bms_i ?? 0}
               step={0.5}
-              defaultValue={0}
               onChange={update}
             />
-            <FieldRange
+            <FieldNumber
               name="bms_d"
               label="Demographic match (D)"
-              min={0}
-              max={2}
+              value={snapshot.bms_d ?? 0}
               step={0.5}
-              defaultValue={0}
               onChange={update}
             />
-            <FieldRange
+            <FieldNumber
               name="bms_o"
               label="Objective match (O)"
-              min={0}
-              max={2}
+              value={snapshot.bms_o ?? 0}
               step={0.5}
-              defaultValue={0}
               onChange={update}
             />
           </div>
@@ -212,7 +255,9 @@ export function CalculatorForm() {
         {state.ok && (
           <p className="rounded-[var(--radius-sm)] border border-success/40 bg-success/5 p-3 text-sm text-success">
             Saved. {state.synced && '✓ Sent to NILiance.'}
-            {state.syncError && <span className="text-destructive"> · NILiance sync failed: {state.syncError}</span>}
+            {state.syncError && (
+              <span className="text-destructive"> · NILiance sync failed: {state.syncError}</span>
+            )}
           </p>
         )}
 
@@ -221,37 +266,38 @@ export function CalculatorForm() {
           disabled={pending}
           className="text-display rounded-[var(--radius-sm)] bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
         >
-          {pending ? 'Calculating…' : 'Calculate'}
+          {pending ? 'Calculating…' : 'Calculate & save'}
         </button>
       </form>
 
       {/* Live preview */}
       <aside className="space-y-4">
         <div className="sticky top-6 space-y-4">
-          <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-5 shadow-elevated">
-            <p className="text-eyebrow text-primary">NILfluence Score</p>
-            <p className="text-display mt-2 text-5xl font-black text-primary">
-              {liveResult.result.nilfluence_score.toFixed(1)}
-            </p>
-            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-              <p>
-                Total followers:{' '}
-                <span className="font-bold text-foreground">
+          <div className="flex flex-col items-center rounded-[var(--radius)] border border-border bg-panel/40 p-5 shadow-elevated">
+            <ScoreRing score={liveResult.result.nilfluence_score} size={200} label="NILfluence" />
+            <div className="mt-3 grid w-full grid-cols-2 gap-2 text-center text-xs">
+              <div className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Reach
+                </p>
+                <p className="text-display mt-1 font-bold">
                   {liveResult.result.total_followers.toLocaleString()}
-                </span>
-              </p>
-              <p>
-                Engagement rate:{' '}
-                <span className="font-bold text-foreground">
+                </p>
+              </div>
+              <div className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</p>
+                <p className="text-display mt-1 font-bold">
                   {(liveResult.result.total_engagement_rate * 100).toFixed(2)}%
-                </span>
-              </p>
-              <p>
-                Approx. post value:{' '}
-                <span className="font-bold text-foreground">
+                </p>
+              </div>
+              <div className="col-span-2 rounded-[var(--radius-sm)] border border-border bg-background/40 p-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Approx. post value
+                </p>
+                <p className="text-display mt-1 font-bold text-primary">
                   ${liveResult.result.approximate_post_value.toFixed(0)}
-                </span>
-              </p>
+                </p>
+              </div>
             </div>
           </div>
           {(snapshot.bms_i || snapshot.bms_d || snapshot.bms_o) && (
@@ -268,45 +314,85 @@ export function CalculatorForm() {
               </p>
             </div>
           )}
-          {liveResult.result.monetization && (
-            <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-5 shadow-elevated">
-              <p className="text-eyebrow text-primary">Monetization</p>
-              <div className="mt-3 space-y-1 text-xs">
-                <p>
-                  Break-even:{' '}
-                  <span className="text-display font-bold text-foreground">
-                    {liveResult.result.monetization.products_to_breakeven.toFixed(0)} units
-                  </span>
-                </p>
-                <p>
-                  Est. units sold:{' '}
-                  <span className="text-display font-bold text-foreground">
-                    {liveResult.result.monetization.estimated_products_sold.toFixed(0)}
-                  </span>
-                </p>
-                <p>
-                  Revenue:{' '}
-                  <span className="text-display font-bold text-primary">
-                    ${liveResult.result.monetization.revenue.toFixed(0)}
-                  </span>
-                </p>
-                <p>
-                  ROI:{' '}
-                  <span
-                    className={`text-display font-bold ${
-                      liveResult.result.monetization.roi >= 0
-                        ? 'text-success'
-                        : 'text-destructive'
-                    }`}
-                  >
-                    {(liveResult.result.monetization.roi * 100).toFixed(0)}%
-                  </span>
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </aside>
+    </div>
+  )
+}
+
+function PullFromPhylloButton({ onPulled }: { onPulled: (snap: Record<string, number>) => void }) {
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pulled, setPulled] = useState<number | null>(null)
+
+  const pull = async () => {
+    setPending(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/phyllo/sync', { method: 'POST' })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(data.error ?? `HTTP ${res.status}`)
+      }
+      const { synced } = (await res.json()) as { synced: number }
+      setPulled(synced)
+      // Load the freshly cached stats.
+      const statsRes = await fetch('/api/phyllo/sync/latest')
+      if (statsRes.ok) {
+        const stats = (await statsRes.json()) as {
+          platforms: Record<
+            string,
+            {
+              followers?: number
+              avg_likes?: number
+              avg_comments?: number
+              avg_shares?: number
+            }
+          >
+        }
+        const update: Record<string, number> = {}
+        if (stats.platforms.instagram) {
+          update.ig_followers = stats.platforms.instagram.followers ?? 0
+          update.ig_likes = stats.platforms.instagram.avg_likes ?? 0
+          update.ig_comments = stats.platforms.instagram.avg_comments ?? 0
+          update.ig_shares = stats.platforms.instagram.avg_shares ?? 0
+        }
+        if (stats.platforms.tiktok) {
+          update.tt_followers = stats.platforms.tiktok.followers ?? 0
+          update.tt_likes = stats.platforms.tiktok.avg_likes ?? 0
+          update.tt_comments = stats.platforms.tiktok.avg_comments ?? 0
+          update.tt_shares = stats.platforms.tiktok.avg_shares ?? 0
+        }
+        if (stats.platforms.twitter) {
+          update.tw_followers = stats.platforms.twitter.followers ?? 0
+          update.tw_likes = stats.platforms.twitter.avg_likes ?? 0
+          update.tw_comments = stats.platforms.twitter.avg_comments ?? 0
+          update.tw_shares = stats.platforms.twitter.avg_shares ?? 0
+        }
+        if (stats.platforms.youtube) {
+          update.yt_subscribers = stats.platforms.youtube.followers ?? 0
+          update.yt_likes = stats.platforms.youtube.avg_likes ?? 0
+          update.yt_comments = stats.platforms.youtube.avg_comments ?? 0
+          update.yt_shares = stats.platforms.youtube.avg_shares ?? 0
+        }
+        onPulled(update)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Pull failed')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <Button type="button" size="sm" variant="outline" onClick={pull} disabled={pending}>
+        {pending ? 'Pulling…' : '↻ Pull from Phyllo'}
+      </Button>
+      {pulled != null && !error && (
+        <p className="text-[10px] text-success">Pulled {pulled} platform{pulled === 1 ? '' : 's'}</p>
+      )}
+      {error && <p className="text-[10px] text-destructive">{error}</p>}
     </div>
   )
 }
@@ -316,12 +402,14 @@ function FieldNumber({
   label,
   hint,
   step,
+  value,
   onChange,
 }: {
   name: string
   label: string
   hint?: string
   step?: number
+  value: number
   onChange: (name: string, v: string) => void
 }) {
   return (
@@ -334,44 +422,7 @@ function FieldNumber({
         name={name}
         min={0}
         step={step ?? 1}
-        defaultValue={0}
-        onChange={(e) => onChange(name, e.target.value)}
-        className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-sm"
-      />
-      {hint && <span className="mt-1 block text-[10px] text-muted-foreground">{hint}</span>}
-    </label>
-  )
-}
-
-function FieldRange({
-  name,
-  label,
-  hint,
-  min = 0,
-  max = 100,
-  step = 1,
-  defaultValue = 50,
-  onChange,
-}: {
-  name: string
-  label: string
-  hint?: string
-  min?: number
-  max?: number
-  step?: number
-  defaultValue?: number
-  onChange: (name: string, v: string) => void
-}) {
-  return (
-    <label className="block text-sm">
-      <span className="block text-xs text-muted-foreground">{label}</span>
-      <input
-        type="number"
-        name={name}
-        min={min}
-        max={max}
-        step={step}
-        defaultValue={defaultValue}
+        value={value}
         onChange={(e) => onChange(name, e.target.value)}
         className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-sm"
       />

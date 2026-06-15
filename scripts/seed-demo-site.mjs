@@ -625,10 +625,202 @@ async function main() {
   await addPage(siteId, '/fans', 'For Fans', buildFans())
   await addPage(siteId, '/contact', 'Contact', buildContact())
 
+  console.log('› Seeding orders, NILfluence calculation, EPK, podcast…')
+  await seedOrders(userId)
+  await seedNilfluence(userId)
+  await seedEpk(userId)
+  await seedPodcast(userId)
+  await seedBusinessCard(userId)
+
   console.log('')
   console.log('Done. Public URLs:')
   console.log(`  https://theedgezone.vercel.app/site/${DEMO_SLUG}`)
+  console.log(`  https://theedgezone.vercel.app/t/${DEMO_SLUG}`)
   console.log(`  https://${DEMO_SLUG}.mytalentsite.com (if DNS is wired)`)
+}
+
+async function seedOrders(userId) {
+  // Clear prior demo orders, then insert a fresh set so My Products shows.
+  await supabase.from('orders').delete().eq('user_id', userId).eq('product_slug', 'personal-website')
+  await supabase.from('orders').delete().eq('user_id', userId).eq('product_slug', 'electronic-press-kit')
+  await supabase.from('orders').delete().eq('user_id', userId).eq('product_slug', 'personal-brand-design')
+  await supabase.from('orders').delete().eq('user_id', userId).eq('product_slug', 'start-a-podcast')
+  await supabase.from('orders').delete().eq('user_id', userId).eq('product_slug', 'digital-business-cards')
+
+  const now = new Date()
+  const daysAgo = (n) => new Date(now.getTime() - n * 86400000).toISOString()
+
+  await supabase.from('orders').insert([
+    {
+      user_id: userId,
+      product_slug: 'personal-website',
+      product_title: 'Personal Website',
+      amount_cents: 14900,
+      status: 'paid',
+      purchased_at: daysAgo(45),
+      plan: 'one_time',
+    },
+    {
+      user_id: userId,
+      product_slug: 'electronic-press-kit',
+      product_title: 'Electronic Press Kit',
+      amount_cents: 9900,
+      status: 'paid',
+      purchased_at: daysAgo(30),
+      plan: 'one_time',
+    },
+    {
+      user_id: userId,
+      product_slug: 'personal-brand-design',
+      product_title: 'Personal Brand Design',
+      amount_cents: 39900,
+      status: 'paid',
+      purchased_at: daysAgo(60),
+      plan: 'one_time',
+    },
+    {
+      user_id: userId,
+      product_slug: 'start-a-podcast',
+      product_title: 'Start a Podcast',
+      amount_cents: 19900,
+      status: 'paid',
+      purchased_at: daysAgo(14),
+      plan: 'one_time',
+    },
+    {
+      user_id: userId,
+      product_slug: 'digital-business-cards',
+      product_title: 'Digital Business Card',
+      amount_cents: 4900,
+      status: 'paid',
+      purchased_at: daysAgo(7),
+      plan: 'one_time',
+    },
+  ]).throwOnError()
+}
+
+async function seedNilfluence(userId) {
+  await supabase.from('nilfluence_calculations').delete().eq('user_id', userId)
+  const inputs = {
+    nilfluence: {
+      instagram: { followers: 52000, likes_per_post: 4100, comments_per_post: 180, shares_per_post: 95 },
+      tiktok: { followers: 31000, likes_per_post: 8200, comments_per_post: 320, shares_per_post: 460 },
+      twitter: { followers: 8400, likes_per_post: 210, comments_per_post: 18, shares_per_post: 32 },
+      youtube: { followers: 6200, likes_per_post: 540, comments_per_post: 78, shares_per_post: 14 },
+      athlete_popularity: 68,
+      team_popularity: 78,
+      market_size: 62,
+      adjustment_factor: 5,
+    },
+    bms: { i: 0, d: 0, o: 0 },
+  }
+  // Match the live formula so the demo number looks plausible.
+  const totalFollowers = 52000 + 31000 + 8400 + 6200
+  const totalEng = 4100 + 180 + 95 + 8200 + 320 + 460 + 210 + 18 + 32 + 540 + 78 + 14
+  const overallER = totalEng / totalFollowers
+  const reachScore = Math.min(100, (Math.log10(totalFollowers + 1) / Math.log10(10_000_000)) * 100)
+  const engagementScore = Math.min(100, overallER * 100 * 20)
+  const popularityAvg = (68 + 78 + 62) / 3
+  const score = Math.min(100, reachScore * 0.25 + engagementScore * 0.25 + popularityAvg * 0.5 + 5)
+  const postValue = (totalFollowers / 1000) * (overallER * 10 * 100)
+
+  await supabase.from('nilfluence_calculations').insert({
+    user_id: userId,
+    inputs,
+    result: {
+      nilfluence: {
+        nilfluence_score: Number(score.toFixed(1)),
+        total_followers: totalFollowers,
+        total_engagement_rate: overallER,
+        approximate_post_value: Number(postValue.toFixed(0)),
+      },
+      bms: { bms_100: 0 },
+    },
+  }).throwOnError()
+}
+
+async function seedEpk(userId) {
+  await supabase.from('epks').delete().eq('user_id', userId)
+  const { data: epk } = await supabase
+    .from('epks')
+    .insert({
+      user_id: userId,
+      slug: DEMO_SLUG,
+      display_name: DEMO_NAME,
+      tagline: 'Catch the moment.',
+      status: 'published',
+      theme: { primary: '#E63946', secondary: '#0a0a0a' },
+      social: {
+        instagram: 'https://instagram.com/marcushill11',
+        tiktok: 'https://tiktok.com/@marcushill11',
+        twitter: 'https://x.com/marcushill11',
+        youtube: 'https://youtube.com/@marcushill11',
+      },
+      published_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+  if (!epk) return
+  await supabase.from('epk_blocks').insert([
+    { epk_id: epk.id, position: 0, block_type: 'hero', props: {
+      heading: 'Marcus Hill · Press Kit',
+      subheading: 'WR · State University · 2024 All-Conference',
+      bg_image: IMG.heroAction,
+      cta_text: 'Contact agent',
+      cta_url: 'mailto:agent@demo.theedgezone.com',
+      overlay_color: '#000', overlay_opacity: 0.5,
+    } },
+    { epk_id: epk.id, position: 1, block_type: 'stats', props: {
+      title: 'Career snapshot',
+      stats: [
+        { icon: 'emoji:🏆', value: '2024', label: 'All-Conference' },
+        { icon: 'emoji:🎯', value: '78', label: 'Receptions' },
+        { icon: 'emoji:⚡', value: '4.42', label: '40-yd' },
+        { icon: 'emoji:📈', value: '14.8', label: 'Yds/Catch' },
+      ],
+    } },
+    { epk_id: epk.id, position: 2, block_type: 'text', props: {
+      content: '<p>Four-year letterman. Communications major. NIL-active across IG, TikTok, YouTube. Bookings via agent.</p>',
+    } },
+    { epk_id: epk.id, position: 3, block_type: 'contact_form', props: { title: 'Inquire', button_text: 'Send' } },
+  ]).throwOnError()
+}
+
+async function seedPodcast(userId) {
+  await supabase.from('podcasts').delete().eq('user_id', userId)
+  await supabase.from('podcasts').insert({
+    user_id: userId,
+    slug: DEMO_SLUG,
+    title: 'On the Route',
+    description: 'Weekly conversations on route-running, recovery, and life in the slot.',
+    status: 'live',
+    cover_url: IMG.weightRoom,
+  }).throwOnError()
+}
+
+async function seedBusinessCard(userId) {
+  await supabase.from('digital_business_cards').delete().eq('user_id', userId)
+  await supabase.from('digital_business_cards').insert({
+    user_id: userId,
+    slug: DEMO_SLUG,
+    display_name: DEMO_NAME,
+    title: 'WR · #11',
+    organization: 'State University · Big Atlantic',
+    tagline: 'Catch the moment.',
+    phone: '+1 (704) 555-0111',
+    email: 'agent@demo.theedgezone.com',
+    website: `https://theedgezone.vercel.app/site/${DEMO_SLUG}`,
+    socials: {
+      instagram: 'https://instagram.com/marcushill11',
+      tiktok: 'https://tiktok.com/@marcushill11',
+      twitter: 'https://x.com/marcushill11',
+      youtube: 'https://youtube.com/@marcushill11',
+    },
+    primary_color: '#E63946',
+    secondary_color: '#0a0a0a',
+    status: 'published',
+    published_at: new Date().toISOString(),
+  }).throwOnError()
 }
 
 main().catch((err) => {

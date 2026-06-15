@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { getDashboardData, getProductActions, readinessGrade, readinessHint, getProfileSectionPercents } from '@/lib/dashboard'
 import { PostPurchaseBanner } from '@/components/dashboard/post-purchase-banner'
+import { ScoreRing } from '@/components/dashboard/score-ring'
+import { createClient } from '@/lib/supabase/server'
 import { NilianceBanner } from '@/components/dashboard/niliance-banner'
 import { DashboardTabs } from '@/components/dashboard/dashboard-tabs'
 import { Button } from '@/components/ui/button'
@@ -37,6 +39,19 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   })
   const sectionPercents = recentOrder ? await getProfileSectionPercents(user.id) : {}
 
+  // Latest NILfluence calculation for the ring.
+  const supabase = await createClient()
+  const { data: latestScore } = await supabase
+    .from('nilfluence_calculations')
+    .select('result')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nilfluenceScore = (
+    latestScore?.result as { nilfluence?: { nilfluence_score?: number } } | null
+  )?.nilfluence?.nilfluence_score ?? null
+
   return (
     <div className="space-y-8">
       {checkoutSuccess && (
@@ -70,7 +85,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       )}
 
       {/* Heading */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-eyebrow text-accent">My Dashboard</p>
           <h1 className="text-display mt-2 flex flex-wrap items-center gap-3 text-4xl font-black tracking-tight">
@@ -78,11 +93,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <RoleBadge userType={userType} />
           </h1>
         </div>
-        <Link href="/dashboard/profile">
-          <Button size="sm" variant="outline">
-            My Profile
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          {nilfluenceScore != null && (
+            <Link href="/dashboard/nilfluence-calculator" className="hidden sm:block">
+              <ScoreRing score={nilfluenceScore} size={88} thickness={8} label="NILfluence" />
+            </Link>
+          )}
+          <Link href="/dashboard/profile">
+            <Button size="sm" variant="outline">
+              My Profile
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Profile completion */}
