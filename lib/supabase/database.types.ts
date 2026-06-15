@@ -496,6 +496,7 @@ export type Database = {
       }
       brand_designs: {
         Row: {
+          accent_color: string | null
           active_logo_id: string | null
           asset_credits_total: number
           asset_credits_used: number
@@ -513,6 +514,7 @@ export type Database = {
           jersey_number: string | null
           logo_concept_credits: number
           mascot: string | null
+          neutral_color: string | null
           order_id: string | null
           primary_color: string | null
           school: string | null
@@ -524,6 +526,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accent_color?: string | null
           active_logo_id?: string | null
           asset_credits_total?: number
           asset_credits_used?: number
@@ -541,6 +544,7 @@ export type Database = {
           jersey_number?: string | null
           logo_concept_credits?: number
           mascot?: string | null
+          neutral_color?: string | null
           order_id?: string | null
           primary_color?: string | null
           school?: string | null
@@ -552,6 +556,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          accent_color?: string | null
           active_logo_id?: string | null
           asset_credits_total?: number
           asset_credits_used?: number
@@ -569,6 +574,7 @@ export type Database = {
           jersey_number?: string | null
           logo_concept_credits?: number
           mascot?: string | null
+          neutral_color?: string | null
           order_id?: string | null
           primary_color?: string | null
           school?: string | null

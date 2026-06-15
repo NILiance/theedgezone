@@ -175,9 +175,30 @@ export default async function BrandDesignStudioPage({ params }: PageProps) {
                 Round {selectedConcept.round} concept chosen
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Assemble the kit to get the logo on white + transparent + 6 social avatar sizes
-                + color tokens, packaged in a ZIP.
+                We extracted colors from your logo and auto-assembled your brand kit. Colors below
+                are editable if you want a different reading.
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[
+                  { label: 'Primary', hex: brand.primary_color },
+                  { label: 'Secondary', hex: brand.secondary_color },
+                  { label: 'Accent', hex: (brand as { accent_color?: string | null }).accent_color },
+                  { label: 'Neutral', hex: (brand as { neutral_color?: string | null }).neutral_color },
+                ]
+                  .filter((c): c is { label: string; hex: string } => Boolean(c.hex))
+                  .map((c) => (
+                    <span
+                      key={c.label}
+                      className="text-display flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest"
+                    >
+                      <span
+                        className="inline-block h-3 w-3 rounded-sm border border-border"
+                        style={{ background: c.hex }}
+                      />
+                      {c.label} · <span className="font-mono">{c.hex}</span>
+                    </span>
+                  ))}
+              </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <AssembleKitButton brandId={brand.id} existingKitUrl={brand.brand_kit_url ?? null} />
                 <Link

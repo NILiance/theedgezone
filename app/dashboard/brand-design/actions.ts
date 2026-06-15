@@ -14,6 +14,7 @@ import {
 } from '@/lib/ideogram'
 import { provisionBrandDesign } from '@/lib/provisioning'
 import { assembleBrandKit } from '@/lib/brand-kit'
+import { extractPaletteFromUrl } from '@/lib/color-extract'
 import { uploadZipToDrive, gdriveConfigured } from '@/lib/gdrive'
 
 /**
@@ -234,14 +235,28 @@ export async function selectFinalConcept(formData: FormData) {
     .eq('id', parsed.data.concept_id)
 
   // Stamp the brand_design with the chosen URL + final status.
-  await supabase
-    .from('brand_designs')
-    .update({
-      status: 'selected',
-      final_logo_url: concept.image_url,
-      finalized_at: new Date().toISOString(),
-    })
-    .eq('id', concept.brand_design_id)
+  // Extract dominant colors from the chosen logo so the kit + downstream
+  // assets reflect what Ideogram actually rendered, not what the talent
+  // typed into their profile months ago. Failure is non-blocking — we
+  // keep the existing brand_designs colors if extraction errors.
+  let extracted: Awaited<ReturnType<typeof extractPaletteFromUrl>> | null = null
+  try {
+    extracted = await extractPaletteFromUrl(concept.image_url)
+  } catch (err) {
+    console.error('[brand-design] color extraction failed', err)
+  }
+
+  const update: Record<string, unknown> = {
+    status: 'selected',
+    final_logo_url: concept.image_url,
+    finalized_at: new Date().toISOString(),
+  }
+  if (extracted?.primary) update.primary_color = extracted.primary
+  if (extracted?.secondary) update.secondary_color = extracted.secondary
+  if (extracted?.accent) update.accent_color = extracted.accent
+  if (extracted?.neutral) update.neutral_color = extracted.neutral
+
+  await supabase.from('brand_designs').update(update).eq('id', concept.brand_design_id)
 
   // Auto-assemble the brand kit inline so the talent doesn't need a
   // second click. Matches the legacy WP plugin flow. Fire as a normal
@@ -266,17 +281,18 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
   const { data: brand } = await supabase
     .from('brand_designs')
     .select(
-      'id, user_id, brand_name, sport, athletic_position, school, jersey_number, primary_color, secondary_color, final_logo_url'
+      'id, user_id, brand_name, sport, athletic_position, school, jersey_number, primary_color, secondary_color, accent_color, neutral_color, final_logo_url'
     )
     .eq('id', brandId)
     .single()
   if (!brand || brand.user_id !== userId || !brand.final_logo_url) return null
 
-  // Profile pulls in tagline + font pair + accent if the user filled them
-  // in via the enhanced Brand profile section.
+  // Profile pulls in tagline + font pair if the user filled them in via the
+  // enhanced Brand profile section. Logo-extracted colors take precedence
+  // over profile colors because they reflect what Ideogram actually drew.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('brand_tagline, brand_font_pair, brand_accent_color')
+    .select('brand_tagline, brand_font_pair')
     .eq('id', userId)
     .maybeSingle()
 
@@ -288,7 +304,7 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
     jersey_number: brand.jersey_number,
     primary_color: brand.primary_color ?? '#000000',
     secondary_color: brand.secondary_color ?? '#ffffff',
-    accent_color: profile?.brand_accent_color ?? null,
+    accent_color: brand.accent_color ?? null,
     font_pair: profile?.brand_font_pair ?? null,
     tagline: profile?.brand_tagline ?? null,
     final_logo_url: brand.final_logo_url,
