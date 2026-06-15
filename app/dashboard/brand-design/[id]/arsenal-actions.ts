@@ -206,7 +206,14 @@ export async function generateArsenalAsset(
       brand_design_id: brandId,
       kind: category,
       url: result.url,
-      metadata: { provider: 'gemini', category, option, style: styleOpt, prompt: result.prompt },
+      metadata: {
+        provider: 'gemini',
+        category,
+        option,
+        style: styleOpt,
+        sport: sportOverride || null,
+        prompt: result.prompt,
+      },
     })
     await service
       .from('brand_designs')

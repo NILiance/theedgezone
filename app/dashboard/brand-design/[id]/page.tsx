@@ -9,6 +9,7 @@ import { refineRound } from '@/app/dashboard/brand-design/actions'
 import { AssembleKitButton } from './assemble-kit'
 import { AddonsSection } from './addons-section'
 import { ArsenalGrid } from './arsenal-grid'
+import { YourCreations } from './your-creations'
 import { PreferencesForm } from './preferences-form'
 import { GenerateConceptsButton } from './generate-form'
 import { ConceptsGrid } from './concepts-grid'
@@ -76,9 +77,17 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
 
   const { data: addonsData } = await supabase
     .from('brand_design_addons')
-    .select('kind, url, metadata, created_at')
+    .select('id, kind, url, metadata, created_at')
     .eq('brand_design_id', id)
+    .order('created_at', { ascending: false })
   const addons = (addonsData ?? []).map((a) => ({
+    kind: a.kind,
+    url: a.url ?? null,
+    metadata: (a.metadata as Record<string, unknown>) ?? {},
+    created_at: a.created_at,
+  }))
+  const creations = (addonsData ?? []).map((a) => ({
+    id: a.id,
     kind: a.kind,
     url: a.url ?? null,
     metadata: (a.metadata as Record<string, unknown>) ?? {},
@@ -234,6 +243,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           assetsUsed={brand.asset_credits_used ?? 0}
           assetsTotal={brand.asset_credits_total ?? 10}
           existingAddons={addons}
+          creations={creations}
         />
       )}
 
@@ -834,12 +844,14 @@ function ArsenalView({
   assetsUsed,
   assetsTotal,
   existingAddons,
+  creations,
 }: {
   brandId: string
   hasFinal: boolean
   assetsUsed: number
   assetsTotal: number
   existingAddons: Array<{ kind: string; url: string | null; metadata: Record<string, unknown>; created_at: string }>
+  creations: Array<{ id: string; kind: string; url: string | null; metadata: Record<string, unknown>; created_at: string }>
 }) {
   const remaining = Math.max(0, assetsTotal - assetsUsed)
   const pct = assetsTotal > 0 ? Math.min(100, Math.round((assetsUsed / assetsTotal) * 100)) : 0
@@ -888,6 +900,8 @@ function ArsenalView({
       </div>
 
       <ArsenalGrid brandId={brandId} hasFinal={hasFinal} />
+
+      <YourCreations brandId={brandId} creations={creations} />
 
       <div>
         <p className="text-eyebrow text-primary">Quick-generate add-ons</p>

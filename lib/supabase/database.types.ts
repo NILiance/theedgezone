@@ -300,6 +300,81 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_asset_quote_requests: {
+        Row: {
+          addon_id: string | null
+          addon_kind: string | null
+          addon_url: string | null
+          brand_design_id: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          delivery_address: string | null
+          id: string
+          notes: string | null
+          quantity: number | null
+          quoted_amount_cents: number | null
+          quoted_at: string | null
+          quoted_by: string | null
+          sizes: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          addon_id?: string | null
+          addon_kind?: string | null
+          addon_url?: string | null
+          brand_design_id: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          delivery_address?: string | null
+          id?: string
+          notes?: string | null
+          quantity?: number | null
+          quoted_amount_cents?: number | null
+          quoted_at?: string | null
+          quoted_by?: string | null
+          sizes?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          addon_id?: string | null
+          addon_kind?: string | null
+          addon_url?: string | null
+          brand_design_id?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          delivery_address?: string | null
+          id?: string
+          notes?: string | null
+          quantity?: number | null
+          quoted_amount_cents?: number | null
+          quoted_at?: string | null
+          quoted_by?: string | null
+          sizes?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_asset_quote_requests_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "brand_design_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_asset_quote_requests_brand_design_id_fkey"
+            columns: ["brand_design_id"]
+            isOneToOne: false
+            referencedRelation: "brand_designs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_assets: {
         Row: {
           asset_type: string
