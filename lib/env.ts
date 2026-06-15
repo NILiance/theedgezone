@@ -37,6 +37,8 @@ const envSchema = z.object({
   PHYLLO_CLIENT_SECRET: z.string().optional(),
   PHYLLO_ENVIRONMENT: z.enum(['sandbox', 'production', 'staging']).default('sandbox'),
   HEYGEN_API_KEY: z.string().optional(),
+  VECTORIZER_AI_API_ID: z.string().optional(),
+  VECTORIZER_AI_API_SECRET: z.string().optional(),
   GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   GOOGLE_DRIVE_PARENT_FOLDER_ID: z.string().optional(),
 
@@ -82,6 +84,8 @@ if (isServer) {
     PHYLLO_CLIENT_SECRET: process.env.PHYLLO_CLIENT_SECRET,
     PHYLLO_ENVIRONMENT: process.env.PHYLLO_ENVIRONMENT,
     HEYGEN_API_KEY: process.env.HEYGEN_API_KEY,
+    VECTORIZER_AI_API_ID: process.env.VECTORIZER_AI_API_ID,
+    VECTORIZER_AI_API_SECRET: process.env.VECTORIZER_AI_API_SECRET,
     GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON,
     GOOGLE_DRIVE_PARENT_FOLDER_ID: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID,
     SHARETRIBE_CLIENT_ID: process.env.SHARETRIBE_CLIENT_ID,

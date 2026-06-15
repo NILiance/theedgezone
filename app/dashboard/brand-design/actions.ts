@@ -243,7 +243,93 @@ export async function selectFinalConcept(formData: FormData) {
     })
     .eq('id', concept.brand_design_id)
 
+  // Auto-assemble the brand kit inline so the talent doesn't need a
+  // second click. Matches the legacy WP plugin flow. Fire as a normal
+  // call (not background) so any failure surfaces in the action result.
+  try {
+    await assembleKitForBrand(concept.brand_design_id, user.id)
+  } catch (err) {
+    // Kit failure shouldn't block the final-selection write — the talent
+    // can still hit the manual "Assemble brand kit" button.
+    console.error('[brand-design] auto-assemble failed', err)
+  }
+
   revalidatePath(`/dashboard/brand-design/${concept.brand_design_id}`)
+}
+
+/**
+ * Build + upload the brand kit ZIP for a brand_designs row. Pulled out of
+ * assembleBrandKit so selectFinalConcept can call it inline.
+ */
+async function assembleKitForBrand(brandId: string, userId: string): Promise<string | null> {
+  const supabase = await createClient()
+  const { data: brand } = await supabase
+    .from('brand_designs')
+    .select(
+      'id, user_id, brand_name, sport, athletic_position, school, jersey_number, primary_color, secondary_color, final_logo_url'
+    )
+    .eq('id', brandId)
+    .single()
+  if (!brand || brand.user_id !== userId || !brand.final_logo_url) return null
+
+  // Profile pulls in tagline + font pair + accent if the user filled them
+  // in via the enhanced Brand profile section.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('brand_tagline, brand_font_pair, brand_accent_color')
+    .eq('id', userId)
+    .maybeSingle()
+
+  const kit = await assembleBrandKit({
+    brand_name: brand.brand_name ?? 'untitled',
+    sport: brand.sport,
+    athletic_position: brand.athletic_position,
+    school: brand.school,
+    jersey_number: brand.jersey_number,
+    primary_color: brand.primary_color ?? '#000000',
+    secondary_color: brand.secondary_color ?? '#ffffff',
+    accent_color: profile?.brand_accent_color ?? null,
+    font_pair: profile?.brand_font_pair ?? null,
+    tagline: profile?.brand_tagline ?? null,
+    final_logo_url: brand.final_logo_url,
+  })
+
+  let publicUrl: string | null = null
+  let driveId: string | null = null
+  if (gdriveConfigured()) {
+    try {
+      const folder = brand.brand_name ?? `brand-${brand.id.slice(0, 6)}`
+      const up = await uploadZipToDrive(kit.zipBuffer, kit.filename, folder)
+      publicUrl = up.webViewLink
+      driveId = up.fileId
+    } catch (err) {
+      console.error('[brand-kit] Drive upload failed, falling back to Storage', err)
+    }
+  }
+
+  if (!publicUrl) {
+    const path = `${userId}/brand-kits/${brand.id}/${kit.filename}`
+    const { error: upErr } = await supabase.storage
+      .from('site-assets')
+      .upload(path, new Uint8Array(kit.zipBuffer), {
+        contentType: 'application/zip',
+        upsert: true,
+      })
+    if (upErr) throw new Error(upErr.message)
+    const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
+    publicUrl = pub.publicUrl
+  }
+
+  await supabase
+    .from('brand_designs')
+    .update({
+      brand_kit_url: publicUrl,
+      brand_kit_drive_id: driveId,
+      brand_kit_assembled_at: new Date().toISOString(),
+    })
+    .eq('id', brandId)
+
+  return publicUrl
 }
 
 const saveCanvasSchema = z.object({
