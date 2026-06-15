@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { SERVICES } from '@/lib/services-data'
+import type { ProfileSectionKey } from '@/lib/profile-sections-by-product'
 
 export interface DashboardProfile {
   id: string
@@ -53,6 +54,47 @@ export const getDashboardData = cache(async (userId: string) => {
 
   return { profile, orders }
 })
+
+/**
+ * Computes per-section completion percentages from a profile row.
+ * Same logic the profile editor uses — extracted here so the dashboard
+ * banner can reuse it without re-loading the profile.
+ */
+export async function getProfileSectionPercents(
+  userId: string
+): Promise<Partial<Record<ProfileSectionKey, number>>> {
+  const supabase = await createClient()
+  const { data: p } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle()
+  if (!p) return {}
+  const socials = (p.socials as Record<string, string> | null) ?? {}
+
+  const filled = (xs: unknown[]) =>
+    xs.filter((v) => v !== null && v !== undefined && v !== '').length
+  const pct = (filled: number, total: number) =>
+    total === 0 ? 0 : Math.round((filled / total) * 100)
+
+  const basics = [p.display_name, p.phone, p.street_address, p.city, p.us_state, p.website_url, p.weight_lbs, p.hometown, p.height_inches, p.avatar_url]
+  const athletic = [p.sport, p.athletic_position, p.school, p.conference, p.division, p.jersey_number, p.date_of_birth]
+  const brand = [p.brand_primary_color, p.brand_secondary_color, p.brand_tagline, p.brand_voice]
+  const story = [p.bio, p.achievements]
+  const social = ['instagram', 'tiktok', 'twitter', 'youtube'].map((k) => socials[k])
+  const contacts = [p.agency_name, p.agent_name, p.agent_email, p.agent_phone]
+  const goalsFilled = ((p.selected_goals as string[]) ?? []).length
+
+  return {
+    basics: pct(filled(basics), basics.length),
+    athletic: pct(filled(athletic), athletic.length),
+    brand: pct(filled(brand), brand.length),
+    story: pct(filled(story), story.length),
+    social: pct(filled(social), social.length),
+    contacts: pct(filled(contacts), contacts.length),
+    goals: goalsFilled > 0 ? Math.min(100, goalsFilled * 20) : 0,
+  }
+}
 
 /**
  * Maps NIL readiness score to an encouraging tier label. We avoid letter

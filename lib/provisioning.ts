@@ -443,6 +443,124 @@ export async function provisionStore(
 }
 
 /** Creates a brand_designs row pre-filled from the user's profile. */
+/**
+ * Creates a podcasts row pre-filled from the talent's profile.
+ * fromProfile = false leaves the row mostly empty for a blank-canvas start.
+ */
+export async function provisionPodcast(
+  supabase: Supabase,
+  userId: string,
+  orderId?: string,
+  options: { fromProfile?: boolean } = {}
+): Promise<ProvisionResult> {
+  void orderId
+  const fromProfile = options.fromProfile ?? true
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, brand_tagline, sport, athletic_position')
+    .eq('id', userId)
+    .maybeSingle()
+
+  const baseName = profile?.display_name ?? 'podcast'
+  let slug = slugify(baseName).replace(/-/g, '')
+  if (!slug) slug = 'podcast'
+
+  const { data: existing } = await supabase
+    .from('podcasts')
+    .select('slug')
+    .eq('user_id', userId)
+  const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
+  if (existingSlugs.has(slug)) {
+    let n = (existing?.length ?? 0) + 1
+    while (existingSlugs.has(`${slug}${n}`)) n += 1
+    slug = `${slug}${n}`
+  }
+
+  const { data: podcast, error } = await supabase
+    .from('podcasts')
+    .insert({
+      user_id: userId,
+      slug,
+      title: fromProfile
+        ? profile?.display_name
+          ? `${profile.display_name}'s Podcast`
+          : 'My Podcast'
+        : 'Untitled Podcast',
+      description: fromProfile
+        ? profile?.sport
+          ? `${profile.sport} · ${profile.athletic_position ?? 'NIL athlete'} · ${profile?.brand_tagline ?? 'On the journey.'}`
+          : 'On the journey.'
+        : null,
+      status: 'draft',
+    })
+    .select('id')
+    .single()
+
+  if (error || !podcast) return { status: 'provisioning' }
+  return { status: 'ready', entity_id: podcast.id }
+}
+
+/**
+ * Creates a digital_business_cards row pre-filled from the talent's profile.
+ */
+export async function provisionBusinessCard(
+  supabase: Supabase,
+  userId: string,
+  orderId?: string,
+  options: { fromProfile?: boolean } = {}
+): Promise<ProvisionResult> {
+  void orderId
+  const fromProfile = options.fromProfile ?? true
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select(
+      'display_name, sport, athletic_position, school, brand_primary_color, brand_secondary_color, brand_tagline, phone, website_url, agent_email, socials'
+    )
+    .eq('id', userId)
+    .maybeSingle()
+
+  const baseName = profile?.display_name ?? 'card'
+  let slug = slugify(baseName).replace(/-/g, '')
+  if (!slug) slug = 'card'
+  const { data: existing } = await supabase
+    .from('digital_business_cards')
+    .select('slug')
+    .eq('user_id', userId)
+  const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
+  if (existingSlugs.has(slug)) {
+    let n = (existing?.length ?? 0) + 1
+    while (existingSlugs.has(`${slug}${n}`)) n += 1
+    slug = `${slug}${n}`
+  }
+
+  const socials = (profile?.socials as Record<string, string> | null) ?? {}
+  const { data: card, error } = await supabase
+    .from('digital_business_cards')
+    .insert({
+      user_id: userId,
+      slug,
+      display_name: fromProfile ? profile?.display_name ?? null : null,
+      title: fromProfile
+        ? profile?.athletic_position && profile?.sport
+          ? `${profile.athletic_position} · ${profile.sport}`
+          : profile?.sport ?? null
+        : null,
+      organization: fromProfile ? profile?.school ?? null : null,
+      tagline: fromProfile ? profile?.brand_tagline ?? null : null,
+      phone: fromProfile ? profile?.phone ?? null : null,
+      email: fromProfile ? profile?.agent_email ?? null : null,
+      website: fromProfile ? profile?.website_url ?? null : null,
+      socials: fromProfile ? socials : {},
+      primary_color: fromProfile ? profile?.brand_primary_color ?? '#0a0a0a' : '#0a0a0a',
+      secondary_color: fromProfile ? profile?.brand_secondary_color ?? '#ffffff' : '#ffffff',
+      status: 'draft',
+    })
+    .select('id')
+    .single()
+  if (error || !card) return { status: 'provisioning' }
+  return { status: 'ready', entity_id: card.id }
+}
+
 export async function provisionBrandDesign(
   supabase: Supabase,
   userId: string,

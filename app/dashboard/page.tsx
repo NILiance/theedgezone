@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
-import { getDashboardData, getProductActions, readinessGrade, readinessHint } from '@/lib/dashboard'
+import { getDashboardData, getProductActions, readinessGrade, readinessHint, getProfileSectionPercents } from '@/lib/dashboard'
+import { PostPurchaseBanner } from '@/components/dashboard/post-purchase-banner'
 import { NilianceBanner } from '@/components/dashboard/niliance-banner'
 import { DashboardTabs } from '@/components/dashboard/dashboard-tabs'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const subCount = orders.filter((o) => o.plan === 'monthly' || o.plan === 'annual').length
   const showNilianceBanner = !profile?.niliance_banner_dismissed_at
 
+  // Find the most recent purchase to drive the post-purchase banner.
+  // Show for orders less than 30 days old that came back paid + provisioned.
+  const recentOrder = orders.find((o) => {
+    if (o.status === 'cancelled' || o.status === 'refunded') return false
+    const days = (Date.now() - new Date(o.purchased_at).getTime()) / 86400000
+    return days < 30
+  })
+  const sectionPercents = recentOrder ? await getProfileSectionPercents(user.id) : {}
+
   return (
     <div className="space-y-8">
       {checkoutSuccess && (
@@ -46,6 +56,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
       {/* NILiance banner */}
       {showNilianceBanner && <NilianceBanner email={user.email ?? ''} />}
+
+      {/* Post-purchase profile-completion banner */}
+      {recentOrder && (
+        <PostPurchaseBanner
+          order={{
+            product_slug: recentOrder.product_slug,
+            product_title: recentOrder.product_title,
+            created_at: recentOrder.purchased_at,
+          }}
+          sectionPercents={sectionPercents}
+        />
+      )}
 
       {/* Heading */}
       <div className="flex items-start justify-between gap-4">

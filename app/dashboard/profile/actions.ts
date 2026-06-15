@@ -116,17 +116,25 @@ export async function saveAthletic(
 }
 
 // ── BRAND ─────────────────────────────────────────────────────────────────
+const hexOrEmpty = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/i, 'Must be a hex color like #C8A84E')
+  .or(z.literal(''))
+
 const brandSchema = z.object({
-  brand_primary_color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/i, 'Must be a hex color like #C8A84E')
-    .or(z.literal('')),
-  brand_secondary_color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/i, 'Must be a hex color')
-    .or(z.literal('')),
+  brand_primary_color: hexOrEmpty,
+  brand_secondary_color: hexOrEmpty,
+  brand_accent_color: hexOrEmpty,
+  brand_neutral_color: hexOrEmpty,
   brand_tagline: z.string().max(160).optional(),
   brand_voice: z.string().max(2000).optional(),
+  brand_style_seed: z.string().max(240).optional(),
+  brand_mood: z.string().max(240).optional(),
+  brand_audience: z.string().max(240).optional(),
+  brand_font_pair: z.string().max(120).optional(),
+  brand_values: z.string().max(2000).optional(),
+  brand_inspiration_urls: z.string().max(4000).optional(),
+  brand_avoid: z.string().max(2000).optional(),
 })
 
 export async function saveBrand(_prev: SectionState, formData: FormData): Promise<SectionState> {
@@ -134,10 +142,28 @@ export async function saveBrand(_prev: SectionState, formData: FormData): Promis
   const parsed = brandSchema.safeParse({
     brand_primary_color: formData.get('brand_primary_color'),
     brand_secondary_color: formData.get('brand_secondary_color'),
+    brand_accent_color: formData.get('brand_accent_color'),
+    brand_neutral_color: formData.get('brand_neutral_color'),
     brand_tagline: formData.get('brand_tagline'),
     brand_voice: formData.get('brand_voice'),
+    brand_style_seed: formData.get('brand_style_seed'),
+    brand_mood: formData.get('brand_mood'),
+    brand_audience: formData.get('brand_audience'),
+    brand_font_pair: formData.get('brand_font_pair'),
+    brand_values: formData.get('brand_values'),
+    brand_inspiration_urls: formData.get('brand_inspiration_urls'),
+    brand_avoid: formData.get('brand_avoid'),
   })
   if (!parsed.success) return { error: parsed.error.errors[0].message }
+
+  const values = (parsed.data.brand_values ?? '')
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const inspirationUrls = (parsed.data.brand_inspiration_urls ?? '')
+    .split(/\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -145,8 +171,17 @@ export async function saveBrand(_prev: SectionState, formData: FormData): Promis
     .update({
       brand_primary_color: parsed.data.brand_primary_color || null,
       brand_secondary_color: parsed.data.brand_secondary_color || null,
+      brand_accent_color: parsed.data.brand_accent_color || null,
+      brand_neutral_color: parsed.data.brand_neutral_color || null,
       brand_tagline: parsed.data.brand_tagline || null,
       brand_voice: parsed.data.brand_voice || null,
+      brand_style_seed: parsed.data.brand_style_seed || null,
+      brand_mood: parsed.data.brand_mood || null,
+      brand_audience: parsed.data.brand_audience || null,
+      brand_font_pair: parsed.data.brand_font_pair || null,
+      brand_values: values,
+      brand_inspiration_urls: inspirationUrls,
+      brand_avoid: parsed.data.brand_avoid || null,
     })
     .eq('id', user.id)
 

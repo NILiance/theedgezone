@@ -280,6 +280,38 @@ async function handleCheckoutCompleted(
       .eq('id', inserted.id as string)
     console.error('[stripe-webhook] provisioning failed', errMsg)
   }
+
+  // Post-purchase "fill profile" email. Fire-and-forget so it doesn't
+  // affect provisioning or the webhook 200 response.
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', userId)
+      .maybeSingle()
+    const { data: userRes } = await supabase.auth.admin.getUserById(userId)
+    const email = userRes?.user?.email
+    if (email) {
+      const { postPurchaseEmail } = await import('@/lib/emails/post-purchase')
+      const { sendEmail } = await import('@/lib/resend')
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://theedgezone.com'
+      const tpl = postPurchaseEmail({
+        displayName: profile?.display_name ?? null,
+        productTitle: productSlug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        productSlug,
+        siteUrl,
+      })
+      void sendEmail({
+        to: email,
+        subject: tpl.subject,
+        html: tpl.html,
+        templateKey: 'post_purchase',
+        metadata: { user_id: userId, order_id: inserted.id, product_slug: productSlug },
+      })
+    }
+  } catch (err) {
+    console.error('[stripe-webhook] post-purchase email failed', err)
+  }
 }
 
 /**

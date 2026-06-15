@@ -7,10 +7,11 @@ import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { provisionTalentApp } from '@/lib/provisioning'
 
-export async function createApp() {
+export async function createApp(formData?: FormData) {
   const user = await requireUser()
   const supabase = await createClient()
-  const result = await provisionTalentApp(supabase, user.id)
+  const fromProfile = formData ? formData.get('from_profile') !== 'no' : true
+  const result = await provisionTalentApp(supabase, user.id, undefined, { fromProfile })
   if (!result.entity_id) throw new Error('Failed to create app')
   redirect(`/dashboard/apps/${result.entity_id}`)
 }

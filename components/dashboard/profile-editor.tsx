@@ -88,8 +88,17 @@ interface ProfileEditorProps {
     date_of_birth: string | null
     brand_primary_color: string | null
     brand_secondary_color: string | null
+    brand_accent_color: string | null
+    brand_neutral_color: string | null
     brand_tagline: string | null
     brand_voice: string | null
+    brand_style_seed: string | null
+    brand_mood: string | null
+    brand_audience: string | null
+    brand_font_pair: string | null
+    brand_values: string[]
+    brand_inspiration_urls: string[]
+    brand_avoid: string | null
     bio: string | null
     achievements: string | null
     socials: Record<string, string>
@@ -325,29 +334,151 @@ function BrandForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
   return (
     <form action={action}>
       <SectionShell state={state} pending={pending}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Primary color (hex)">
-            <Input name="brand_primary_color" defaultValue={profile.brand_primary_color ?? ''} placeholder="#C8A84E" />
-          </FormField>
-          <FormField label="Secondary color (hex)">
-            <Input name="brand_secondary_color" defaultValue={profile.brand_secondary_color ?? ''} placeholder="#000000" />
-          </FormField>
-          <FormField label="Brand tagline">
-            <Input name="brand_tagline" defaultValue={profile.brand_tagline ?? ''} maxLength={160} />
-          </FormField>
+        <div className="space-y-6">
+          {/* Colors */}
+          <div>
+            <p className="text-eyebrow text-primary">Brand colors</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Picked here power your Brand Design, EPK, Site, App, and Business Cards. Hex codes.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <ColorField
+                name="brand_primary_color"
+                label="Primary"
+                defaultValue={profile.brand_primary_color ?? '#C8A84E'}
+              />
+              <ColorField
+                name="brand_secondary_color"
+                label="Secondary"
+                defaultValue={profile.brand_secondary_color ?? '#000000'}
+              />
+              <ColorField
+                name="brand_accent_color"
+                label="Accent (optional)"
+                defaultValue={profile.brand_accent_color ?? ''}
+              />
+              <ColorField
+                name="brand_neutral_color"
+                label="Neutral (optional)"
+                defaultValue={profile.brand_neutral_color ?? ''}
+              />
+            </div>
+          </div>
+
+          {/* Voice */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Brand tagline">
+              <Input
+                name="brand_tagline"
+                defaultValue={profile.brand_tagline ?? ''}
+                maxLength={160}
+                placeholder="One sentence — what you stand for."
+              />
+            </FormField>
+            <FormField label="Style seed">
+              <Input
+                name="brand_style_seed"
+                defaultValue={profile.brand_style_seed ?? ''}
+                placeholder="e.g. minimalist, retro racing, bold collegiate"
+              />
+            </FormField>
+            <FormField label="Brand mood">
+              <Input
+                name="brand_mood"
+                defaultValue={profile.brand_mood ?? ''}
+                placeholder="e.g. energetic, contemplative, defiant"
+              />
+            </FormField>
+            <FormField label="Audience">
+              <Input
+                name="brand_audience"
+                defaultValue={profile.brand_audience ?? ''}
+                placeholder="Who you're speaking to (age, fanbase, region)"
+              />
+            </FormField>
+            <FormField label="Font pair">
+              <Input
+                name="brand_font_pair"
+                defaultValue={profile.brand_font_pair ?? ''}
+                placeholder="e.g. Inter / Impact, Playfair / Inter"
+              />
+            </FormField>
+          </div>
+
+          {/* Long-form */}
           <FormField label="Brand voice">
             <textarea
               name="brand_voice"
               defaultValue={profile.brand_voice ?? ''}
-              rows={4}
+              rows={3}
               maxLength={2000}
               className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Describe your brand voice — confident, playful, technical, family-first..."
+              placeholder="Confident, playful, technical, family-first…"
+            />
+          </FormField>
+          <FormField label="Brand values">
+            <textarea
+              name="brand_values"
+              defaultValue={(profile.brand_values ?? []).join(', ')}
+              rows={2}
+              className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Comma-separated — e.g. discipline, community, joy, craft"
+            />
+          </FormField>
+          <FormField label="Inspiration links">
+            <textarea
+              name="brand_inspiration_urls"
+              defaultValue={(profile.brand_inspiration_urls ?? []).join('\n')}
+              rows={3}
+              className="flex w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
+              placeholder="One URL per line — moodboard pins, brands you admire, etc."
+            />
+          </FormField>
+          <FormField label="What to avoid">
+            <textarea
+              name="brand_avoid"
+              defaultValue={profile.brand_avoid ?? ''}
+              rows={2}
+              maxLength={2000}
+              className="flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              placeholder="Colors, motifs, words, or styles you never want associated with you"
             />
           </FormField>
         </div>
       </SectionShell>
     </form>
+  )
+}
+
+function ColorField({
+  name,
+  label,
+  defaultValue,
+}: {
+  name: string
+  label: string
+  defaultValue: string
+}) {
+  const [value, setValue] = useState(defaultValue)
+  const isValid = /^#[0-9A-Fa-f]{6}$/.test(value)
+  return (
+    <FormField label={label}>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={isValid ? value : '#000000'}
+          onChange={(e) => setValue(e.target.value)}
+          className="h-10 w-12 cursor-pointer rounded-md border border-border"
+        />
+        <Input
+          name={name}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="#000000"
+          className="flex-1 font-mono text-sm"
+        />
+      </div>
+    </FormField>
   )
 }
 

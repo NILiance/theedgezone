@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createApp } from './actions'
+import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 
 export const metadata = { title: 'My apps' }
 
@@ -32,11 +33,12 @@ export default async function AppsIndexPage() {
             Configure here, download the Expo project, hand it to a dev or submit yourself.
           </p>
         </div>
-        <form action={createApp}>
-          <Button type="submit" size="lg">
-            + New app
-          </Button>
-        </form>
+        <BuildFromPicker
+          action={createApp}
+          what="App"
+          profileSections={['name', 'sport', 'brand colors']}
+          triggerLabel="+ New app"
+        />
       </div>
 
       {(!apps || apps.length === 0) && (
