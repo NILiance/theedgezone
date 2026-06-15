@@ -5,6 +5,7 @@ import { ServicesShowcase } from '@/components/landing/services-showcase'
 import { CountUp } from '@/components/landing/count-up'
 import { Button } from '@/components/ui/button'
 import { SERVICES } from '@/lib/services-data'
+import { createClient } from '@/lib/supabase/server'
 
 const HERO_STATS = [
   { end: SERVICES.length, suffix: '', label: 'Services' },
@@ -15,7 +16,37 @@ const HERO_STATS = [
 
 export const metadata = { title: 'Services' }
 
-export default function ServicesPage() {
+async function detectAudience(): Promise<'all' | 'talent' | 'brand'> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return 'all'
+    // Admins keep the full catalog.
+    const { data: adminRow } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle()
+    if (adminRow) return 'all'
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('id', user.id)
+      .maybeSingle()
+    const t = (profile?.user_type as string | undefined) ?? ''
+    if (t === 'talent') return 'talent'
+    if (t === 'brand') return 'brand'
+    return 'all'
+  } catch {
+    return 'all'
+  }
+}
+
+export default async function ServicesPage() {
+  const audience = await detectAudience()
   return (
     <>
       <MarketingNav />
@@ -82,7 +113,10 @@ export default function ServicesPage() {
 
         {/* ── Services Showcase (filters + grid) ──────────────────────── */}
         <section className="mx-auto max-w-7xl px-6 pb-20">
-          <ServicesShowcase />
+          <ServicesShowcase
+            initialAudience={audience}
+            audienceLocked={audience !== 'all'}
+          />
         </section>
       </main>
       <Footer />

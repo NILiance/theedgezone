@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createEpk } from './actions'
+import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 
 export const metadata = { title: 'My EPKs' }
 
@@ -33,11 +34,12 @@ export default async function EpksIndexPage() {
             <span className="text-display text-foreground">yourname.talentepk.com</span>.
           </p>
         </div>
-        <form action={createEpk}>
-          <Button type="submit" size="lg">
-            + New EPK
-          </Button>
-        </form>
+        <BuildFromPicker
+          action={createEpk}
+          what="EPK"
+          profileSections={['name', 'sport', 'position', 'school', 'brand colors']}
+          triggerLabel="+ New EPK"
+        />
       </div>
 
       {(!epks || epks.length === 0) && (

@@ -13,10 +13,11 @@ import { SITE_TEMPLATES_BY_ID, templateTokens } from '@/lib/site-builder/site-te
 import { seedFor } from '@/lib/site-builder/page-templates'
 import { env } from '@/lib/env'
 
-export async function createSite() {
+export async function createSite(formData?: FormData) {
   const user = await requireUser()
   const supabase = await createClient()
-  const result = await provisionSite(supabase, user.id)
+  const fromProfile = formData ? formData.get('from_profile') !== 'no' : true
+  const result = await provisionSite(supabase, user.id, undefined, { fromProfile })
   if (!result.entity_id) throw new Error('Failed to create site')
   redirect(`/dashboard/sites/${result.entity_id}`)
 }

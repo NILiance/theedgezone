@@ -21,8 +21,16 @@ const AUDIENCE_OPTS: { key: AudienceFilter; label: string; icon: string }[] = [
   { key: 'brand', label: 'For Brands', icon: '🏢' },
 ]
 
-export function ServicesShowcase() {
-  const [audience, setAudience] = useState<AudienceFilter>('all')
+interface ServicesShowcaseProps {
+  initialAudience?: AudienceFilter
+  audienceLocked?: boolean
+}
+
+export function ServicesShowcase({
+  initialAudience = 'all',
+  audienceLocked = false,
+}: ServicesShowcaseProps = {}) {
+  const [audience, setAudience] = useState<AudienceFilter>(initialAudience)
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [search, setSearch] = useState('')
 
@@ -61,25 +69,27 @@ export function ServicesShowcase() {
         />
       </div>
 
-      {/* Audience filter */}
-      <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
-        {AUDIENCE_OPTS.map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => setAudience(opt.key)}
-            className={cn(
-              'text-display rounded-full px-5 py-2 text-xs font-bold uppercase tracking-widest transition-colors',
-              audience === opt.key
-                ? 'bg-primary text-primary-foreground'
-                : 'border border-border bg-panel/40 text-foreground/70 hover:text-foreground'
-            )}
-          >
-            {opt.icon && <span className="mr-2">{opt.icon}</span>}
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      {/* Audience filter — hidden when locked to a specific audience */}
+      {!audienceLocked && (
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+          {AUDIENCE_OPTS.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setAudience(opt.key)}
+              className={cn(
+                'text-display rounded-full px-5 py-2 text-xs font-bold uppercase tracking-widest transition-colors',
+                audience === opt.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'border border-border bg-panel/40 text-foreground/70 hover:text-foreground'
+              )}
+            >
+              {opt.icon && <span className="mr-2">{opt.icon}</span>}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Category filter */}
       <div className="mb-12 flex flex-wrap items-center justify-center gap-2">

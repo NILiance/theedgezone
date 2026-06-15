@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createSite } from '@/app/dashboard/sites/actions'
+import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 
 export const metadata = { title: 'Sites' }
 
@@ -35,11 +36,12 @@ export default async function SitesIndexPage() {
             <span className="text-display text-foreground">yourname.MyTalentSite.com</span>.
           </p>
         </div>
-        <form action={createSite}>
-          <Button type="submit" size="lg">
-            + New site
-          </Button>
-        </form>
+        <BuildFromPicker
+          action={createSite}
+          what="Site"
+          profileSections={['display name', 'bio', 'sport', 'brand colors']}
+          triggerLabel="+ New site"
+        />
       </div>
 
       {(!sites || sites.length === 0) && (

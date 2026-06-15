@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createBrandDesign } from '@/app/dashboard/brand-design/actions'
+import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 
 export const metadata = { title: 'Brand Design' }
 
@@ -35,11 +36,12 @@ export default async function BrandDesignIndexPage() {
             20 concepts included per brand. Generate, shortlist, refine, polish — yours forever.
           </p>
         </div>
-        <form action={createBrandDesign}>
-          <Button type="submit" size="lg">
-            + Start new brand
-          </Button>
-        </form>
+        <BuildFromPicker
+          action={createBrandDesign}
+          what="Brand"
+          profileSections={['name', 'sport', 'school', 'jersey number', 'brand colors']}
+          triggerLabel="+ Start new brand"
+        />
       </div>
 
       {(!brands || brands.length === 0) && (

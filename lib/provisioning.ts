@@ -71,11 +71,13 @@ export async function provisionOrder(
 export async function provisionSite(
   supabase: Supabase,
   userId: string,
-  orderId?: string
+  orderId?: string,
+  options: { fromProfile?: boolean } = {}
 ): Promise<ProvisionResult> {
+  const fromProfile = options.fromProfile ?? true
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, brand_primary_color, brand_secondary_color, sport')
+    .select('display_name, brand_primary_color, brand_secondary_color, sport, bio')
     .eq('id', userId)
     .maybeSingle()
 
@@ -102,10 +104,10 @@ export async function provisionSite(
       user_id: userId,
       order_id: orderId ?? null,
       slug,
-      display_name: profile?.display_name ?? null,
+      display_name: fromProfile ? profile?.display_name ?? null : null,
       theme: {
-        primary: profile?.brand_primary_color ?? '#C8A84E',
-        secondary: profile?.brand_secondary_color ?? '#000000',
+        primary: fromProfile ? profile?.brand_primary_color ?? '#C8A84E' : '#C8A84E',
+        secondary: fromProfile ? profile?.brand_secondary_color ?? '#000000' : '#000000',
       },
       status: 'draft',
     })
@@ -128,38 +130,54 @@ export async function provisionSite(
     .single()
 
   if (home) {
-    await supabase.from('site_blocks').insert([
-      {
-        page_id: home.id,
-        position: 0,
-        block_type: 'hero',
-        props: {
-          title: profile?.display_name ?? 'My Brand',
-          subtitle: profile?.sport ? `${profile.sport} · NIL Athlete` : 'NIL Athlete',
+    if (fromProfile) {
+      await supabase.from('site_blocks').insert([
+        {
+          page_id: home.id,
+          position: 0,
+          block_type: 'hero',
+          props: {
+            heading: profile?.display_name ?? 'My Brand',
+            subheading: profile?.sport
+              ? `${profile.sport} · NIL Athlete`
+              : 'NIL Athlete',
+          },
         },
-      },
-      {
-        page_id: home.id,
-        position: 1,
-        block_type: 'stats',
-        props: {
-          items: [
-            { value: '—', label: 'Followers' },
-            { value: '—', label: 'Engagement' },
-            { value: '—', label: 'Career stat' },
-          ],
+        {
+          page_id: home.id,
+          position: 1,
+          block_type: 'stats',
+          props: {
+            title: 'By the numbers',
+            stats: [
+              { icon: 'emoji:📈', value: '—', label: 'Followers' },
+              { icon: 'emoji:⭐', value: '—', label: 'Engagement' },
+              { icon: 'emoji:🏆', value: '—', label: 'Career stat' },
+            ],
+          },
         },
-      },
-      {
-        page_id: home.id,
-        position: 2,
-        block_type: 'text',
-        props: {
-          content:
-            'Tell your story here. This block holds the headline narrative — what you stand for, what brands should know, how fans should engage.',
+        {
+          page_id: home.id,
+          position: 2,
+          block_type: 'text',
+          props: {
+            content: profile?.bio
+              ? `<p>${profile.bio}</p>`
+              : '<p>Tell your story here. This block holds the headline narrative — what you stand for, what brands should know, how fans should engage.</p>',
+          },
         },
-      },
-    ])
+      ])
+    } else {
+      // Start From Scratch — one empty hero so the editor isn't blank.
+      await supabase.from('site_blocks').insert([
+        {
+          page_id: home.id,
+          position: 0,
+          block_type: 'hero',
+          props: { heading: 'Your headline', subheading: 'Tell your story.' },
+        },
+      ])
+    }
   }
 
   return { status: 'ready', entity_id: site.id }
@@ -173,12 +191,14 @@ export async function provisionSite(
 export async function provisionEpk(
   supabase: Supabase,
   userId: string,
-  orderId?: string
+  orderId?: string,
+  options: { fromProfile?: boolean } = {}
 ): Promise<ProvisionResult> {
+  const fromProfile = options.fromProfile ?? true
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'display_name, sport, athletic_position, school, brand_primary_color, brand_secondary_color'
+      'display_name, sport, athletic_position, school, brand_primary_color, brand_secondary_color, bio'
     )
     .eq('id', userId)
     .maybeSingle()
@@ -204,13 +224,15 @@ export async function provisionEpk(
       user_id: userId,
       order_id: orderId ?? null,
       slug,
-      display_name: profile?.display_name ?? null,
-      tagline: profile?.sport
-        ? `${profile.sport} · ${profile.athletic_position ?? 'NIL Athlete'}`
-        : 'NIL Athlete',
+      display_name: fromProfile ? profile?.display_name ?? null : null,
+      tagline: fromProfile
+        ? profile?.sport
+          ? `${profile.sport} · ${profile.athletic_position ?? 'NIL Athlete'}`
+          : 'NIL Athlete'
+        : null,
       theme: {
-        primary: profile?.brand_primary_color ?? '#C8A84E',
-        secondary: profile?.brand_secondary_color ?? '#000000',
+        primary: fromProfile ? profile?.brand_primary_color ?? '#C8A84E' : '#C8A84E',
+        secondary: fromProfile ? profile?.brand_secondary_color ?? '#000000' : '#000000',
       },
       status: 'draft',
     })
@@ -281,8 +303,10 @@ export async function provisionEpk(
 export async function provisionTalentApp(
   supabase: Supabase,
   userId: string,
-  orderId?: string
+  orderId?: string,
+  options: { fromProfile?: boolean } = {}
 ): Promise<ProvisionResult> {
+  const fromProfile = options.fromProfile ?? true
   const { data: profile } = await supabase
     .from('profiles')
     .select('display_name, brand_primary_color, brand_secondary_color, sport')
@@ -422,8 +446,10 @@ export async function provisionStore(
 export async function provisionBrandDesign(
   supabase: Supabase,
   userId: string,
-  orderId?: string
+  orderId?: string,
+  options: { fromProfile?: boolean } = {}
 ): Promise<ProvisionResult> {
+  const fromProfile = options.fromProfile ?? true
   const { data: profile } = await supabase
     .from('profiles')
     .select(
@@ -437,13 +463,13 @@ export async function provisionBrandDesign(
     .insert({
       user_id: userId,
       order_id: orderId ?? null,
-      brand_name: profile?.display_name ?? null,
-      sport: profile?.sport ?? null,
-      athletic_position: profile?.athletic_position ?? null,
-      school: profile?.school ?? null,
-      jersey_number: profile?.jersey_number ?? null,
-      primary_color: profile?.brand_primary_color ?? '#C8A84E',
-      secondary_color: profile?.brand_secondary_color ?? '#000000',
+      brand_name: fromProfile ? profile?.display_name ?? null : null,
+      sport: fromProfile ? profile?.sport ?? null : null,
+      athletic_position: fromProfile ? profile?.athletic_position ?? null : null,
+      school: fromProfile ? profile?.school ?? null : null,
+      jersey_number: fromProfile ? profile?.jersey_number ?? null : null,
+      primary_color: fromProfile ? profile?.brand_primary_color ?? '#C8A84E' : '#C8A84E',
+      secondary_color: fromProfile ? profile?.brand_secondary_color ?? '#000000' : '#000000',
       status: 'concept',
     })
     .select('id')

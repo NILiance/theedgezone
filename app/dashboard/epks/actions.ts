@@ -8,10 +8,11 @@ import { requireUser } from '@/lib/auth'
 import { provisionEpk } from '@/lib/provisioning'
 import { defaultPropsFor } from '@/lib/site-builder/block-types'
 
-export async function createEpk() {
+export async function createEpk(formData?: FormData) {
   const user = await requireUser()
   const supabase = await createClient()
-  const result = await provisionEpk(supabase, user.id)
+  const fromProfile = formData ? formData.get('from_profile') !== 'no' : true
+  const result = await provisionEpk(supabase, user.id, undefined, { fromProfile })
   if (!result.entity_id) throw new Error('Failed to create EPK')
   redirect(`/dashboard/epks/${result.entity_id}`)
 }

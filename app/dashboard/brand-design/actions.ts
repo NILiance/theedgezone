@@ -20,10 +20,11 @@ import { uploadZipToDrive, gdriveConfigured } from '@/lib/gdrive'
  * Create a new brand design row + redirect to the studio.
  * Prefills brand_name / sport / colors from the user's profile.
  */
-export async function createBrandDesign() {
+export async function createBrandDesign(formData?: FormData) {
   const user = await requireUser()
   const supabase = await createClient()
-  const result = await provisionBrandDesign(supabase, user.id)
+  const fromProfile = formData ? formData.get('from_profile') !== 'no' : true
+  const result = await provisionBrandDesign(supabase, user.id, undefined, { fromProfile })
   if (!result.entity_id) throw new Error('Failed to create brand design')
   redirect(`/dashboard/brand-design/${result.entity_id}`)
 }
