@@ -1,6 +1,39 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+
+function DollarInput({
+  id,
+  name,
+  cents,
+  required,
+}: {
+  id: string
+  name: string
+  cents: number
+  required?: boolean
+}) {
+  const [dollars, setDollars] = useState((cents / 100).toFixed(2))
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+        $
+      </span>
+      <input
+        id={id}
+        type="number"
+        step="0.01"
+        min={0}
+        value={dollars}
+        onChange={(e) => setDollars(e.target.value)}
+        required={required}
+        className="flex h-10 w-full rounded-[var(--radius-sm)] border border-border bg-background pl-7 pr-3 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+      />
+      <input type="hidden" name={name} value={Math.round((Number(dollars) || 0) * 100)} />
+    </div>
+  )
+}
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -224,13 +257,11 @@ function ProductEditor({
           />
         </div>
         <div>
-          <Label htmlFor="product_price">Price (cents)</Label>
-          <Input
+          <Label htmlFor="product_price">Price</Label>
+          <DollarInput
             id="product_price"
             name="price_cents"
-            type="number"
-            min={0}
-            defaultValue={product?.price_cents ?? 2500}
+            cents={product?.price_cents ?? 2500}
             required
           />
         </div>
@@ -398,13 +429,11 @@ function TierEditor({
           />
         </div>
         <div>
-          <Label htmlFor="tier_price">Price (cents)</Label>
-          <Input
+          <Label htmlFor="tier_price">Price</Label>
+          <DollarInput
             id="tier_price"
             name="price_cents"
-            type="number"
-            min={0}
-            defaultValue={tier?.price_cents ?? 1000}
+            cents={tier?.price_cents ?? 1000}
             required
           />
         </div>
@@ -642,13 +671,11 @@ function RewardEditor({
           </select>
         </div>
         <div>
-          <Label htmlFor="unlock_amount">Unlock at (cents)</Label>
-          <Input
+          <Label htmlFor="unlock_amount">Unlock at</Label>
+          <DollarInput
             id="unlock_amount"
             name="unlock_amount_cents"
-            type="number"
-            min={0}
-            defaultValue={reward?.unlock_amount_cents ?? 500}
+            cents={reward?.unlock_amount_cents ?? 500}
           />
         </div>
         {tiers.length > 0 && (

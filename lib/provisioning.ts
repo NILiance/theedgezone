@@ -80,7 +80,9 @@ export async function provisionSite(
     .maybeSingle()
 
   const baseName = profile?.display_name ?? 'me'
-  let slug = slugify(baseName)
+  // For sites we prefer firstnamelastname (no hyphens) so the resulting
+  // subdomain reads cleanly: firstnamelastname.mytalentsite.com.
+  let slug = slugify(baseName).replace(/-/g, '')
   if (!slug) slug = 'site'
 
   const { data: existing } = await supabase
@@ -90,8 +92,8 @@ export async function provisionSite(
   const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
   if (existingSlugs.has(slug)) {
     let suffix = (existing?.length ?? 0) + 1
-    while (existingSlugs.has(`${slug}-${suffix}`)) suffix += 1
-    slug = `${slug}-${suffix}`
+    while (existingSlugs.has(`${slug}${suffix}`)) suffix += 1
+    slug = `${slug}${suffix}`
   }
 
   const { data: site, error } = await supabase

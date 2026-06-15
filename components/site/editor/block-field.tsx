@@ -92,6 +92,32 @@ export function BlockField({ spec, value, onChange }: BlockFieldProps) {
         </div>
       )
 
+    case 'dollars':
+      return (
+        <div>
+          <Label htmlFor={spec.key}>{spec.label}</Label>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              $
+            </span>
+            <Input
+              id={spec.key}
+              type="number"
+              step="0.01"
+              defaultValue={(Number(value ?? 0) / 100).toFixed(2)}
+              min={spec.min != null ? spec.min / 100 : undefined}
+              max={spec.max != null ? spec.max / 100 : undefined}
+              onChange={(e) => {
+                const dollars = Number(e.target.value)
+                if (Number.isFinite(dollars)) onChange(Math.round(dollars * 100))
+              }}
+              className="pl-7"
+            />
+          </div>
+          {spec.help && <p className="mt-1 text-xs text-muted-foreground">{spec.help}</p>}
+        </div>
+      )
+
     case 'range':
       return (
         <div>

@@ -24,6 +24,7 @@ export type FieldType =
   | 'json'
   | 'repeater'
   | 'icon_picker'
+  | 'dollars'
 
 export interface FieldSpec {
   key: string
@@ -1212,7 +1213,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     fields: [
       { key: 'title', label: 'Title', type: 'text' },
       { key: 'description', label: 'Description', type: 'textarea' },
-      { key: 'price_cents', label: 'Price (cents)', type: 'number', min: 100, max: 1000000 },
+      { key: 'price_cents', label: 'Price', type: 'dollars', min: 100, max: 1000000 },
       { key: 'delivery_days', label: 'Delivery time (days)', type: 'number', min: 1, max: 60 },
     ],
   },

@@ -16,7 +16,8 @@
     "db:push": "supabase db push --linked",
     "db:diff": "supabase db diff --linked",
     "db:types": "supabase gen types typescript --linked > lib/supabase/database.types.ts",
-    "grant:admin": "node scripts/grant-admin.mjs"
+    "grant:admin": "node scripts/grant-admin.mjs",
+    "seed:demo": "node scripts/seed-demo-site.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
