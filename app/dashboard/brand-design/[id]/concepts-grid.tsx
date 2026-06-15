@@ -324,64 +324,141 @@ function ConfirmFinalModal({
   concept: ConceptRow
   onClose: () => void
 }) {
+  const [pending, startConfirm] = useTransition()
+  const [stage, setStage] = useState<'idle' | 'lock' | 'kit'>('idle')
+  const [error, setError] = useState<string | null>(null)
+
+  const handleConfirm = () => {
+    if (pending) return
+    setError(null)
+    setStage('lock')
+    // Color extraction + kit assembly typically takes 20-40s. Bump the
+    // copy to "Building brand kit" after a few seconds so it's clear
+    // why we're still working.
+    const kitTimer = setTimeout(() => setStage('kit'), 3500)
+    startConfirm(async () => {
+      try {
+        const fd = new FormData()
+        fd.set('concept_id', concept.id)
+        await selectFinalConcept(fd)
+        clearTimeout(kitTimer)
+        // Server action revalidates the page; the parent re-renders
+        // with hasFinal=true and the modal naturally goes away when
+        // we close it here.
+        onClose()
+      } catch (e) {
+        clearTimeout(kitTimer)
+        setStage('idle')
+        setError(e instanceof Error ? e.message : 'Something went wrong. Try again.')
+      }
+    })
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
+      onClick={pending ? undefined : onClose}
     >
       <div
         className="relative w-full max-w-md overflow-hidden rounded-[var(--radius)] bg-background shadow-elevated"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
-          <p className="text-display font-bold">Confirm your final logo</p>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-full bg-panel-elevated px-2 py-0.5 text-sm font-bold hover:bg-panel"
-          >
-            ✕
-          </button>
+          <p className="text-display font-bold">
+            {pending ? 'Setting up your brand…' : 'Confirm your final logo'}
+          </p>
+          {!pending && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="rounded-full bg-panel-elevated px-2 py-0.5 text-sm font-bold hover:bg-panel"
+            >
+              ✕
+            </button>
+          )}
         </div>
         <div className="space-y-4 p-5">
-          <div className="overflow-hidden rounded-[var(--radius-sm)] border border-border bg-white">
+          <div className="relative overflow-hidden rounded-[var(--radius-sm)] border border-border bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={concept.image_url}
               alt="Final logo preview"
-              className="mx-auto block max-h-[260px] w-auto object-contain p-4"
+              className={`mx-auto block max-h-[260px] w-auto object-contain p-4 transition-opacity ${
+                pending ? 'opacity-30' : 'opacity-100'
+              }`}
             />
+            {pending && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <BuildingKitOverlay stage={stage} />
+              </div>
+            )}
           </div>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p>This locks in your final logo. After confirming you can:</p>
-            <ul className="ml-4 list-disc space-y-1">
-              <li><strong className="text-foreground">Modify</strong> this logo in the canvas editor (text, color, layout tweaks).</li>
-              <li><strong className="text-foreground">Generate your brand kit</strong> automatically (logo files, social sizes, brand guide).</li>
-              <li><strong className="text-foreground">Use it everywhere</strong> — Arsenal, Print Shop, EPK, your site.</li>
-            </ul>
-            <p className="mt-2 rounded-[var(--radius-sm)] border border-accent/40 bg-accent/5 p-3 text-xs">
-              You can&rsquo;t switch to a different concept for free later. To use another
-              concept as a final, you&rsquo;ll purchase it as an additional final logo.
+          {!pending && (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>This locks in your final logo. After confirming you can:</p>
+              <ul className="ml-4 list-disc space-y-1">
+                <li><strong className="text-foreground">Modify</strong> this logo in the canvas editor (text, color, layout tweaks).</li>
+                <li><strong className="text-foreground">Generate your brand kit</strong> automatically (logo files, social sizes, brand guide).</li>
+                <li><strong className="text-foreground">Use it everywhere</strong> — Arsenal, Print Shop, EPK, your site.</li>
+              </ul>
+              <p className="mt-2 rounded-[var(--radius-sm)] border border-accent/40 bg-accent/5 p-3 text-xs">
+                You can&rsquo;t switch to a different concept for free later. To use another
+                concept as a final, you&rsquo;ll purchase it as an additional final logo.
+              </p>
+              {error && (
+                <p className="mt-2 rounded-[var(--radius-sm)] border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+                  {error}
+                </p>
+              )}
+            </div>
+          )}
+          {pending ? (
+            <p className="text-center text-xs text-muted-foreground">
+              This usually takes 20–60 seconds. Stay on this page.
             </p>
-          </div>
-          <form action={selectFinalConcept} className="flex flex-wrap justify-end gap-2">
-            <input type="hidden" name="concept_id" value={concept.id} />
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-4 py-2 text-xs font-bold uppercase tracking-widest"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="text-display rounded-[var(--radius-sm)] bg-success px-4 py-2 text-xs font-bold uppercase tracking-widest text-success-foreground"
-            >
-              Confirm final logo
-            </button>
-          </form>
+          ) : (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-4 py-2 text-xs font-bold uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="text-display rounded-[var(--radius-sm)] bg-success px-4 py-2 text-xs font-bold uppercase tracking-widest text-success-foreground"
+              >
+                Confirm final logo
+              </button>
+            </div>
+          )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function BuildingKitOverlay({ stage }: { stage: 'idle' | 'lock' | 'kit' }) {
+  const label =
+    stage === 'kit'
+      ? 'Building your brand kit…'
+      : 'Locking in your final logo…'
+  const sub =
+    stage === 'kit'
+      ? 'Logo files · social sizes · brand guide · Drive backup'
+      : 'Extracting colors and finalizing'
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-[var(--radius)] border border-primary/40 bg-background/95 px-5 py-4 shadow-elevated">
+      <div className="relative h-10 w-10">
+        <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />
+        <span className="absolute inset-1 animate-spin rounded-full border-4 border-primary/80 border-t-transparent" />
+      </div>
+      <div className="text-center">
+        <p className="text-display text-sm font-bold text-primary">{label}</p>
+        <p className="mt-1 text-[10px] text-muted-foreground">{sub}</p>
       </div>
     </div>
   )
