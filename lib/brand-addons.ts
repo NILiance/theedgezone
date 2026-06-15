@@ -1,7 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
-import sharp from 'sharp'
+import type SharpType from 'sharp'
 import { env } from '@/lib/env'
 import { createServiceClient } from '@/lib/supabase/server'
+
+// Lazy-load sharp to keep this module importable from server-component
+// pages even when sharp's native binding is unavailable at module init.
+let sharpMod: typeof SharpType | null = null
+async function getSharp(): Promise<typeof SharpType> {
+  if (!sharpMod) sharpMod = (await import('sharp')).default
+  return sharpMod
+}
 
 const MODEL = 'claude-sonnet-4-6'
 
@@ -308,6 +316,7 @@ export async function generateSocialAvatars(brandId: string): Promise<{ url: str
   if (!brand?.final_logo_url) throw new Error('No final logo selected')
 
   const JSZip = (await import('jszip')).default
+  const sharp = await getSharp()
   const zip = new JSZip()
   const logoBuf = await fetchAsBuffer(brand.final_logo_url)
   const logoMeta = await sharp(logoBuf).metadata()

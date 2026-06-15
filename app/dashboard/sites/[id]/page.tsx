@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
@@ -55,8 +54,9 @@ export default async function SiteEditorPage({ params, searchParams }: PageProps
   const user = await requireUser()
   const supabase = await createClient()
 
-  const { data: site } = await supabase.from('sites').select('*').eq('id', id).single()
-  if (!site || site.user_id !== user.id) notFound()
+  const { data: site } = await supabase.from('sites').select('*').eq('id', id).maybeSingle()
+  if (!site || site.user_id !== user.id) return <MissingSiteState />
+
 
   // Theme tokens — fall back to gold preset for any missing keys.
   const tokens: ThemeTokens = { ...defaultTokens(), ...(site.theme as object) } as ThemeTokens
@@ -515,6 +515,34 @@ function HelpTab() {
           26 block types organized for athletes:{' '}
           {BLOCK_TYPES.map((b) => b.label).join(' · ')}.
         </p>
+      </div>
+    </div>
+  )
+}
+
+function MissingSiteState() {
+  return (
+    <div className="space-y-6">
+      <Link
+        href="/dashboard/sites"
+        className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+      >
+        ← Sites
+      </Link>
+      <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-8 text-center">
+        <p className="text-eyebrow text-accent">Site not found</p>
+        <h1 className="text-display mt-2 text-2xl font-black tracking-tight">
+          This site no longer exists
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          The link you followed points to a site that was deleted or never finished
+          creating. Your other sites are still here.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Link href="/dashboard/sites">
+            <Button size="sm">Back to your sites</Button>
+          </Link>
+        </div>
       </div>
     </div>
   )

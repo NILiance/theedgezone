@@ -19,8 +19,18 @@
  * matches that flow via maybeAutoAssemble() in actions.ts.
  */
 import JSZip from 'jszip'
-import sharp from 'sharp'
+import type SharpType from 'sharp'
 import { env } from '@/lib/env'
+
+// sharp ships a native binding that initializes on require. Loading it
+// lazily keeps this module importable from server-component pages even
+// when the binding is unavailable; the throw only surfaces if a function
+// that actually uses sharp is called.
+let sharpMod: typeof SharpType | null = null
+async function getSharp(): Promise<typeof SharpType> {
+  if (!sharpMod) sharpMod = (await import('sharp')).default
+  return sharpMod
+}
 
 export interface BrandKitInput {
   brand_name: string
@@ -52,6 +62,7 @@ function escapeXml(s: string): string {
 async function makeTransparent(sourceBuffer: Buffer, resize?: number): Promise<Buffer> {
   // Soft-threshold near-white pixels to alpha so the logo cuts cleanly on
   // any background. Preserves anti-aliased edges.
+  const sharp = await getSharp()
   let prepared: Buffer = sourceBuffer
   if (resize) {
     prepared = await sharp(sourceBuffer)
@@ -130,6 +141,7 @@ async function makeTypographySpecimen(input: BrandKitInput): Promise<Buffer> {
   <text x="80" y="500" font-family="ui-monospace, monospace" font-size="20" fill="#ffffff" opacity="0.5">FONT PAIR · ${escapeXml(fontPair)}</text>
   <text x="80" y="540" font-family="ui-monospace, monospace" font-size="20" fill="#ffffff" opacity="0.5">PRIMARY ${escapeXml(input.primary_color).toUpperCase()} · SECONDARY ${escapeXml(input.secondary_color).toUpperCase()}</text>
 </svg>`
+  const sharp = await getSharp()
   return sharp(Buffer.from(svg)).png().toBuffer()
 }
 
@@ -200,6 +212,7 @@ function makeBrandGuidePdf(input: BrandKitInput, logoBase64: string): Buffer {
 export async function assembleBrandKit(
   input: BrandKitInput
 ): Promise<{ zipBuffer: Buffer; filename: string }> {
+  const sharp = await getSharp()
   const zip = new JSZip()
 
   // 1. Original logo

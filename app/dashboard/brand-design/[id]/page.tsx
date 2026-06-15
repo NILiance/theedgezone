@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
@@ -35,9 +34,9 @@ export default async function BrandDesignStudioPage({ params }: PageProps) {
     .from('brand_designs')
     .select('*')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
-  if (!brand || brand.user_id !== user.id) notFound()
+  if (!brand || brand.user_id !== user.id) return <MissingBrandState />
 
   const { data: concepts } = await supabase
     .from('logo_concepts')
@@ -378,6 +377,34 @@ function ConceptTile({
           </span>
         </div>
       )}
+    </div>
+  )
+}
+
+function MissingBrandState() {
+  return (
+    <div className="space-y-6">
+      <Link
+        href="/dashboard/brand-design"
+        className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+      >
+        ← Brand Designs
+      </Link>
+      <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-8 text-center">
+        <p className="text-eyebrow text-accent">Brand design not found</p>
+        <h1 className="text-display mt-2 text-2xl font-black tracking-tight">
+          This brand design no longer exists
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          The link you followed points to a brand design that was deleted or never
+          finished creating. Your other brand designs are still here.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Link href="/dashboard/brand-design">
+            <Button size="sm">Back to your brand designs</Button>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

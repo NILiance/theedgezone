@@ -7,7 +7,10 @@
  * by saturation × population. Returns up to four colors covering most
  * brand palettes.
  */
-import sharp from 'sharp'
+// sharp is loaded lazily inside extractPaletteFromBuffer so that this module
+// can be imported by server-component pages (which would otherwise trigger
+// sharp's native binding init at render time and crash the page if the
+// binary is missing).
 
 export interface ExtractedPalette {
   primary: string | null
@@ -65,6 +68,7 @@ export async function extractPaletteFromUrl(url: string): Promise<ExtractedPalet
 }
 
 export async function extractPaletteFromBuffer(buffer: Buffer): Promise<ExtractedPalette> {
+  const { default: sharp } = await import('sharp')
   // 64×64 keeps the bucket math fast (4,096 samples) while still picking
   // up small accent colors.
   const { data } = await sharp(buffer)

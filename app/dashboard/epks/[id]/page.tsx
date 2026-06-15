@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
@@ -21,8 +20,8 @@ export default async function EpkEditorPage({ params }: PageProps) {
   const { id } = await params
   const user = await requireUser()
   const supabase = await createClient()
-  const { data: epk } = await supabase.from('epks').select('*').eq('id', id).single()
-  if (!epk || epk.user_id !== user.id) notFound()
+  const { data: epk } = await supabase.from('epks').select('*').eq('id', id).maybeSingle()
+  if (!epk || epk.user_id !== user.id) return <MissingEpkState />
 
   const { data: rawBlocks } = await supabase
     .from('epk_blocks')
@@ -156,6 +155,34 @@ export default async function EpkEditorPage({ params }: PageProps) {
               </div>
             )
           })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MissingEpkState() {
+  return (
+    <div className="space-y-6">
+      <Link
+        href="/dashboard/epks"
+        className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+      >
+        ← EPKs
+      </Link>
+      <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-8 text-center">
+        <p className="text-eyebrow text-accent">EPK not found</p>
+        <h1 className="text-display mt-2 text-2xl font-black tracking-tight">
+          This EPK no longer exists
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          The link you followed points to an EPK that was deleted or never finished
+          creating. Your other EPKs are still here.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Link href="/dashboard/epks">
+            <Button size="sm">Back to your EPKs</Button>
+          </Link>
         </div>
       </div>
     </div>

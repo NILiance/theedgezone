@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
+import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { StoreManagerClient } from './client'
 
@@ -33,7 +33,7 @@ export default async function StoreManagerPage({ params }: PageProps) {
       .order('created_at', { ascending: false })
       .limit(50),
   ])
-  if (!store || store.user_id !== user.id) notFound()
+  if (!store || store.user_id !== user.id) return <MissingStoreState />
 
   return (
     <div className="space-y-6">
@@ -114,6 +114,34 @@ export default async function StoreManagerPage({ params }: PageProps) {
           paid_at: string | null
         }>}
       />
+    </div>
+  )
+}
+
+function MissingStoreState() {
+  return (
+    <div className="space-y-6">
+      <Link
+        href="/dashboard/stores"
+        className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+      >
+        ← Stores
+      </Link>
+      <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-8 text-center">
+        <p className="text-eyebrow text-accent">Store not found</p>
+        <h1 className="text-display mt-2 text-2xl font-black tracking-tight">
+          This store no longer exists
+        </h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          The link you followed points to a store that was deleted or never finished
+          creating. Your other stores are still here.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Link href="/dashboard/stores">
+            <Button size="sm">Back to your stores</Button>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }
