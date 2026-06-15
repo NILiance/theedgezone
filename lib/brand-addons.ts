@@ -557,17 +557,13 @@ export async function generateAddon(
     }
     const supabase = createServiceClient()
     if (!supabase) return { ok: false, error: 'Service role key missing' }
-    await supabase
-      .from('brand_design_addons')
-      .upsert(
-        {
-          brand_design_id: brandId,
-          kind,
-          url: result.url,
-          metadata: result.metadata ?? {},
-        },
-        { onConflict: 'brand_design_id,kind' }
-      )
+    const { error } = await supabase.from('brand_design_addons').insert({
+      brand_design_id: brandId,
+      kind,
+      url: result.url,
+      metadata: result.metadata ?? {},
+    })
+    if (error) return { ok: false, error: `Couldn't save: ${error.message}` }
     return { ok: true, url: result.url, metadata: result.metadata }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }

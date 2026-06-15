@@ -132,12 +132,17 @@ export async function generateLogoOnPhotoAction(
   const url = pub.publicUrl
 
   // Persist + bump credits.
-  await service.from('brand_design_addons').insert({
+  const { error: addonErr } = await service.from('brand_design_addons').insert({
     brand_design_id: brandId,
     kind: 'logo_on_photo',
     url,
     metadata: { placement, size, source_filename: photo.name },
   })
+  if (addonErr) {
+    return {
+      error: `Saved image but couldn't record it in Your Creations: ${addonErr.message}`,
+    }
+  }
   await service
     .from('brand_designs')
     .update({ asset_credits_used: used + 1 })
