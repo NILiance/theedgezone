@@ -634,6 +634,44 @@ function BadgeIcon({ icon }: { icon?: string }) {
   )
 }
 
+const FONT_SIZE: Record<string, string> = {
+  xs: '0.75rem',
+  sm: '0.875rem',
+  base: '1rem',
+  lg: '1.125rem',
+  xl: '1.25rem',
+  '2xl': '1.5rem',
+  '3xl': '1.875rem',
+  '4xl': '2.25rem',
+  '5xl': '3rem',
+  '6xl': '3.75rem',
+  '7xl': '4.5rem',
+  '8xl': '6rem',
+  '9xl': '8rem',
+}
+const FONT_WEIGHT: Record<string, number> = {
+  light: 300,
+  normal: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+  extrabold: 800,
+  black: 900,
+}
+const TEXT_TRANSFORM: Record<string, string> = {
+  none: 'none',
+  uppercase: 'uppercase',
+  lowercase: 'lowercase',
+  capitalize: 'capitalize',
+}
+const LETTER_SPACING: Record<string, string> = {
+  tight: '-0.025em',
+  normal: '0',
+  wide: '0.025em',
+  wider: '0.05em',
+  widest: '0.18em',
+}
+
 function StatsBlock({
   props,
   tokens,
@@ -645,7 +683,28 @@ function StatsBlock({
   const layout = getStr(props, 'layout', 'cards')
   const bgColor = getStr(props, 'bg_color')
   const textColor = getStr(props, 'text_color')
-  const stats = getArr<{ icon?: string; label: string; value: string; color?: string }>(props, 'stats')
+  const valueSize = FONT_SIZE[getStr(props, 'value_size', '5xl')] ?? FONT_SIZE['5xl']
+  const valueWeight = FONT_WEIGHT[getStr(props, 'value_weight', 'black')] ?? FONT_WEIGHT.black
+  const valueFamilyKey = getStr(props, 'value_family', 'heading')
+  const valueFamily =
+    valueFamilyKey === 'body'
+      ? tokens.font_body
+      : valueFamilyKey === 'mono'
+      ? 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace'
+      : tokens.font_heading
+  const labelSize = FONT_SIZE[getStr(props, 'label_size', 'xs')] ?? FONT_SIZE.xs
+  const labelWeight = FONT_WEIGHT[getStr(props, 'label_weight', 'semibold')] ?? FONT_WEIGHT.semibold
+  const labelCase = TEXT_TRANSFORM[getStr(props, 'label_case', 'uppercase')] ?? 'uppercase'
+  const labelTracking = LETTER_SPACING[getStr(props, 'label_tracking', 'widest')] ?? '0.18em'
+
+  const stats = getArr<{
+    icon?: string
+    label: string
+    value: string
+    color?: string
+    label_color?: string
+  }>(props, 'stats')
+
   return (
     <section style={{ background: bgColor || 'transparent' }} className="px-6 py-12">
       <div className="mx-auto max-w-5xl">
@@ -682,12 +741,26 @@ function StatsBlock({
             >
               <StatIcon icon={s.icon} />
               <p
-                className="text-5xl font-black"
-                style={{ color: s.color || tokens.primary, fontFamily: tokens.font_heading }}
+                style={{
+                  color: s.color || tokens.primary,
+                  fontFamily: valueFamily,
+                  fontSize: valueSize,
+                  fontWeight: valueWeight,
+                  lineHeight: 1.05,
+                }}
               >
                 {s.value}
               </p>
-              <p className="mt-1 text-xs uppercase tracking-widest" style={{ color: tokens.muted_color }}>
+              <p
+                className="mt-1"
+                style={{
+                  color: s.label_color || textColor || tokens.muted_color,
+                  fontSize: labelSize,
+                  fontWeight: labelWeight,
+                  textTransform: labelCase as React.CSSProperties['textTransform'],
+                  letterSpacing: labelTracking,
+                }}
+              >
                 {s.label}
               </p>
             </div>
