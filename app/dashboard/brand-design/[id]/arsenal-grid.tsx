@@ -207,6 +207,12 @@ const STANDARD: CategoryDef[] = [
 ]
 
 export function ArsenalGrid({ brandId, hasFinal }: { brandId: string; hasFinal: boolean }) {
+  // The grid renders compact tile chips. Clicking a tile opens an inline
+  // panel below the grid with that category's form. Only one panel is
+  // open at a time — clicking another tile swaps it. Matches the legacy
+  // WP "click a category, form opens below" flow.
+  const [openId, setOpenId] = useState<string | null>(null)
+
   if (!hasFinal) {
     return (
       <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-8 text-center">
@@ -217,16 +223,27 @@ export function ArsenalGrid({ brandId, hasFinal }: { brandId: string; hasFinal: 
       </div>
     )
   }
+
+  const all = [...FEATURED, ...STANDARD]
+  const openDef = openId ? all.find((c) => c.id === openId) ?? null : null
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-eyebrow text-primary">Featured</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Photo-real product mockups using your logo as the reference.
+          Photo-real product mockups using your logo as the reference. Click any to open the
+          generator.
         </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
           {FEATURED.map((c) => (
-            <CategoryCard key={c.id} brandId={brandId} def={c} featured />
+            <CategoryTile
+              key={c.id}
+              def={c}
+              featured
+              active={openId === c.id}
+              onClick={() => setOpenId((cur) => (cur === c.id ? null : c.id))}
+            />
           ))}
         </div>
       </div>
@@ -235,13 +252,83 @@ export function ArsenalGrid({ brandId, hasFinal }: { brandId: string; hasFinal: 
         <p className="mt-1 text-sm text-muted-foreground">
           One-off branded assets you&rsquo;ll reach for again and again.
         </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           {STANDARD.map((c) => (
-            <CategoryCard key={c.id} brandId={brandId} def={c} />
+            <CategoryTile
+              key={c.id}
+              def={c}
+              active={openId === c.id}
+              onClick={() => setOpenId((cur) => (cur === c.id ? null : c.id))}
+            />
           ))}
         </div>
       </div>
+
+      {openDef && (
+        <div className="rounded-[var(--radius)] border border-primary/40 bg-panel/40 p-1">
+          <div className="flex items-center justify-between px-4 py-2">
+            <p className="text-display text-sm font-bold" style={{ color: openDef.color }}>
+              <span className="mr-2" aria-hidden>
+                {openDef.icon}
+              </span>
+              {openDef.label}
+            </p>
+            <button
+              type="button"
+              onClick={() => setOpenId(null)}
+              className="text-display rounded-full bg-panel-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest hover:bg-panel"
+              aria-label="Close"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <div className="px-2 pb-2">
+            <CategoryCard brandId={brandId} def={openDef} featured={FEATURED.includes(openDef)} />
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+function CategoryTile({
+  def,
+  featured,
+  active,
+  onClick,
+}: {
+  def: CategoryDef
+  featured?: boolean
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center gap-1.5 rounded-[var(--radius)] border bg-panel/40 p-3 text-center transition-colors hover:bg-panel/70 ${
+        active ? 'border-primary ring-2 ring-primary/40' : 'border-border'
+      } ${featured ? 'p-5' : ''}`}
+    >
+      <span
+        className={`flex shrink-0 items-center justify-center rounded-md ${
+          featured ? 'h-14 w-14 text-3xl' : 'h-9 w-9 text-base'
+        }`}
+        style={{ background: `${def.color}22`, color: def.color }}
+        aria-hidden
+      >
+        {def.icon}
+      </span>
+      <p
+        className={`text-display font-bold leading-tight ${featured ? 'text-base' : 'text-[11px]'}`}
+        style={{ color: def.color }}
+      >
+        {def.label}
+      </p>
+      {featured && (
+        <p className="text-[11px] leading-snug text-muted-foreground">{def.blurb}</p>
+      )}
+    </button>
   )
 }
 
