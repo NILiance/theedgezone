@@ -14,7 +14,6 @@ import {
 } from '@/lib/ideogram'
 import { provisionBrandDesign } from '@/lib/provisioning'
 import { assembleBrandKit } from '@/lib/brand-kit'
-import { extractPaletteFromUrl } from '@/lib/color-extract'
 import { uploadZipToDrive, gdriveConfigured } from '@/lib/gdrive'
 
 /**
@@ -238,9 +237,17 @@ export async function selectFinalConcept(formData: FormData) {
   // Extract dominant colors from the chosen logo so the kit + downstream
   // assets reflect what Ideogram actually rendered, not what the talent
   // typed into their profile months ago. Failure is non-blocking — we
-  // keep the existing brand_designs colors if extraction errors.
-  let extracted: Awaited<ReturnType<typeof extractPaletteFromUrl>> | null = null
+  // keep the existing brand_designs colors if extraction errors. Lazy
+  // import keeps sharp out of the module init graph so the page doesn't
+  // 500 on Vercel when sharp's native binding is slow to resolve.
+  let extracted: {
+    primary: string | null
+    secondary: string | null
+    accent: string | null
+    neutral: string | null
+  } | null = null
   try {
+    const { extractPaletteFromUrl } = await import('@/lib/color-extract')
     extracted = await extractPaletteFromUrl(concept.image_url)
   } catch (err) {
     console.error('[brand-design] color extraction failed', err)
