@@ -295,3 +295,46 @@ export async function adminDeleteBrand(form: FormData) {
   revalidatePath('/dashboard/admin/brands')
   redirect('/dashboard/admin/brands')
 }
+
+export type GrantCreditsState = { ok?: boolean; error?: string; newTotal?: number }
+
+/**
+ * Admin tool: grant N additional asset credits to a brand design. Bumps
+ * `asset_credits_total` so the talent can generate more Arsenal assets
+ * without burning their own credit pack. Use cases: comp credits after
+ * a generation failure, VIP grants, support refunds.
+ */
+export async function adminGrantCredits(
+  _prev: GrantCreditsState,
+  form: FormData
+): Promise<GrantCreditsState> {
+  await requireAdmin()
+  const brandId = String(form.get('brand_id') ?? '')
+  const amountRaw = String(form.get('amount') ?? '').trim()
+  const amount = Number(amountRaw)
+  if (!brandId) return { error: 'Missing brand id' }
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1000) {
+    return { error: 'Pick a credit amount between 1 and 1000.' }
+  }
+
+  const supabase = createServiceClient()
+  if (!supabase) return { error: 'Service role key missing' }
+
+  const { data: brand, error: readErr } = await supabase
+    .from('brand_designs')
+    .select('asset_credits_total, asset_credits_used')
+    .eq('id', brandId)
+    .maybeSingle()
+  if (readErr || !brand) return { error: readErr?.message ?? 'Brand not found' }
+
+  const newTotal = (brand.asset_credits_total ?? 10) + Math.round(amount)
+  const { error: writeErr } = await supabase
+    .from('brand_designs')
+    .update({ asset_credits_total: newTotal })
+    .eq('id', brandId)
+  if (writeErr) return { error: writeErr.message }
+
+  revalidatePath(`/dashboard/admin/brands/${brandId}`)
+  revalidatePath(`/dashboard/brand-design/${brandId}`)
+  return { ok: true, newTotal }
+}

@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { generateAddonAction, type AddonState } from './addons-actions'
 
 type Addon = {
@@ -79,6 +80,16 @@ function AddonCard({
 }) {
   const [state, action, pending] = useActionState<AddonState, FormData>(generateAddonAction, {})
   const url = state.url ?? existing?.url ?? null
+  // Force a server-component re-render the moment a fresh URL comes back so
+  // the new addon shows up in Your Creations without a navigation.
+  const router = useRouter()
+  const lastRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (state.url && state.url !== lastRef.current) {
+      lastRef.current = state.url
+      router.refresh()
+    }
+  }, [state.url, router])
   return (
     <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-5">
       <div className="flex items-start justify-between gap-3">

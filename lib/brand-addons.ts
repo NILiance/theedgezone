@@ -54,7 +54,77 @@ function escapeHtml(s: string): string {
 
 // ── Logo animation ──────────────────────────────────────────────────────────
 
-export async function generateLogoAnimation(brandId: string): Promise<{ url: string }> {
+export interface LogoAnimationOptions {
+  /** 'fade' | 'slide_up' | 'slide_down' | 'zoom' | 'rotate' | 'bounce' | 'glitch' | 'reveal_wipe' */
+  style?: string
+  /** Duration in milliseconds. Default 1600. */
+  durationMs?: number
+  /** Continuous loop vs one-shot. */
+  loop?: boolean
+}
+
+const ANIMATION_STYLES: Record<
+  string,
+  { name: string; keyframes: string; initial: string }
+> = {
+  fade: {
+    name: 'Fade In',
+    initial: 'opacity:0',
+    keyframes:
+      '0% { opacity: 0; } 100% { opacity: 1; }',
+  },
+  slide_up: {
+    name: 'Slide Up',
+    initial: 'opacity:0; transform: translateY(40px);',
+    keyframes:
+      '0% { opacity: 0; transform: translateY(40px); } 100% { opacity: 1; transform: translateY(0); }',
+  },
+  slide_down: {
+    name: 'Slide Down',
+    initial: 'opacity:0; transform: translateY(-40px);',
+    keyframes:
+      '0% { opacity: 0; transform: translateY(-40px); } 100% { opacity: 1; transform: translateY(0); }',
+  },
+  zoom: {
+    name: 'Zoom In',
+    initial: 'opacity:0; transform-origin: 256px 256px; transform: scale(0.5);',
+    keyframes:
+      '0% { opacity: 0; transform: scale(0.5); } 60% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); }',
+  },
+  rotate: {
+    name: 'Rotate In',
+    initial: 'opacity:0; transform-origin: 256px 256px; transform: rotate(-180deg) scale(0.7);',
+    keyframes:
+      '0% { opacity: 0; transform: rotate(-180deg) scale(0.7); } 100% { opacity: 1; transform: rotate(0deg) scale(1); }',
+  },
+  bounce: {
+    name: 'Bounce',
+    initial: 'opacity:0; transform-origin: 256px 256px; transform: scale(0.3);',
+    keyframes:
+      '0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.15); } 70% { transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); }',
+  },
+  glitch: {
+    name: 'Glitch',
+    initial: 'opacity:0;',
+    keyframes:
+      '0% { opacity: 0; transform: translate(0,0); } 10% { opacity: 1; transform: translate(-4px,2px); filter: hue-rotate(45deg); } 20% { transform: translate(3px,-2px); filter: hue-rotate(-30deg); } 30% { transform: translate(-2px,1px); filter: none; } 40%,100% { opacity: 1; transform: translate(0,0); }',
+  },
+  reveal_wipe: {
+    name: 'Reveal Wipe',
+    initial: 'opacity:1; clip-path: inset(0 100% 0 0);',
+    keyframes:
+      '0% { clip-path: inset(0 100% 0 0); } 100% { clip-path: inset(0 0 0 0); }',
+  },
+}
+
+export const LOGO_ANIMATION_STYLE_OPTIONS = Object.entries(ANIMATION_STYLES).map(
+  ([key, def]) => ({ key, name: def.name })
+)
+
+export async function generateLogoAnimation(
+  brandId: string,
+  options: LogoAnimationOptions = {}
+): Promise<{ url: string }> {
   const supabase = createServiceClient()
   if (!supabase) throw new Error('Service role key missing')
   const { data: brand } = await supabase
@@ -64,37 +134,55 @@ export async function generateLogoAnimation(brandId: string): Promise<{ url: str
     .single()
   if (!brand?.final_logo_url) throw new Error('No final logo selected')
 
+  const styleKey = options.style && ANIMATION_STYLES[options.style] ? options.style : 'zoom'
+  const style = ANIMATION_STYLES[styleKey]!
+  const duration = Math.max(300, Math.min(8000, options.durationMs ?? 1600))
+  const loopMode = options.loop ? 'infinite' : 'forwards'
+
   const png = await fetchAsBuffer(brand.final_logo_url)
   const base64 = png.toString('base64')
   const dataUri = `data:image/png;base64,${base64}`
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" style="background:white;">
   <defs>
     <style>
-      .logo { transform-origin: 256px 256px; opacity: 0; animation: pop 1.6s cubic-bezier(.2,.9,.2,1) forwards; }
-      @keyframes pop {
-        0%   { opacity: 0; transform: scale(0.6) rotate(-8deg); }
-        60%  { opacity: 1; transform: scale(1.06) rotate(2deg); }
-        100% { opacity: 1; transform: scale(1) rotate(0); }
+      .logo {
+        ${style.initial}
+        animation: bd-anim ${duration}ms cubic-bezier(.2,.9,.2,1) ${options.loop ? 'infinite' : 'forwards'};
       }
-      .shine {
-        animation: shine 2.4s ease-out 0.3s forwards;
-        opacity: 0;
-      }
-      @keyframes shine {
-        0% { opacity: 0; transform: translateX(-200px); }
-        50% { opacity: 0.7; }
-        100% { opacity: 0; transform: translateX(200px); }
+      @keyframes bd-anim {
+        ${style.keyframes}
       }
     </style>
   </defs>
   <image class="logo" href="${dataUri}" width="512" height="512" preserveAspectRatio="xMidYMid meet"/>
-  <rect class="shine" x="0" y="0" width="80" height="512" fill="white" opacity="0.4" transform="skewX(-20)"/>
 </svg>`
 
-  const path = `${brandId}/addons/logo-animation.svg`
-  const url = await uploadToStorage(path, svg, 'image/svg+xml')
+  // Also produce a standalone HTML page so the talent can open the
+  // animation in a browser and screen-record it.
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(brand.brand_name ?? 'Logo')} — Animation: ${style.name}</title>
+<style>html,body{margin:0;background:#fff;display:flex;align-items:center;justify-content:center;height:100vh;}
+.box{width:min(80vh,80vw);aspect-ratio:1/1;}
+.box svg{width:100%;height:100%;display:block;}
+.controls{position:fixed;bottom:24px;display:flex;gap:8px;align-items:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#555;}
+button{font-family:inherit;font-size:12px;padding:8px 14px;border:1px solid #d4d4d8;background:#fff;border-radius:6px;cursor:pointer;}
+button:hover{background:#f3f4f6;}</style></head><body>
+<div class="box">${svg}</div>
+<div class="controls">
+  <span>${escapeHtml(style.name)} · ${duration}ms ${options.loop ? '· looping' : ''}</span>
+  <button onclick="location.reload()">↻ Replay</button>
+</div>
+</body></html>`
+
+  const ts = Date.now()
+  const svgPath = `${brandId}/addons/logo-animation-${styleKey}-${ts}.svg`
+  const htmlPath = `${brandId}/addons/logo-animation-${styleKey}-${ts}.html`
+  await uploadToStorage(svgPath, svg, 'image/svg+xml')
+  // The HTML wrapper is what we expose as the primary URL — the SVG is
+  // inline so the talent can right-click the HTML and download both.
+  const url = await uploadToStorage(htmlPath, html, 'text/html')
+  void loopMode
   return { url }
 }
 

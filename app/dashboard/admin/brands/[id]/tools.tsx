@@ -10,7 +10,9 @@ import {
   adminSendCredentials,
   adminSaveNotes,
   adminDeleteBrand,
+  adminGrantCredits,
   type AdminBrandState,
+  type GrantCreditsState,
 } from './actions'
 
 export function BrandAdminTools({
@@ -94,6 +96,8 @@ export function BrandAdminTools({
       )}
 
       <NotesCard brandId={brandId} existingNotes={existingNotes} />
+
+      <GrantCreditsCard brandId={brandId} />
 
       <form
         action={adminDeleteBrand}
@@ -248,6 +252,52 @@ function NotesCard({ brandId, existingNotes }: { brandId: string; existingNotes:
       </button>
       {state.error && <p className="mt-2 text-xs text-destructive">{state.error}</p>}
       {state.ok && <p className="mt-2 text-xs text-success">{state.message ?? 'Saved.'}</p>}
+    </form>
+  )
+}
+
+function GrantCreditsCard({ brandId }: { brandId: string }) {
+  const [state, formAction, pending] = useActionState<GrantCreditsState, FormData>(
+    adminGrantCredits,
+    {}
+  )
+  return (
+    <form
+      action={formAction}
+      className="rounded-[var(--radius)] border border-accent/40 bg-accent/5 p-4"
+    >
+      <input type="hidden" name="brand_id" value={brandId} />
+      <p className="text-eyebrow text-accent">Grant asset credits</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Adds to the brand&rsquo;s <code>asset_credits_total</code> so the talent can generate
+        more Arsenal assets. Use for comp grants, support refunds, or VIP boosts.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          type="number"
+          name="amount"
+          min={1}
+          max={1000}
+          placeholder="10"
+          defaultValue="10"
+          className="h-9 w-24 rounded-md border border-border bg-background px-3 py-1 text-sm"
+        />
+        <button
+          type="submit"
+          disabled={pending}
+          className="text-display rounded-[var(--radius-sm)] bg-accent px-4 py-2 text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-50"
+        >
+          {pending ? 'Granting…' : 'Grant credits'}
+        </button>
+        {state.ok && (
+          <span className="text-display rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-success">
+            ✓ Credits granted (total: {state.newTotal})
+          </span>
+        )}
+        {state.error && (
+          <span className="text-xs text-destructive">{state.error}</span>
+        )}
+      </div>
     </form>
   )
 }

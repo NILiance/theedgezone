@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { generateArsenalAsset, type ArsenalGenState } from './arsenal-actions'
 import { generateLogoOnPhotoAction, type LogoOnPhotoState } from './logo-on-photo-actions'
 import {
@@ -8,6 +9,23 @@ import {
   UNIFORM_ITEMS_BY_SPORT,
   UNIFORM_ITEM_LABELS,
 } from '@/lib/arsenal-prompts'
+
+/**
+ * Trigger a server-component re-render the moment a server-action returns
+ * a fresh URL. `revalidatePath` alone doesn't re-render the page the talent
+ * is currently on — they'd have to navigate away and back to see the new
+ * asset in Your Creations. This hook closes that loop.
+ */
+function useRefreshOnNewUrl(currentUrl: string | undefined) {
+  const router = useRouter()
+  const lastRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (currentUrl && currentUrl !== lastRef.current) {
+      lastRef.current = currentUrl
+      router.refresh()
+    }
+  }, [currentUrl, router])
+}
 
 interface CategoryDef {
   id: string
@@ -368,6 +386,7 @@ function StandardCategoryCard({
   const [option, setOption] = useState(def.options?.[0]?.val ?? '')
   const [notes, setNotes] = useState('')
   const url = state.url
+  useRefreshOnNewUrl(url)
   return (
     <form
       action={action}
@@ -496,6 +515,7 @@ function UniformsCard({
   }
   const [notes, setNotes] = useState('')
   const url = state.url
+  useRefreshOnNewUrl(url)
   return (
     <form
       action={action}
@@ -630,6 +650,7 @@ function LogoOnPhotoCard({
   const [placement, setPlacement] = useState(PLACEMENTS[8]!.val) // bottom_right
   const [size, setSize] = useState(SIZES[1]!.val)
   const url = state.url
+  useRefreshOnNewUrl(url)
   return (
     <form
       action={action}
