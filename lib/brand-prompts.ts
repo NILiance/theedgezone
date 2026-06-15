@@ -126,7 +126,12 @@ export function buildLogoPrompt(opts: LogoPromptOptions): string {
 
   const spellingBlock = buildSpellingBlock(nameUpper)
   const initialsBlock = buildInitialsBlock(initialsUpper)
-  const backgroundLine = buildBackgroundGuidance(prefs.backgroundPref)
+  // LOGO concepts are always rendered on white — that's what the legacy
+  // did and it lets the same logo drop into any future Arsenal asset
+  // (which DO respect background pref). The talent's bg pref only
+  // applies to derived assets (social, merch, etc.).
+  const backgroundLine = 'Background: pure white background, no gradients, no patterns.'
+  void buildBackgroundGuidance // kept for Arsenal prompts
 
   // Style mod rotation gives per-concept variety.
   const mod = STYLE_MODS[conceptIndex % STYLE_MODS.length]!
@@ -158,22 +163,22 @@ export function buildLogoPrompt(opts: LogoPromptOptions): string {
 
   if (round === 1) {
     return (
-      `IMPORTANT: Generate exactly ONE logo design centered on a clean background. Do NOT show multiple logos, variations, or a logo sheet.\n\n` +
+      `IMPORTANT: Generate exactly ONE logo design centered on a PURE WHITE BACKGROUND (#FFFFFF). Do NOT show multiple logos, variations, or a logo sheet. Do NOT use any background other than pure white.\n\n` +
       `${spellingBlock}\n\n` +
       `Design a single professional logo for ${athleteDesc}. Style: ${conceptStyle}. ` +
-      `${backgroundLine} Vector illustration style. One monogram, wordmark, or icon mark${logoDetail}${initialsBlock}. ` +
-      `High quality brand identity design. Professional and polished. One logo only, centered. ` +
+      `${backgroundLine} The background must be solid white #FFFFFF — no gradients, no patterns, no texture, no off-white tones. Vector illustration style. One monogram, wordmark, or icon mark${logoDetail}${initialsBlock}. ` +
+      `High quality brand identity design. Professional and polished. One logo only, centered on white. ` +
       `If the design includes the name "${nameUpper}" or initials, spell every character exactly correct.`
     )
   }
 
   // Round 2 — refined logo, expects chosen R1 as reference image
   return (
-    `CRITICAL INSTRUCTION: Generate exactly ONE logo. The entire image must contain a SINGLE logo design centered on a clean background. Do NOT create a logo sheet, do NOT show multiple versions side by side, do NOT show lockups or variations, do NOT show a primary and secondary version. ONE logo only.\n\n` +
+    `CRITICAL INSTRUCTION: Generate exactly ONE logo on a PURE WHITE BACKGROUND (#FFFFFF). The entire image must contain a SINGLE logo design centered on solid white. Do NOT create a logo sheet, do NOT show multiple versions side by side, do NOT show lockups or variations, do NOT show a primary and secondary version, do NOT use any background other than pure white. ONE logo only.\n\n` +
     `${spellingBlock}\n\n` +
     `Design a single, refined professional logo for ${athleteDesc}. Style direction: ${conceptStyle}. ` +
-    `${backgroundLine} Vector illustration style${logoDetail}${initialsBlock}. ` +
-    `This is ONE standalone logo — clean, centered, production-ready. ` +
+    `${backgroundLine} The background must be solid white #FFFFFF — no gradients, no patterns, no texture. Vector illustration style${logoDetail}${initialsBlock}. ` +
+    `This is ONE standalone logo on white — clean, centered, production-ready. ` +
     `All text must spell "${nameUpper}" exactly.`
   )
 }

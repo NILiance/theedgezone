@@ -385,7 +385,7 @@ function ConceptsTab({
               </div>
               <ConceptsGrid
                 concepts={list}
-                canSelect={round === currentRound && round === 3}
+                canSelect={true}
               />
             </section>
           )
