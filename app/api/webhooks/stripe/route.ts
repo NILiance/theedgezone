@@ -231,6 +231,10 @@ async function handleCheckoutCompleted(
     await handleBrandDesignRevision(supabase, session)
     return
   }
+  if (metadata.kind === 'bd_additional_final') {
+    await handleBrandDesignAdditionalFinal(supabase, session)
+    return
+  }
 
   const userId = metadata.user_id
   const productSlug = metadata.product_slug
@@ -389,6 +393,46 @@ async function handleBrandDesignRevision(
     status: 'pending',
     stripe_session_id: session.id,
   })
+}
+
+/**
+ * Promote a non-selected concept into a paid additional final on the
+ * same brand. Idempotent on the Stripe session — we stash the session
+ * ID on the concept's metadata jsonb.
+ */
+async function handleBrandDesignAdditionalFinal(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const metadata = session.metadata ?? {}
+  const userId = metadata.user_id
+  const brandId = metadata.brand_id
+  const conceptId = metadata.concept_id
+  if (!userId || !brandId || !conceptId) return
+
+  const { data: concept } = await supabase
+    .from('logo_concepts')
+    .select('id, is_selected, metadata')
+    .eq('id', conceptId)
+    .maybeSingle()
+  if (!concept) return
+  if (concept.is_selected) return
+
+  const meta = (concept.metadata ?? {}) as Record<string, unknown>
+  if (meta.purchase_session_id === session.id) return
+
+  await supabase
+    .from('logo_concepts')
+    .update({
+      is_selected: true,
+      metadata: {
+        ...meta,
+        purchased_as_final: true,
+        purchase_session_id: session.id,
+        purchase_amount_cents: session.amount_total ?? 0,
+      },
+    })
+    .eq('id', conceptId)
 }
 
 /**

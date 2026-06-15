@@ -2,10 +2,16 @@
 
 import { useState, useTransition } from 'react'
 import Image from 'next/image'
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
 import {
   toggleShortlist,
   selectFinalConcept,
 } from '@/app/dashboard/brand-design/actions'
+
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null
 
 export interface ConceptRow {
   id: string
@@ -20,16 +26,20 @@ const MAX_COMPARE = 4
 
 /**
  * Client wrapper around the concept grid — manages cross-tile compare
- * selection and the lightbox modal. Individual tiles call the existing
- * server actions (toggleShortlist, selectFinalConcept) directly; this
- * component just holds the UI state.
+ * selection, the lightbox modal, finalize-confirmation, and the
+ * "purchase another final" Stripe checkout for non-selected concepts
+ * after one is already final.
  */
 export function ConceptsGrid({
   concepts,
   canSelect,
+  hasFinal,
+  additionalPriceLabel,
 }: {
   concepts: ConceptRow[]
   canSelect: boolean
+  hasFinal: boolean
+  additionalPriceLabel: string
 }) {
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set())
   const [compareOpen, setCompareOpen] = useState(false)
@@ -51,6 +61,38 @@ export function ConceptsGrid({
   const lightboxConcept = lightboxId ? concepts.find((c) => c.id === lightboxId) ?? null : null
   const compareConcepts = concepts.filter((c) => compareIds.has(c.id))
 
+  // Finalize confirmation — clicking 'Select as final' opens a modal asking
+  // the talent to confirm. Once they confirm, the server action runs.
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const confirmConcept = confirmId ? concepts.find((c) => c.id === confirmId) ?? null : null
+
+  // Purchase-additional-final flow — when a final already exists, clicking a
+  // non-selected concept's CTA opens an embedded Stripe checkout to add it
+  // as an additional final.
+  const [purchaseClientSecret, setPurchaseClientSecret] = useState<string | null>(null)
+  const [purchaseError, setPurchaseError] = useState<string | null>(null)
+  const [purchasePending, startPurchase] = useTransition()
+  const beginPurchaseFinal = (conceptId: string) => {
+    setPurchaseError(null)
+    startPurchase(async () => {
+      try {
+        const res = await fetch('/api/checkout/brand-design-extras', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: 'additional_final', concept_id: conceptId }),
+        })
+        const json = (await res.json()) as { client_secret?: string; error?: string }
+        if (!res.ok || !json.client_secret) {
+          setPurchaseError(json.error ?? 'Could not start checkout.')
+          return
+        }
+        setPurchaseClientSecret(json.client_secret)
+      } catch {
+        setPurchaseError('Could not start checkout.')
+      }
+    })
+  }
+
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -59,13 +101,45 @@ export function ConceptsGrid({
             key={c.id}
             concept={c}
             canSelect={canSelect}
+            hasFinal={hasFinal}
+            additionalPriceLabel={additionalPriceLabel}
             inCompare={compareIds.has(c.id)}
             compareFull={compareIds.size >= MAX_COMPARE && !compareIds.has(c.id)}
             onToggleCompare={() => toggleCompare(c.id)}
             onEnlarge={() => setLightboxId(c.id)}
+            onSelectAsFinal={() => setConfirmId(c.id)}
+            onPurchaseAsFinal={() => beginPurchaseFinal(c.id)}
+            purchasePending={purchasePending}
           />
         ))}
       </div>
+
+      {confirmConcept && (
+        <ConfirmFinalModal
+          concept={confirmConcept}
+          onClose={() => setConfirmId(null)}
+        />
+      )}
+
+      {purchaseClientSecret && (
+        <PurchaseFinalModal
+          clientSecret={purchaseClientSecret}
+          onClose={() => setPurchaseClientSecret(null)}
+        />
+      )}
+
+      {purchaseError && (
+        <div className="fixed bottom-6 right-6 z-40 rounded-[var(--radius)] border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive shadow-elevated">
+          {purchaseError}
+          <button
+            type="button"
+            onClick={() => setPurchaseError(null)}
+            className="ml-2 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {compareIds.size >= 2 && (
         <div className="sticky bottom-4 z-30 mx-auto mt-4 flex w-fit items-center gap-3 rounded-full border border-primary/40 bg-background/95 px-4 py-2 shadow-elevated backdrop-blur">
@@ -107,15 +181,25 @@ function ConceptTile({
   canSelect,
   inCompare,
   compareFull,
+  hasFinal,
+  additionalPriceLabel,
   onToggleCompare,
   onEnlarge,
+  onSelectAsFinal,
+  onPurchaseAsFinal,
+  purchasePending,
 }: {
   concept: ConceptRow
   canSelect: boolean
   inCompare: boolean
   compareFull: boolean
+  hasFinal: boolean
+  additionalPriceLabel: string
   onToggleCompare: () => void
   onEnlarge: () => void
+  onSelectAsFinal: () => void
+  onPurchaseAsFinal: () => void
+  purchasePending: boolean
 }) {
   const [pending, startTransition] = useTransition()
 
@@ -188,7 +272,7 @@ function ConceptTile({
         </span>
       </label>
 
-      {/* Bottom strip: enlarge + select-as-final */}
+      {/* Bottom strip: enlarge + CTA */}
       <div className="absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
@@ -197,16 +281,28 @@ function ConceptTile({
         >
           🔍 Enlarge
         </button>
-        {canSelect && !concept.is_selected && (
-          <form action={selectFinalConcept}>
-            <input type="hidden" name="concept_id" value={concept.id} />
-            <button
-              type="submit"
-              className="text-display rounded-full bg-success/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-success-foreground hover:bg-success"
-            >
-              Select as final
-            </button>
-          </form>
+        {!concept.is_selected && canSelect && !hasFinal && (
+          <button
+            type="button"
+            onClick={onSelectAsFinal}
+            className="text-display rounded-full bg-success/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-success-foreground hover:bg-success"
+          >
+            Select as final
+          </button>
+        )}
+        {!concept.is_selected && hasFinal && (
+          <button
+            type="button"
+            onClick={onPurchaseAsFinal}
+            disabled={purchasePending}
+            className="text-display rounded-full bg-accent/90 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-accent-foreground hover:bg-accent disabled:opacity-50"
+          >
+            {purchasePending
+              ? 'Loading…'
+              : additionalPriceLabel
+                ? `Buy as final — ${additionalPriceLabel}`
+                : 'Buy as final'}
+          </button>
         )}
       </div>
 
@@ -217,6 +313,119 @@ function ConceptTile({
           </span>
         </div>
       )}
+    </div>
+  )
+}
+
+function ConfirmFinalModal({
+  concept,
+  onClose,
+}: {
+  concept: ConceptRow
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md overflow-hidden rounded-[var(--radius)] bg-background shadow-elevated"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <p className="text-display font-bold">Confirm your final logo</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full bg-panel-elevated px-2 py-0.5 text-sm font-bold hover:bg-panel"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          <div className="overflow-hidden rounded-[var(--radius-sm)] border border-border bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={concept.image_url}
+              alt="Final logo preview"
+              className="mx-auto block max-h-[260px] w-auto object-contain p-4"
+            />
+          </div>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>This locks in your final logo. After confirming you can:</p>
+            <ul className="ml-4 list-disc space-y-1">
+              <li><strong className="text-foreground">Modify</strong> this logo in the canvas editor (text, color, layout tweaks).</li>
+              <li><strong className="text-foreground">Generate your brand kit</strong> automatically (logo files, social sizes, brand guide).</li>
+              <li><strong className="text-foreground">Use it everywhere</strong> — Arsenal, Print Shop, EPK, your site.</li>
+            </ul>
+            <p className="mt-2 rounded-[var(--radius-sm)] border border-accent/40 bg-accent/5 p-3 text-xs">
+              You can&rsquo;t switch to a different concept for free later. To use another
+              concept as a final, you&rsquo;ll purchase it as an additional final logo.
+            </p>
+          </div>
+          <form action={selectFinalConcept} className="flex flex-wrap justify-end gap-2">
+            <input type="hidden" name="concept_id" value={concept.id} />
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-4 py-2 text-xs font-bold uppercase tracking-widest"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="text-display rounded-[var(--radius-sm)] bg-success px-4 py-2 text-xs font-bold uppercase tracking-widest text-success-foreground"
+            >
+              Confirm final logo
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PurchaseFinalModal({
+  clientSecret,
+  onClose,
+}: {
+  clientSecret: string
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-[var(--radius)] bg-background shadow-elevated"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <p className="text-display font-bold">Purchase additional final logo</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full bg-panel-elevated px-2 py-0.5 text-sm font-bold hover:bg-panel"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="max-h-[80vh] overflow-y-auto">
+          {stripePromise ? (
+            <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          ) : (
+            <p className="p-5 text-sm text-destructive">
+              Payments not configured — check NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

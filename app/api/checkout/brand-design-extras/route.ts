@@ -28,14 +28,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sign in required.' }, { status: 401 })
   }
 
-  let body: { kind?: 'additional' | 'revision'; brand_id?: string; notes?: string }
+  let body: {
+    kind?: 'additional' | 'revision' | 'additional_final'
+    brand_id?: string
+    notes?: string
+    concept_id?: string
+  }
   try {
     body = (await request.json()) as typeof body
   } catch {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  if (body.kind !== 'additional' && body.kind !== 'revision') {
+  if (
+    body.kind !== 'additional' &&
+    body.kind !== 'revision' &&
+    body.kind !== 'additional_final'
+  ) {
     return NextResponse.json({ error: 'Unknown kind.' }, { status: 400 })
   }
 
@@ -78,6 +87,76 @@ export async function POST(request: Request) {
         metadata: {
           user_id: user.id,
           kind: 'bd_additional',
+        },
+      })
+      return NextResponse.json({ client_secret: session.client_secret })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Stripe error'
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+
+  if (body.kind === 'additional_final') {
+    // Promoting a non-selected concept into a paid additional final logo on
+    // the same brand. Uses the same price as adding a brand design — Mike
+    // treats both as 'unlock another final logo'.
+    if (!body.concept_id) {
+      return NextResponse.json({ error: 'Missing concept_id.' }, { status: 400 })
+    }
+    const { data: concept } = await supabase
+      .from('logo_concepts')
+      .select('id, brand_design_id, is_selected')
+      .eq('id', body.concept_id)
+      .maybeSingle()
+    if (!concept) {
+      return NextResponse.json({ error: 'Concept not found.' }, { status: 404 })
+    }
+    if (concept.is_selected) {
+      return NextResponse.json({ error: 'Already a final.' }, { status: 400 })
+    }
+    const { data: brand } = await supabase
+      .from('brand_designs')
+      .select('id, user_id, brand_name')
+      .eq('id', concept.brand_design_id)
+      .maybeSingle()
+    if (!brand || brand.user_id !== user.id) {
+      return NextResponse.json({ error: 'Brand design not found.' }, { status: 404 })
+    }
+    const amount = extras.additional_brand_price_cents
+    if (!amount || amount < 50) {
+      return NextResponse.json(
+        {
+          error:
+            'Additional final price is not configured yet — admin needs to set it under Pricing.',
+        },
+        { status: 400 }
+      )
+    }
+    try {
+      const session = await stripe.checkout.sessions.create({
+        ui_mode: 'embedded_page',
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Additional final logo',
+                description: `Unlock this concept as an additional final logo for "${brand.brand_name ?? 'your brand'}". Adds it to your final-logo collection with its own kit.`,
+              },
+              unit_amount: amount,
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: user.email,
+        allow_promotion_codes: true,
+        return_url: `${origin}/dashboard/brand-design/${brand.id}?final=success&session_id={CHECKOUT_SESSION_ID}`,
+        metadata: {
+          user_id: user.id,
+          kind: 'bd_additional_final',
+          brand_id: brand.id,
+          concept_id: concept.id,
         },
       })
       return NextResponse.json({ client_secret: session.client_secret })

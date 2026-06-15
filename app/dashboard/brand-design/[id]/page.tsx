@@ -108,6 +108,11 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
     : ''
   const firstRevisionIsFree =
     bdExtras.first_revision_free && (revisionCount ?? 0) === 0
+  // Additional-final logo price — used per-concept after a final exists
+  // so the talent can buy a 2nd / 3rd final from the same concept pool.
+  const additionalPriceLabel = bdExtras.additional_brand_price_cents
+    ? `$${(bdExtras.additional_brand_price_cents / 100).toFixed(0)}`
+    : ''
 
   const prefsInitial = {
     brand_name: brand.brand_name,
@@ -218,6 +223,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           revisionCount={revisionCount ?? 0}
           revisionPaidLabel={revisionPaidLabel}
           firstRevisionIsFree={firstRevisionIsFree}
+          additionalPriceLabel={additionalPriceLabel}
         />
       )}
 
@@ -251,6 +257,7 @@ function StudioView({
   revisionCount,
   revisionPaidLabel,
   firstRevisionIsFree,
+  additionalPriceLabel,
 }: {
   brand: any
   tab: StudioTab
@@ -264,6 +271,7 @@ function StudioView({
   revisionCount: number
   revisionPaidLabel: string
   firstRevisionIsFree: boolean
+  additionalPriceLabel: string
 }) {
   return (
     <div className="space-y-6">
@@ -294,6 +302,8 @@ function StudioView({
           currentRound={currentRound}
           shortlistedCurrentRound={shortlistedCurrentRound}
           prefsInitial={prefsInitial}
+          hasFinal={hasFinal}
+          additionalPriceLabel={additionalPriceLabel}
         />
       )}
       {tab === 'final' && (
@@ -326,6 +336,8 @@ function ConceptsTab({
   currentRound,
   shortlistedCurrentRound,
   prefsInitial,
+  hasFinal,
+  additionalPriceLabel,
 }: {
   brandId: string
   concepts: any[]
@@ -333,6 +345,8 @@ function ConceptsTab({
   currentRound: number
   shortlistedCurrentRound: number
   prefsInitial: any
+  hasFinal: boolean
+  additionalPriceLabel: string
 }) {
   return (
     <div className="space-y-6">
@@ -413,6 +427,8 @@ function ConceptsTab({
               <ConceptsGrid
                 concepts={list}
                 canSelect={true}
+                hasFinal={hasFinal}
+                additionalPriceLabel={additionalPriceLabel}
               />
             </section>
           )
@@ -508,6 +524,12 @@ function FinalLogoTab({
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <AssembleKitButton brandId={brand.id} existingKitUrl={brand.brand_kit_url ?? null} />
+              <Link
+                href={`/dashboard/brand-design/${brand.id}/canvas`}
+                className="text-display rounded-[var(--radius-sm)] border border-primary bg-primary/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary"
+              >
+                ✏️ Modify logo
+              </Link>
               <RequestRevisionButton
                 brandId={brand.id}
                 paidPriceLabel={revisionPaidLabel}

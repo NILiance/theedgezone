@@ -1,4 +1,22 @@
+# pnpm 10+ scoped allowlist for install-time scripts.
+# Sharp ships a native binding (libvips) that needs to run its install
+# script on each platform — without `true` here pnpm skips the script
+# and Vercel hits `ERR_DLOPEN_FAILED: libvips-cpp.so.8` at runtime.
 allowBuilds:
-  sharp: set this to true or false
-  supabase: set this to true or false
-  unrs-resolver: set this to true or false
+  sharp: true
+  unrs-resolver: true
+  supabase: true
+
+# Vercel installs from Windows-checked-in lockfile entries but needs the
+# linux-x64-glibc native binary at runtime. Telling pnpm to fetch
+# multiple architectures' optional deps keeps the linux binary present.
+supportedArchitectures:
+  os:
+    - current
+    - linux
+  cpu:
+    - current
+    - x64
+  libc:
+    - current
+    - glibc
