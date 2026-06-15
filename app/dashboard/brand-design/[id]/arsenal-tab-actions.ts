@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { generateLogoAnimation, type LogoAnimationOptions } from '@/lib/brand-addons'
+import { BRAND_VOICE_CONTENT_TYPES as BRAND_VOICE_CONTENT_TYPES_OPTIONS } from '@/lib/arsenal-tab-options'
 
 const BUCKET = 'brand-assets'
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
@@ -208,26 +209,10 @@ export type BrandVoiceActionState = {
   tone?: string
 }
 
-export const BRAND_VOICE_CONTENT_TYPES = [
-  { value: 'social_captions', name: 'Social Captions' },
-  { value: 'bio_lines', name: 'Bio Lines' },
-  { value: 'taglines', name: 'Tagline Ideas' },
-  { value: 'email_subjects', name: 'Email Subject Lines' },
-  { value: 'sponsorship_pitch', name: 'Sponsorship Pitch Lines' },
-  { value: 'gameday_posts', name: 'Game Day Posts' },
-  { value: 'thank_you_notes', name: 'Thank You Notes' },
-  { value: 'press_release', name: 'Press Release Blurbs' },
-]
-export const BRAND_VOICE_TONES = [
-  'Professional',
-  'Confident',
-  'Casual',
-  'Inspirational',
-  'Bold',
-  'Friendly',
-  'Authentic',
-  'Playful',
-]
+// Use the client-safe lists in lib/arsenal-tab-options so client and
+// server stay in sync without dragging server-only code into client
+// bundles.
+const BRAND_VOICE_CONTENT_TYPES = BRAND_VOICE_CONTENT_TYPES_OPTIONS
 
 export async function generateBrandVoiceLinesAction(
   _prev: BrandVoiceActionState,
@@ -327,16 +312,6 @@ Output exactly 6 lines. Put each line on its own line. No numbering, no preamble
 // ── QR Code ─────────────────────────────────────────────────────────────────
 
 export type QrActionState = { ok?: boolean; error?: string; url?: string }
-
-const QR_TYPES = [
-  { value: 'url', name: 'URL / Link', placeholder: 'https://yourbrand.com' },
-  { value: 'instagram', name: 'Instagram Profile', placeholder: 'https://instagram.com/yourhandle' },
-  { value: 'tiktok', name: 'TikTok Profile', placeholder: 'https://tiktok.com/@yourhandle' },
-  { value: 'linktree', name: 'Linktree', placeholder: 'https://linktr.ee/yourhandle' },
-  { value: 'email', name: 'Email', placeholder: 'mailto:you@example.com' },
-  { value: 'phone', name: 'Phone', placeholder: 'tel:+15555555555' },
-]
-export const QR_TYPE_OPTIONS = QR_TYPES
 
 export async function generateQrCodeAction(
   _prev: QrActionState,

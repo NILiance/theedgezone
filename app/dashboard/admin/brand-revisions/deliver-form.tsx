@@ -27,7 +27,7 @@ export function DeliverRevisionForm({
           name="file"
           accept="image/png,image/jpeg"
           required
-          className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="mt-1 block w-full rounded-md border border-border bg-panel-elevated px-3 py-2 text-sm text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-[var(--radius-sm)] file:border file:border-border file:bg-panel-elevated file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-foreground hover:file:bg-primary hover:file:text-primary-foreground"
         />
       </div>
       <div>

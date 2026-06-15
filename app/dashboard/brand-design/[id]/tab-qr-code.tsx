@@ -2,11 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  generateQrCodeAction,
-  QR_TYPE_OPTIONS,
-  type QrActionState,
-} from './arsenal-tab-actions'
+import { generateQrCodeAction, type QrActionState } from './arsenal-tab-actions'
+import { QR_TYPE_OPTIONS } from '@/lib/arsenal-tab-options'
 
 export function QrCodeTab({
   brandId,
@@ -23,7 +20,7 @@ export function QrCodeTab({
     generateQrCodeAction,
     {}
   )
-  const [qrType, setQrType] = useState(QR_TYPE_OPTIONS[0]!.value)
+  const [qrType, setQrType] = useState<string>(QR_TYPE_OPTIONS[0]!.value)
   const [qrColor, setQrColor] = useState('#000000')
   const [bgColor, setBgColor] = useState('#ffffff')
   const placeholder = QR_TYPE_OPTIONS.find((t) => t.value === qrType)?.placeholder ?? ''

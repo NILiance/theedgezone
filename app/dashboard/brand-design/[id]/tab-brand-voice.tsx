@@ -4,18 +4,17 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   generateBrandVoiceLinesAction,
-  BRAND_VOICE_CONTENT_TYPES,
-  BRAND_VOICE_TONES,
   type BrandVoiceActionState,
 } from './arsenal-tab-actions'
+import { BRAND_VOICE_CONTENT_TYPES, BRAND_VOICE_TONES } from '@/lib/arsenal-tab-options'
 
 export function BrandVoiceTab({ brandId, hasFinal }: { brandId: string; hasFinal: boolean }) {
   const [state, action, pending] = useActionState<BrandVoiceActionState, FormData>(
     generateBrandVoiceLinesAction,
     {}
   )
-  const [contentType, setContentType] = useState(BRAND_VOICE_CONTENT_TYPES[0]!.value)
-  const [tone, setTone] = useState(BRAND_VOICE_TONES[0]!)
+  const [contentType, setContentType] = useState<string>(BRAND_VOICE_CONTENT_TYPES[0]!.value)
+  const [tone, setTone] = useState<string>(BRAND_VOICE_TONES[0]!)
   useRefreshOnNewUrl(state.url)
 
   if (!hasFinal) return <LockedNotice label="Brand Voice" />

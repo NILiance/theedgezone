@@ -148,7 +148,7 @@ function UploadCard({
         name="file"
         accept={accept}
         required
-        className="mt-3 block w-full text-xs file:mr-3 file:rounded-[var(--radius-sm)] file:border file:border-border file:bg-background file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:tracking-widest"
+        className="mt-3 block w-full text-xs text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-[var(--radius-sm)] file:border file:border-border file:bg-panel-elevated file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-foreground hover:file:bg-primary hover:file:text-primary-foreground"
       />
       <button
         type="submit"

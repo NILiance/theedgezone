@@ -6,7 +6,7 @@ import {
   generateLogoAnimationAction,
   type LogoAnimationActionState,
 } from './arsenal-tab-actions'
-import { LOGO_ANIMATION_STYLE_OPTIONS } from '@/lib/brand-addons'
+import { LOGO_ANIMATION_STYLE_OPTIONS } from '@/lib/arsenal-tab-options'
 
 export function LogoAnimationTab({ brandId, hasFinal }: { brandId: string; hasFinal: boolean }) {
   const [state, action, pending] = useActionState<LogoAnimationActionState, FormData>(
