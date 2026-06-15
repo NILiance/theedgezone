@@ -11,6 +11,7 @@ export default async function PricingAdminPage() {
 
   const rows = SERVICES.map((s) => {
     const o = overrides.get(s.id) ?? null
+    const extras = (o?.extras ?? {}) as Record<string, unknown>
     return {
       service_slug: s.id,
       title: s.title,
@@ -23,6 +24,16 @@ export default async function PricingAdminPage() {
       custom_label: o?.custom_label ?? null,
       active: o?.active ?? true,
       hasOverride: Boolean(o),
+      revision_price_cents:
+        typeof extras.revision_price_cents === 'number' ? extras.revision_price_cents : null,
+      first_revision_free:
+        typeof extras.first_revision_free === 'boolean'
+          ? extras.first_revision_free
+          : true,
+      additional_brand_price_cents:
+        typeof extras.additional_brand_price_cents === 'number'
+          ? extras.additional_brand_price_cents
+          : null,
     }
   })
 

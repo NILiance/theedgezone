@@ -2419,6 +2419,7 @@ export type Database = {
         Row: {
           active: boolean
           custom_label: string | null
+          extras: Json
           plan_annual_cents: number | null
           plan_monthly_cents: number | null
           plan_onetime_cents: number | null
@@ -2429,6 +2430,7 @@ export type Database = {
         Insert: {
           active?: boolean
           custom_label?: string | null
+          extras?: Json
           plan_annual_cents?: number | null
           plan_monthly_cents?: number | null
           plan_onetime_cents?: number | null
@@ -2439,6 +2441,7 @@ export type Database = {
         Update: {
           active?: boolean
           custom_label?: string | null
+          extras?: Json
           plan_annual_cents?: number | null
           plan_monthly_cents?: number | null
           plan_onetime_cents?: number | null

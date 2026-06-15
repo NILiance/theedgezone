@@ -14,19 +14,54 @@ export interface ServicePriceRow {
   plan_onetime_cents: number | null
   custom_label: string | null
   active: boolean
+  extras: Record<string, unknown>
+}
+
+/**
+ * Brand-design-specific extras stored under service_pricing.extras for the
+ * `personal-brand-design` row. Read via getBrandDesignExtras().
+ */
+export interface BrandDesignExtras {
+  revision_price_cents: number | null
+  first_revision_free: boolean
+  additional_brand_price_cents: number | null
 }
 
 export const getAllServicePricing = cache(async (): Promise<Map<string, ServicePriceRow>> => {
   const supabase = await createClient()
   const { data } = await supabase
     .from('service_pricing')
-    .select('service_slug, plan_monthly_cents, plan_annual_cents, plan_onetime_cents, custom_label, active')
+    .select('service_slug, plan_monthly_cents, plan_annual_cents, plan_onetime_cents, custom_label, active, extras')
   const map = new Map<string, ServicePriceRow>()
   for (const row of data ?? []) {
-    map.set(row.service_slug, row as ServicePriceRow)
+    map.set(row.service_slug, {
+      ...row,
+      extras: (row.extras ?? {}) as Record<string, unknown>,
+    } as ServicePriceRow)
   }
   return map
 })
+
+/**
+ * Read brand-design pricing extras from the persisted row. Falls back to
+ * conservative defaults when no row exists yet so checkout always has
+ * sane numbers.
+ */
+export async function getBrandDesignExtras(): Promise<BrandDesignExtras> {
+  const all = await getAllServicePricing()
+  const row = all.get('personal-brand-design')
+  const e = (row?.extras ?? {}) as Record<string, unknown>
+  return {
+    revision_price_cents:
+      typeof e.revision_price_cents === 'number' ? e.revision_price_cents : null,
+    first_revision_free:
+      typeof e.first_revision_free === 'boolean' ? e.first_revision_free : true,
+    additional_brand_price_cents:
+      typeof e.additional_brand_price_cents === 'number'
+        ? e.additional_brand_price_cents
+        : null,
+  }
+}
 
 export const getServicePricing = cache(async (slug: string): Promise<ServicePriceRow | null> => {
   const all = await getAllServicePricing()
