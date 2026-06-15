@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import type { ThemeTokens } from '@/lib/site-builder/theme-presets'
+import { parseIcon } from '@/lib/site-builder/emoji-library'
 import {
   GuestbookForm,
   PollForm,
@@ -607,6 +608,28 @@ function FaqBlock({
   )
 }
 
+function StatIcon({ icon }: { icon?: string }) {
+  const parsed = parseIcon(icon)
+  if (parsed.kind === 'none') return null
+  if (parsed.kind === 'emoji') return <div className="mb-1 text-3xl">{parsed.value}</div>
+  return (
+    <div className="mb-2 flex justify-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={parsed.value} alt="" className="h-12 w-12 object-contain" />
+    </div>
+  )
+}
+
+function BadgeIcon({ icon }: { icon?: string }) {
+  const parsed = parseIcon(icon)
+  if (parsed.kind === 'none') return <div className="h-12 w-12" />
+  if (parsed.kind === 'emoji') return <div className="text-3xl">{parsed.value}</div>
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={parsed.value} alt="" className="h-12 w-12 shrink-0 object-contain" />
+  )
+}
+
 function StatsBlock({
   props,
   tokens,
@@ -653,7 +676,7 @@ function StatsBlock({
                   : undefined
               }
             >
-              {s.icon && <div className="mb-1 text-3xl">{s.icon}</div>}
+              <StatIcon icon={s.icon} />
               <p
                 className="text-5xl font-black"
                 style={{ color: s.color || tokens.primary, fontFamily: tokens.font_heading }}
@@ -695,7 +718,7 @@ function AchievementsBlock({
             className="flex items-center gap-4 rounded-md border p-4"
             style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
           >
-            <div className="text-3xl">{b.icon}</div>
+            <BadgeIcon icon={b.icon} />
             <div>
               <p className="text-sm font-bold" style={{ color: tokens.heading_color }}>
                 {b.label}

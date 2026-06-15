@@ -1,10 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { AssetPicker } from '@/components/site/editor/asset-picker'
 import type { FieldSpec } from '@/lib/site-builder/block-types'
+import {
+  EMOJI_GROUPS,
+  parseIcon,
+  serializeIcon,
+  type IconValue,
+} from '@/lib/site-builder/emoji-library'
 
 interface BlockFieldProps {
   spec: FieldSpec
@@ -140,6 +147,18 @@ export function BlockField({ spec, value, onChange }: BlockFieldProps) {
         </div>
       )
 
+    case 'icon_picker':
+      return (
+        <div>
+          <Label>{spec.label}</Label>
+          <IconPicker
+            value={parseIcon(value)}
+            onChange={(next) => onChange(serializeIcon(next))}
+          />
+          {spec.help && <p className="mt-1 text-xs text-muted-foreground">{spec.help}</p>}
+        </div>
+      )
+
     case 'select':
       return (
         <div>
@@ -256,6 +275,136 @@ export function BlockField({ spec, value, onChange }: BlockFieldProps) {
     default:
       return null
   }
+}
+
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: IconValue
+  onChange: (next: IconValue) => void
+}) {
+  const [search, setSearch] = useState('')
+  const filteredGroups = search
+    ? EMOJI_GROUPS.map((g) => ({
+        ...g,
+        emojis: g.emojis.filter((e) => e.includes(search) || g.name.toLowerCase().includes(search.toLowerCase())),
+      })).filter((g) => g.emojis.length > 0)
+    : EMOJI_GROUPS
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-border bg-panel/30 p-2">
+        <Mode
+          active={value.kind === 'none'}
+          label="None"
+          onClick={() => onChange({ kind: 'none' })}
+        />
+        <Mode
+          active={value.kind === 'emoji'}
+          label="Emoji"
+          onClick={() =>
+            onChange({ kind: 'emoji', value: value.kind === 'emoji' ? value.value : '🏆' })
+          }
+        />
+        <Mode
+          active={value.kind === 'image'}
+          label="Image"
+          onClick={() =>
+            onChange({ kind: 'image', value: value.kind === 'image' ? value.value : '' })
+          }
+        />
+        <div className="ml-auto flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] border border-border bg-background text-2xl">
+          {value.kind === 'emoji' ? (
+            value.value
+          ) : value.kind === 'image' && value.value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={value.value} alt="" className="h-full w-full rounded-[var(--radius-sm)] object-cover" />
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </div>
+      </div>
+
+      {value.kind === 'emoji' && (
+        <div className="space-y-2 rounded-[var(--radius-sm)] border border-border bg-background p-2">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search groups…"
+            className="h-8 text-xs"
+          />
+          <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
+            {filteredGroups.map((g) => (
+              <div key={g.name}>
+                <p className="text-eyebrow mb-1 text-[10px] text-muted-foreground">{g.name}</p>
+                <div className="grid grid-cols-10 gap-1">
+                  {g.emojis.map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => onChange({ kind: 'emoji', value: e })}
+                      className={`flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] text-xl transition-colors ${
+                        value.value === e
+                          ? 'bg-primary/20 ring-2 ring-primary'
+                          : 'hover:bg-panel'
+                      }`}
+                      title={e}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {filteredGroups.length === 0 && (
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                No emojis match &quot;{search}&quot;
+              </p>
+            )}
+          </div>
+          <Input
+            value={value.value}
+            onChange={(e) => onChange({ kind: 'emoji', value: e.target.value })}
+            placeholder="Or paste any emoji"
+            className="h-8 font-mono text-sm"
+          />
+        </div>
+      )}
+
+      {value.kind === 'image' && (
+        <AssetPicker
+          value={value.value}
+          onChange={(v) => onChange({ kind: 'image', value: v })}
+          placeholder="https://… or click Upload"
+        />
+      )}
+    </div>
+  )
+}
+
+function Mode({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-display rounded-[var(--radius-sm)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+        active
+          ? 'bg-primary text-primary-foreground'
+          : 'border border-border bg-background text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+    </button>
+  )
 }
 
 function toDatetimeLocal(iso: string): string {

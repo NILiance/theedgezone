@@ -23,6 +23,7 @@ export type FieldType =
   | 'datetime'
   | 'json'
   | 'repeater'
+  | 'icon_picker'
 
 export interface FieldSpec {
   key: string
@@ -334,9 +335,9 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
       bg_color: '',
       text_color: '',
       stats: [
-        { icon: '🏆', label: 'Career stat', value: '—', color: '' },
-        { icon: '📈', label: 'Followers', value: '—', color: '' },
-        { icon: '⭐', label: 'Engagement', value: '—', color: '' },
+        { icon: 'emoji:🏆', label: 'Career stat', value: '—', color: '' },
+        { icon: 'emoji:📈', label: 'Followers', value: '—', color: '' },
+        { icon: 'emoji:⭐', label: 'Engagement', value: '—', color: '' },
       ],
     },
     fields: [
@@ -361,12 +362,12 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
         label: 'Stats',
         type: 'repeater',
         itemFields: [
-          { key: 'icon', label: 'Icon / emoji', type: 'text' },
+          { key: 'icon', label: 'Icon', type: 'icon_picker' },
           { key: 'value', label: 'Value', type: 'text' },
           { key: 'label', label: 'Label', type: 'text' },
           { key: 'color', label: 'Color (optional)', type: 'color' },
         ],
-        itemDefault: { icon: '🏆', value: '—', label: 'Stat', color: '' },
+        itemDefault: { icon: 'emoji:🏆', value: '—', label: 'Stat', color: '' },
       },
     ],
   },
@@ -379,7 +380,7 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     defaultProps: {
       title: 'Achievements',
       badges: [
-        { icon: '🏆', label: 'State Champion', value: '2024', color: '' },
+        { icon: 'emoji:🏆', label: 'State Champion', value: '2024', color: '' },
       ],
     },
     fields: [
@@ -389,12 +390,12 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
         label: 'Badges',
         type: 'repeater',
         itemFields: [
-          { key: 'icon', label: 'Icon / emoji', type: 'text' },
+          { key: 'icon', label: 'Icon', type: 'icon_picker' },
           { key: 'label', label: 'Label', type: 'text' },
           { key: 'value', label: 'Year / detail', type: 'text' },
           { key: 'color', label: 'Color (optional)', type: 'color' },
         ],
-        itemDefault: { icon: '🏆', label: '', value: '', color: '' },
+        itemDefault: { icon: 'emoji:🏆', label: '', value: '', color: '' },
       },
     ],
   },
