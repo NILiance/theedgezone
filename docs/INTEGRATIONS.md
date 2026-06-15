@@ -92,17 +92,32 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
-## Ideogram — logo + image generation
+## Google Gemini — logos + Brand Arsenal assets
 
-What it powers: Brand Design Studio logo concepts, AssetPicker "Generate from description" button.
+What it powers: Brand Design Studio (Round 1 + Round 2 logo concepts via the
+exact verbatim legacy prompts), every Brand Arsenal generator (social
+templates, merch mockups, business cards, thank-you cards, media kit covers,
+etc.), and the AssetPicker "Generate from description" button. One key
+covers every image path in the app.
 
-1. https://ideogram.ai/manage-api → switch to API tab → buy credits ($20+ to start).
-2. "Create API Key" → `IDEOGRAM_API_KEY`.
+Model: `gemini-2.5-flash-image`.
+
+1. https://aistudio.google.com/app/apikey → sign in with any Google account (no
+   credit card required for the free tier).
+2. "Create API key" → copy → `GEMINI_API_KEY`.
+3. For production volume, attach a billing account in Google Cloud Console.
+   Free tier is rate-limited and fine for development / small studios.
 
 **Env**
 ```
-IDEOGRAM_API_KEY=...
+GEMINI_API_KEY=...
 ```
+
+### Ideogram (legacy — no longer used)
+
+The earlier port called Ideogram for logo concepts; that was replaced by
+Gemini for exact parity with the legacy WP plugin. You can safely delete
+`IDEOGRAM_API_KEY` from your Vercel env once Gemini is configured.
 
 ---
 
@@ -275,7 +290,8 @@ If unset, post-purchase sync is a no-op and the order still completes.
 | `RESEND_API_KEY` | Resend | ✅ for emails |
 | `RESEND_FROM_EMAIL` | Resend | ✅ for emails |
 | `ANTHROPIC_API_KEY` | Claude | Optional |
-| `IDEOGRAM_API_KEY` | Ideogram | Optional — needed for Brand Design |
+| `GEMINI_API_KEY` | Google Gemini | ✅ for Brand Design + Arsenal |
+| `IDEOGRAM_API_KEY` | Ideogram | Legacy — unused, can be removed |
 | `VECTORIZER_AI_API_ID` | Vectorizer.ai | Optional — vector SVG in kit |
 | `VECTORIZER_AI_API_SECRET` | Vectorizer.ai | Optional |
 | `HEYGEN_API_KEY` | HeyGen | Optional — Climb videos |

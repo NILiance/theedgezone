@@ -1912,12 +1912,14 @@ export type Database = {
           brand_audience: string | null
           brand_avoid: string | null
           brand_font_pair: string | null
+          brand_initials: string | null
           brand_inspiration_urls: Json
           brand_mood: string | null
           brand_neutral_color: string | null
           brand_primary_color: string | null
           brand_secondary_color: string | null
           brand_style_seed: string | null
+          brand_symbol: string | null
           brand_tagline: string | null
           brand_values: Json
           brand_voice: string | null
@@ -1977,12 +1979,14 @@ export type Database = {
           brand_audience?: string | null
           brand_avoid?: string | null
           brand_font_pair?: string | null
+          brand_initials?: string | null
           brand_inspiration_urls?: Json
           brand_mood?: string | null
           brand_neutral_color?: string | null
           brand_primary_color?: string | null
           brand_secondary_color?: string | null
           brand_style_seed?: string | null
+          brand_symbol?: string | null
           brand_tagline?: string | null
           brand_values?: Json
           brand_voice?: string | null
@@ -2042,12 +2046,14 @@ export type Database = {
           brand_audience?: string | null
           brand_avoid?: string | null
           brand_font_pair?: string | null
+          brand_initials?: string | null
           brand_inspiration_urls?: Json
           brand_mood?: string | null
           brand_neutral_color?: string | null
           brand_primary_color?: string | null
           brand_secondary_color?: string | null
           brand_style_seed?: string | null
+          brand_symbol?: string | null
           brand_tagline?: string | null
           brand_values?: Json
           brand_voice?: string | null

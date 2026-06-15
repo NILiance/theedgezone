@@ -5,13 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
-import {
-  defaultR1Prompt,
-  generateConcepts as genIdeogram,
-  remixConcept,
-  r2RefinePrompt,
-  r3FinalizePrompt,
-} from '@/lib/ideogram'
+import { generateLogoConcepts } from '@/lib/gemini-image'
+import { REFINEMENT_SEEDS, type BrandPrefs } from '@/lib/brand-prompts'
 import { provisionBrandDesign } from '@/lib/provisioning'
 import { assembleBrandKit } from '@/lib/brand-kit'
 import { uploadZipToDrive, gdriveConfigured } from '@/lib/gdrive'
@@ -47,7 +42,9 @@ export async function generateConcepts(formData: FormData) {
   const supabase = await createClient()
   const { data: brand } = await supabase
     .from('brand_designs')
-    .select('id, brand_name, sport, athletic_position, primary_color, secondary_color, style_seed, user_id')
+    .select(
+      'id, brand_name, sport, athletic_position, jersey_number, primary_color, secondary_color, style_seed, user_id'
+    )
     .eq('id', parsed.data.brand_id)
     .single()
 
@@ -55,28 +52,59 @@ export async function generateConcepts(formData: FormData) {
     throw new Error('Brand design not found or not yours')
   }
 
-  const prompt = defaultR1Prompt({
-    name: brand.brand_name ?? 'NIL Talent',
-    sport: brand.sport,
-    style: brand.style_seed,
-  })
+  // Pull the matching profile fields so the prompt has initials, position,
+  // and any inspiration the talent set in their profile editor.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, brand_initials, brand_symbol, brand_inspiration_urls, brand_audience, brand_mood, brand_values')
+    .eq('id', user.id)
+    .maybeSingle()
 
-  const concepts = await genIdeogram({
-    prompt,
+  const colorWords = describeColors(brand.primary_color, brand.secondary_color)
+  const inspirationFreeText = Array.isArray(profile?.brand_inspiration_urls)
+    ? (profile?.brand_inspiration_urls as string[]).slice(0, 3).join(', ')
+    : ''
+
+  const prefs: BrandPrefs = {
+    name: brand.brand_name ?? profile?.display_name ?? 'NIL Talent',
+    sport: brand.sport,
+    position: brand.athletic_position,
+    jerseyNum: brand.jersey_number,
+    initials: (profile as { brand_initials?: string | null } | null)?.brand_initials ?? null,
+    symbol: (profile as { brand_symbol?: string | null } | null)?.brand_symbol ?? null,
+    colors: colorWords,
+    vibe: brand.style_seed ?? null,
+    inspiration: inspirationFreeText || null,
+  }
+
+  // Cycle concept index from the count of existing concepts so the style
+  // mod rotation continues across "+10 more" batches.
+  const { count: existingCount } = await supabase
+    .from('logo_concepts')
+    .select('id', { count: 'exact', head: true })
+    .eq('brand_design_id', parsed.data.brand_id)
+    .eq('round', parsed.data.round)
+  const startIndex = existingCount ?? 0
+
+  const concepts = await generateLogoConcepts({
+    brandId: parsed.data.brand_id,
+    prefs,
+    round: parsed.data.round === 1 ? 1 : 2,
     count: parsed.data.count,
-    aspect_ratio: '1x1',
-    palette: [brand.primary_color, brand.secondary_color].filter(Boolean) as string[],
+    startIndex,
   })
 
   if (concepts.length === 0) {
-    throw new Error('Ideogram returned no concepts — check IDEOGRAM_API_KEY')
+    throw new Error(
+      'Gemini returned no concepts — check that GEMINI_API_KEY is set in Vercel env vars.'
+    )
   }
 
   const rows = concepts.map((c) => ({
     brand_design_id: parsed.data.brand_id,
     round: parsed.data.round,
     prompt: c.prompt,
-    provider: 'ideogram',
+    provider: 'gemini',
     image_url: c.url,
     thumbnail_url: c.thumbnail_url ?? null,
     metadata: c.metadata ?? null,
@@ -86,6 +114,53 @@ export async function generateConcepts(formData: FormData) {
   if (insertError) throw new Error(insertError.message)
 
   revalidatePath(`/dashboard/brand-design/${parsed.data.brand_id}`)
+}
+
+/**
+ * Best-effort: turn the two hex colors stored on the brand into the
+ * free-text "colors" string the prompt expects ("navy and gold").
+ */
+function describeColors(primary: string | null, secondary: string | null): string {
+  const named = [hexToName(primary), hexToName(secondary)].filter(Boolean)
+  if (named.length === 2) return `${named[0]} and ${named[1]}`
+  if (named.length === 1) return named[0]!
+  const raw = [primary, secondary].filter(Boolean)
+  if (raw.length === 2) return `${raw[0]} and ${raw[1]}`
+  return raw[0] ?? 'blue and black'
+}
+
+function hexToName(hex: string | null): string | null {
+  if (!hex) return null
+  const h = hex.toLowerCase().replace('#', '')
+  if (h.length !== 6) return null
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  // Greys + black/white
+  if (r < 30 && g < 30 && b < 30) return 'black'
+  if (r > 225 && g > 225 && b > 225) return 'white'
+  if (Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && Math.abs(r - b) < 12) {
+    return r < 90 ? 'charcoal' : r < 165 ? 'grey' : 'silver'
+  }
+  // Hue-based label
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const d = max - min
+  let h360 = 0
+  if (max === r) h360 = ((g - b) / d) % 6
+  else if (max === g) h360 = (b - r) / d + 2
+  else h360 = (r - g) / d + 4
+  h360 = (h360 * 60 + 360) % 360
+  if (h360 < 15 || h360 >= 345) return 'red'
+  if (h360 < 35) return 'orange'
+  if (h360 < 65) return 'yellow gold'
+  if (h360 < 95) return 'lime'
+  if (h360 < 155) return 'green'
+  if (h360 < 195) return 'teal'
+  if (h360 < 235) return 'blue'
+  if (h360 < 270) return 'indigo'
+  if (h360 < 305) return 'purple'
+  return 'magenta'
 }
 
 export async function toggleShortlist(conceptId: string) {
@@ -112,7 +187,11 @@ export async function toggleShortlist(conceptId: string) {
  * Refine the shortlisted concepts of the current max round and write the
  * next round's outputs. R2 generates 3 variations per shortlisted R1; R3
  * generates 2 variations per shortlisted R2 (or all R2 if none picked).
- * Uses Ideogram V3 Remix with a round-appropriate prompt.
+ *
+ * Uses Gemini 2.5 Flash Image with the chosen R1 image as the reference,
+ * cycling through the legacy refinement seeds ('refined and elevated',
+ * 'bolder and more dynamic', etc.) so each variation explores a different
+ * direction.
  */
 export async function refineRound(brandId: string) {
   const user = await requireUser()
@@ -120,12 +199,20 @@ export async function refineRound(brandId: string) {
 
   const { data: brand } = await supabase
     .from('brand_designs')
-    .select('id, brand_name, sport, primary_color, secondary_color, user_id')
+    .select(
+      'id, brand_name, sport, athletic_position, jersey_number, primary_color, secondary_color, style_seed, user_id'
+    )
     .eq('id', brandId)
     .single()
   if (!brand || brand.user_id !== user.id) {
     throw new Error('Brand design not found or not yours')
   }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, brand_initials, brand_symbol, brand_inspiration_urls')
+    .eq('id', user.id)
+    .maybeSingle()
 
   const { data: concepts } = await supabase
     .from('logo_concepts')
@@ -148,39 +235,60 @@ export async function refineRound(brandId: string) {
     throw new Error('Generate Round 1 concepts before refining.')
   }
 
-  const prompt =
-    nextRound === 2
-      ? r2RefinePrompt({ name: brand.brand_name ?? 'NIL Talent', sport: brand.sport })
-      : r3FinalizePrompt({ name: brand.brand_name ?? 'NIL Talent' })
-  const palette = [brand.primary_color, brand.secondary_color].filter(Boolean) as string[]
-
-  // Cap total Ideogram calls so a generous shortlist doesn't melt the API quota.
+  // Cap total Gemini calls so a generous shortlist doesn't burn the quota.
   const maxSources = nextRound === 2 ? 6 : 8
   const trimmedSources = sources.slice(0, maxSources)
 
-  const remixed = await Promise.all(
-    trimmedSources.map((src) =>
-      remixConcept({
-        source_url: src.image_url,
-        prompt,
+  const colorWords = describeColors(brand.primary_color, brand.secondary_color)
+  const inspirationFreeText = Array.isArray(profile?.brand_inspiration_urls)
+    ? (profile?.brand_inspiration_urls as string[]).slice(0, 3).join(', ')
+    : ''
+
+  const prefs: BrandPrefs = {
+    name: brand.brand_name ?? profile?.display_name ?? 'NIL Talent',
+    sport: brand.sport,
+    position: brand.athletic_position,
+    jerseyNum: brand.jersey_number,
+    initials: (profile as { brand_initials?: string | null } | null)?.brand_initials ?? null,
+    symbol: (profile as { brand_symbol?: string | null } | null)?.brand_symbol ?? null,
+    colors: colorWords,
+    vibe: brand.style_seed ?? null,
+    inspiration: inspirationFreeText || null,
+  }
+
+  // For each source, generate `variationsPer` refined concepts using the
+  // source image as the Gemini reference. Cycle refinement seeds so each
+  // variation tries a different direction.
+  const batches = await Promise.all(
+    trimmedSources.map((src, srcIdx) => {
+      const seedOffset = srcIdx * variationsPer
+      const refinementSeeds = Array.from({ length: variationsPer }, (_, i) =>
+        REFINEMENT_SEEDS[(seedOffset + i) % REFINEMENT_SEEDS.length]!
+      )
+      return generateLogoConcepts({
+        brandId,
+        prefs,
+        round: 2,
         count: variationsPer,
-        aspect_ratio: '1x1',
-        strength: nextRound === 2 ? 0.55 : 0.35,
-        palette,
+        referenceImageUrl: src.image_url,
+        refinementSeeds,
+        startIndex: seedOffset,
       })
-    )
+    })
   )
 
-  const flat = remixed.flat()
+  const flat = batches.flat()
   if (flat.length === 0) {
-    throw new Error('Ideogram returned no remixed concepts — check IDEOGRAM_API_KEY.')
+    throw new Error(
+      'Gemini returned no refined concepts — check GEMINI_API_KEY in Vercel env vars.'
+    )
   }
 
   const rows = flat.map((c) => ({
     brand_design_id: brandId,
     round: nextRound,
     prompt: c.prompt,
-    provider: 'ideogram',
+    provider: 'gemini',
     image_url: c.url,
     thumbnail_url: c.thumbnail_url ?? null,
     metadata: c.metadata ?? null,

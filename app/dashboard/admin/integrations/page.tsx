@@ -86,16 +86,32 @@ const GROUPS: IntegrationGroup[] = [
     keys: [{ label: 'API key', env: 'ANTHROPIC_API_KEY', secret: true }],
   },
   {
-    name: 'Ideogram',
-    module: 'Brand Design Studio + Generate buttons',
-    summary: 'Logo concepts, image generation from descriptions.',
+    name: 'Google Gemini',
+    module: 'Brand Design Studio + Arsenal generators',
+    summary:
+      'Logo concepts (R1 + R2 refinement) and every Brand Arsenal image generator. One key powers them all.',
+    consoleUrl: 'https://aistudio.google.com/app/apikey',
+    docsUrl: 'https://ai.google.dev/gemini-api/docs/image-generation',
+    steps: [
+      'Sign in at aistudio.google.com (free Google account).',
+      'Click "Get API key" → "Create API key" → copy.',
+      'Model used: gemini-2.5-flash-image. No project/billing setup needed for the free tier (rate-limited).',
+      'For production volume, attach a billing account in Google Cloud Console.',
+    ],
+    keys: [{ label: 'API key', env: 'GEMINI_API_KEY', secret: true, required: true }],
+  },
+  {
+    name: 'Ideogram (legacy)',
+    module: 'Deprecated — replaced by Gemini',
+    summary:
+      'Previously powered Round 1 + Round 2 logo concepts. Replaced by Gemini for parity with the legacy WP plugin. Safe to leave blank.',
     consoleUrl: 'https://ideogram.ai/manage-api',
     docsUrl: 'https://developer.ideogram.ai/',
     steps: [
-      'ideogram.ai/manage-api → API tab → buy credits ($20+ to start).',
-      'Create API Key.',
+      'No setup needed — the Brand Designer no longer calls Ideogram.',
+      'You can delete IDEOGRAM_API_KEY from Vercel once Gemini is configured.',
     ],
-    keys: [{ label: 'API key', env: 'IDEOGRAM_API_KEY', secret: true }],
+    keys: [{ label: 'API key (unused)', env: 'IDEOGRAM_API_KEY', secret: true }],
   },
   {
     name: 'Vectorizer.ai',

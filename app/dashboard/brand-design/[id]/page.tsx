@@ -372,7 +372,7 @@ function ConceptsTab({
             <p className="text-sm text-muted-foreground">
               Click <strong>Generate 10 concepts</strong> above to kick off Round 1. We use
               Ideogram V3 with your brand colors as the palette seed. If nothing happens after
-              clicking, check that <code className="font-mono">IDEOGRAM_API_KEY</code> is set in
+              clicking, check that <code className="font-mono">GEMINI_API_KEY</code> is set in
               Vercel.
             </p>
           </CardContent>
@@ -639,7 +639,7 @@ function HelpTab() {
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
             If <em>Generate</em> doesn&rsquo;t produce concepts, check that{' '}
-            <code className="font-mono">IDEOGRAM_API_KEY</code> is set in Vercel Environment
+            <code className="font-mono">GEMINI_API_KEY</code> is set in Vercel Environment
             Variables. Admins can see all integrations under{' '}
             <Link href="/dashboard/admin/integrations" className="text-primary hover:underline">
               Admin → Integrations

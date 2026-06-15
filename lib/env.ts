@@ -32,6 +32,7 @@ const envSchema = z.object({
 
   // Integrations
   ANTHROPIC_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
   IDEOGRAM_API_KEY: z.string().optional(),
   PHYLLO_CLIENT_ID: z.string().optional(),
   PHYLLO_CLIENT_SECRET: z.string().optional(),
@@ -79,6 +80,7 @@ if (isServer) {
     VERCEL_ACCESS_TOKEN: process.env.VERCEL_ACCESS_TOKEN,
     CRON_SECRET: process.env.CRON_SECRET,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     IDEOGRAM_API_KEY: process.env.IDEOGRAM_API_KEY,
     PHYLLO_CLIENT_ID: process.env.PHYLLO_CLIENT_ID,
     PHYLLO_CLIENT_SECRET: process.env.PHYLLO_CLIENT_SECRET,
