@@ -52,12 +52,12 @@ export default async function PublicEpkPage({ params, searchParams }: PageProps)
     .eq('slug', slug)
     .maybeSingle()
   if (!epk) notFound()
+  let isOwnerOrAdmin = false
   if (epk.status !== 'published') {
-    if (preview !== '1' || !(await viewerCanPreview(supabase, epk.user_id))) {
-      notFound()
-    }
+    isOwnerOrAdmin = await viewerCanPreview(supabase, epk.user_id)
+    if (!isOwnerOrAdmin) notFound()
   }
-  const isPreview = preview === '1' && epk.status !== 'published'
+  const isPreview = epk.status !== 'published' && (preview === '1' || isOwnerOrAdmin)
 
   const { data: blocks } = await supabase
     .from('epk_blocks')

@@ -53,12 +53,12 @@ export default async function PublicStorePage({ params, searchParams }: PageProp
     .eq('slug', slug)
     .maybeSingle()
   if (!store) notFound()
+  let isOwnerOrAdmin = false
   if (store.status !== 'open') {
-    if (preview !== '1' || !(await viewerCanPreview(supabase, store.user_id))) {
-      notFound()
-    }
+    isOwnerOrAdmin = await viewerCanPreview(supabase, store.user_id)
+    if (!isOwnerOrAdmin) notFound()
   }
-  const isPreview = preview === '1' && store.status !== 'open'
+  const isPreview = store.status !== 'open' && (preview === '1' || isOwnerOrAdmin)
 
   const { data: products } = await supabase
     .from('store_products')

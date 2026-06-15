@@ -121,7 +121,7 @@ export async function GET(req: Request) {
     }
   }
 
-  // Audit before sending the admin to the verify endpoint.
+  // Audit before exchanging the magic link.
   await supabase.from('audit_log').insert({
     user_id: adminUser.id,
     action: 'impersonate.start',
@@ -130,14 +130,44 @@ export async function GET(req: Request) {
     metadata: { return_to: returnTo },
   })
 
-  // Verify the magic link as the target user — that sets the session
-  // cookies for the target.
-  const verifyUrl = new URL(
-    `${refUrl.replace(/\/+$/, '')}/auth/v1/verify`
-  )
-  verifyUrl.searchParams.set('token', link.properties.hashed_token)
-  verifyUrl.searchParams.set('type', 'magiclink')
-  verifyUrl.searchParams.set('redirect_to', `${siteUrl}${returnTo}`)
+  // Exchange the magic link server-side so we never bounce through the
+  // Supabase project's Site URL (which would otherwise drop us on the
+  // default localhost:3000 fallback when the production URL isn't in
+  // Supabase's redirect allow-list). We fetch the verify endpoint with
+  // redirect:'manual' and pull the access/refresh tokens out of the
+  // Location header's hash fragment.
+  const actionLink = link.properties.action_link
+  if (!actionLink) {
+    return NextResponse.json({ error: 'Magic link missing action URL' }, { status: 500 })
+  }
+  const verifyRes = await fetch(actionLink, { redirect: 'manual' })
+  const location = verifyRes.headers.get('location') ?? verifyRes.headers.get('Location') ?? ''
+  const hash = location.split('#')[1]
+  if (!hash) {
+    return NextResponse.json(
+      { error: `Verify endpoint did not return tokens (status ${verifyRes.status})` },
+      { status: 500 }
+    )
+  }
+  const hashParams = new URLSearchParams(hash)
+  const accessToken = hashParams.get('access_token')
+  const refreshToken = hashParams.get('refresh_token')
+  if (!accessToken || !refreshToken) {
+    return NextResponse.json(
+      { error: 'No access/refresh token in verify response' },
+      { status: 500 }
+    )
+  }
 
-  return NextResponse.redirect(verifyUrl.toString(), { status: 302 })
+  // Set the target user's session cookie in the format @supabase/ssr expects:
+  // a 5-element array starting with [access_token, refresh_token, ...].
+  const targetCookieValue = JSON.stringify([accessToken, refreshToken, null, null, null])
+  jar.set(sessionCookieName, targetCookieValue, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
+
+  return NextResponse.redirect(`${siteUrl}${returnTo}`, { status: 302 })
 }

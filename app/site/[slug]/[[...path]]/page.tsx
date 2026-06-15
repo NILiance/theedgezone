@@ -56,12 +56,13 @@ export default async function PublicSitePage({ params, searchParams }: PageProps
 
   if (!site) notFound()
 
-  // Owner + admin can preview drafts via ?preview=1; public visitors only
-  // get published sites.
+  // Public visitors only get published sites. The owner + admins can see
+  // their own drafts at any time (no ?preview=1 query needed) so a stale
+  // link doesn't 404 on them; everyone else gets the strict 404.
+  let isOwnerOrAdmin = false
   if (site.status !== 'published') {
-    if (preview !== '1' || !(await isViewerAuthorized(supabase, site.user_id))) {
-      notFound()
-    }
+    isOwnerOrAdmin = await isViewerAuthorized(supabase, site.user_id)
+    if (!isOwnerOrAdmin) notFound()
   }
 
   const requestedPath = '/' + (path?.join('/') ?? '')
@@ -135,7 +136,7 @@ export default async function PublicSitePage({ params, searchParams }: PageProps
 
   const social = (site.social ?? {}) as Record<string, string>
 
-  const isPreview = preview === '1' && site.status !== 'published'
+  const isPreview = site.status !== 'published' && (preview === '1' || isOwnerOrAdmin)
 
   // Detect which URL shape we're being served under so internal nav links
   // route correctly in both modes:
