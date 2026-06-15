@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { generateLogoConcepts } from '@/lib/gemini-image'
 import { REFINEMENT_SEEDS, type BrandPrefs } from '@/lib/brand-prompts'
-import { provisionBrandDesign } from '@/lib/provisioning'
+import { provisionBrandDesign, slugify } from '@/lib/provisioning'
 import { assembleBrandKit } from '@/lib/brand-kit'
 import { uploadZipToDrive, gdriveConfigured } from '@/lib/gdrive'
 
@@ -77,12 +77,17 @@ export async function generateConcepts(formData: FormData) {
   // Throws with the underlying API error (quota, billing, model gating)
   // when every call fails. useActionState forwards it to the inline
   // error block, so the user sees what's actually wrong.
+  const userName = (brand.brand_name ?? profile?.display_name ?? 'Athlete').trim()
+  const brandSlug = slugify(brand.brand_name ?? `brand-${brand.id.slice(0, 8)}`)
+
   const concepts = await generateLogoConcepts({
     brandId: parsed.data.brand_id,
     prefs,
     round: parsed.data.round === 1 ? 1 : 2,
     count: parsed.data.count,
     startIndex,
+    userName,
+    brandSlug,
   })
 
   const rows = concepts.map((c) => ({
@@ -275,6 +280,8 @@ export async function refineRound(brandId: string) {
   const trimmedSources = sources.slice(0, maxSources)
 
   const prefs = buildPrefsFromBrandAndProfile(brand, profile)
+  const userName = (brand.brand_name ?? profile?.display_name ?? 'Athlete').trim()
+  const brandSlug = slugify(brand.brand_name ?? `brand-${brand.id.slice(0, 8)}`)
 
   // For each source, generate `variationsPer` refined concepts using the
   // source image as our designer's reference. Cycle refinement seeds so
@@ -293,6 +300,8 @@ export async function refineRound(brandId: string) {
         referenceImageUrl: src.image_url,
         refinementSeeds,
         startIndex: seedOffset,
+        userName,
+        brandSlug,
       })
     })
   )

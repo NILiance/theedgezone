@@ -17,6 +17,7 @@
 import { env } from '@/lib/env'
 import { createServiceClient } from '@/lib/supabase/server'
 import { buildLogoPrompt, type BrandPrefs, REFINEMENT_SEEDS } from '@/lib/brand-prompts'
+import { mirrorImageToDrive } from '@/lib/gdrive'
 
 const GEMINI_MODEL = 'gemini-2.5-flash-image'
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
@@ -54,6 +55,14 @@ async function callGeminiOnce(opts: {
   prompt: string
   referenceImageUrl?: string
   uploadPath: string
+  /** Optional Drive mirror info — when present, the saved image is also
+   * copied into the talent's Drive folder for backup/share. */
+  driveMirror?: {
+    userName: string
+    brandSlug: string
+    subfolder?: string
+    filename: string
+  }
 }): Promise<GeneratedConcept> {
   if (!env.GEMINI_API_KEY) {
     throw new Error('Designer not configured — admin needs to set the API key.')
@@ -113,7 +122,26 @@ async function callGeminiOnce(opts: {
   const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
 
   const url = await uploadBuffer(opts.uploadPath, buffer, mimeType)
-  if (!url) throw new Error('Generated image upload failed — check storage configuration.')
+  // uploadBuffer throws on failure with a sanitized message; success is
+  // a non-empty public URL.
+
+  // Drive mirror — non-blocking. We await it so its errors get logged in
+  // the same request, but a failure here doesn't break the user-facing
+  // result because we already have the Supabase URL above.
+  if (opts.driveMirror) {
+    try {
+      await mirrorImageToDrive({
+        buffer,
+        filename: opts.driveMirror.filename,
+        mimeType,
+        userName: opts.driveMirror.userName,
+        brandSlug: opts.driveMirror.brandSlug,
+        subfolder: opts.driveMirror.subfolder,
+      })
+    } catch (err) {
+      console.error('[gdrive mirror]', err instanceof Error ? err.message : err)
+    }
+  }
 
   return {
     url,
@@ -140,9 +168,50 @@ async function uploadBuffer(
   path: string,
   buffer: Buffer,
   mimeType: string
-): Promise<string | null> {
+): Promise<string> {
   const supabase = createServiceClient()
-  if (!supabase) return null
+  if (!supabase) {
+    throw new Error(
+      'Storage service role missing — admin needs to set SUPABASE_SERVICE_ROLE_KEY in Vercel env vars.'
+    )
+  }
+
+  // Ensure the bucket exists (idempotent). New environments often hit
+  // 'Bucket not found' on first upload because the migration that creates
+  // it hasn't run. Creating here keeps the studio working out of the box.
+  try {
+    const { data: existing } = await supabase.storage.getBucket(BUCKET)
+    if (!existing) {
+      const { error: createErr } = await supabase.storage.createBucket(BUCKET, {
+        public: true,
+        fileSizeLimit: 50 * 1024 * 1024,
+      })
+      if (createErr && !createErr.message.includes('already exists')) {
+        console.error('[storage] bucket create failed', createErr.message)
+        throw new Error(
+          `Storage bucket "${BUCKET}" missing and could not be auto-created: ${createErr.message}`
+        )
+      }
+    }
+  } catch (err) {
+    // getBucket throws when the bucket doesn't exist on some Supabase
+    // versions — fall through to create.
+    if (err instanceof Error && err.message.includes('not found')) {
+      const { error: createErr } = await supabase.storage.createBucket(BUCKET, {
+        public: true,
+        fileSizeLimit: 50 * 1024 * 1024,
+      })
+      if (createErr) {
+        throw new Error(
+          `Storage bucket "${BUCKET}" missing and could not be auto-created: ${createErr.message}`
+        )
+      }
+    } else if (err instanceof Error && err.message.startsWith('Storage bucket')) {
+      throw err
+    }
+    // Other errors (network, etc.) — let the upload below report.
+  }
+
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, new Uint8Array(buffer), {
@@ -150,8 +219,8 @@ async function uploadBuffer(
       upsert: true,
     })
   if (error) {
-    console.error('[gemini] upload failed', error.message)
-    return null
+    console.error('[storage] upload failed', error.message)
+    throw new Error(`Storage upload failed: ${error.message}`)
   }
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
@@ -169,6 +238,10 @@ export interface GenerateLogosOptions {
   refinementSeeds?: string[]
   /** Optional — only used for stub fallback labelling. */
   startIndex?: number
+  /** Talent's display name — used as the top-level Drive folder name. */
+  userName?: string
+  /** Brand slug — used as the per-brand Drive folder name. */
+  brandSlug?: string
 }
 
 /**
@@ -197,10 +270,20 @@ export async function generateLogoConcepts(
       refinementSeed,
     })
     const uploadPath = `${opts.brandId}/concepts/r${opts.round}-${Date.now()}-${conceptIndex}.png`
+    const driveMirror =
+      opts.userName && opts.brandSlug
+        ? {
+            userName: opts.userName,
+            brandSlug: opts.brandSlug,
+            subfolder: `concepts/round-${opts.round}`,
+            filename: `r${opts.round}-${conceptIndex + 1}.png`,
+          }
+        : undefined
     return callGeminiOnce({
       prompt,
       referenceImageUrl: opts.referenceImageUrl,
       uploadPath,
+      driveMirror,
     })
   })
 
@@ -240,16 +323,30 @@ export async function generateArsenalImage(opts: {
   referenceImageUrl?: string
   /** Optional filename hint. */
   filenameHint?: string
+  /** Talent's display name — used as the top-level Drive folder name. */
+  userName?: string
+  /** Brand slug — used as the per-brand Drive folder name. */
+  brandSlug?: string
 }): Promise<GeneratedConcept> {
   if (!env.GEMINI_API_KEY) {
     throw new Error('Our designer is not configured yet — admins should set it up under Integrations.')
   }
   const slug = (opts.filenameHint ?? opts.category).replace(/[^a-zA-Z0-9_-]/g, '_')
   const uploadPath = `${opts.brandId}/arsenal/${opts.category}/${Date.now()}-${slug}.png`
+  const driveMirror =
+    opts.userName && opts.brandSlug
+      ? {
+          userName: opts.userName,
+          brandSlug: opts.brandSlug,
+          subfolder: `arsenal/${opts.category}`,
+          filename: `${Date.now()}-${slug}.png`,
+        }
+      : undefined
   const result = await callGeminiOnce({
     prompt: opts.prompt,
     referenceImageUrl: opts.referenceImageUrl,
     uploadPath,
+    driveMirror,
   })
   if (!result) throw new Error('Our designer returned no image. Try again, or simplify the prompt.')
   return result

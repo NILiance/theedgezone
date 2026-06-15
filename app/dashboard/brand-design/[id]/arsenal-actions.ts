@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { generateArsenalImage } from '@/lib/gemini-image'
+import { slugify } from '@/lib/provisioning'
 import {
   type ArsenalContext,
   businessCardPrompt,
@@ -167,12 +168,16 @@ export async function generateArsenalAsset(
 
   let result
   try {
+    const userName = (brand.brand_name ?? profile?.display_name ?? 'Athlete').trim()
+    const brandSlug = slugify(brand.brand_name ?? `brand-${brand.id.slice(0, 8)}`)
     result = await generateArsenalImage({
       brandId,
       prompt: built.prompt,
       category,
       referenceImageUrl: brand.final_logo_url,
       filenameHint: option || category,
+      userName,
+      brandSlug,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Our designer failed to generate this asset'
