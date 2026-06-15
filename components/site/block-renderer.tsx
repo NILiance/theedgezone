@@ -611,6 +611,8 @@ function FaqBlock({
 function StatIcon({ icon }: { icon?: string }) {
   const parsed = parseIcon(icon)
   if (parsed.kind === 'none') return null
+  if (parsed.kind === 'emoji' && !parsed.value) return null
+  if (parsed.kind === 'image' && !parsed.value) return null
   if (parsed.kind === 'emoji') return <div className="mb-1 text-3xl">{parsed.value}</div>
   return (
     <div className="mb-2 flex justify-center">
@@ -623,6 +625,8 @@ function StatIcon({ icon }: { icon?: string }) {
 function BadgeIcon({ icon }: { icon?: string }) {
   const parsed = parseIcon(icon)
   if (parsed.kind === 'none') return <div className="h-12 w-12" />
+  if (parsed.kind === 'emoji' && !parsed.value) return <div className="h-12 w-12" />
+  if (parsed.kind === 'image' && !parsed.value) return <div className="h-12 w-12" />
   if (parsed.kind === 'emoji') return <div className="text-3xl">{parsed.value}</div>
   return (
     // eslint-disable-next-line @next/next/no-img-element

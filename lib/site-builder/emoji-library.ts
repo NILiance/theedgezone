@@ -76,12 +76,14 @@ export function parseIcon(raw: unknown): IconValue {
 }
 
 export function serializeIcon(value: IconValue): string {
+  // Keep the prefix even when value is empty so the picker remembers
+  // the user's mode while they're still entering a URL / emoji.
   switch (value.kind) {
     case 'none':
       return ''
     case 'emoji':
-      return value.value ? `emoji:${value.value}` : ''
+      return `emoji:${value.value}`
     case 'image':
-      return value.value ? `image:${value.value}` : ''
+      return `image:${value.value}`
   }
 }
