@@ -11,6 +11,13 @@ import { AddonsSection } from './addons-section'
 import { ArsenalGrid } from './arsenal-grid'
 import { YourCreations } from './your-creations'
 import { BrandToolkit } from './brand-toolkit'
+import { ArsenalSubtabs, type ArsenalSubtab } from './arsenal-subtabs'
+import { LogoAnimationTab } from './tab-logo-animation'
+import { TradingCardTab } from './tab-trading-card'
+import { BrandVoiceTab } from './tab-brand-voice'
+import { QrCodeTab } from './tab-qr-code'
+import { EmailSignatureTab } from './tab-email-signature'
+import { SocialAvatarsTab } from './tab-social-avatars'
 import { PreferencesForm } from './preferences-form'
 import { GenerateConceptsButton } from './generate-form'
 import { ConceptsGrid } from './concepts-grid'
@@ -18,7 +25,7 @@ import { RequestRevisionButton } from './revision-button'
 
 interface PageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ view?: string; tab?: string }>
+  searchParams: Promise<{ view?: string; tab?: string; arsenalsubtab?: string }>
 }
 
 type TopView = 'studio' | 'arsenal' | 'print'
@@ -46,6 +53,8 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
   const sp = await searchParams
   const view: TopView = (sp.view as TopView) || 'studio'
   const tab: StudioTab = (sp.tab as StudioTab) || 'concepts'
+  const arsenalSubtab: ArsenalSubtab =
+    (sp.arsenalsubtab as ArsenalSubtab) || 'create'
   const user = await requireUser()
   const supabase = await createClient()
 
@@ -256,6 +265,9 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           existingAddons={addons}
           creations={creations}
           toolkitEntries={toolkitEntries}
+          subtab={arsenalSubtab}
+          brandPrimary={brand.primary_color}
+          brandSecondary={brand.secondary_color}
         />
       )}
 
@@ -858,6 +870,9 @@ function ArsenalView({
   existingAddons,
   creations,
   toolkitEntries,
+  subtab,
+  brandPrimary,
+  brandSecondary,
 }: {
   brandId: string
   hasFinal: boolean
@@ -866,6 +881,9 @@ function ArsenalView({
   existingAddons: Array<{ kind: string; url: string | null; metadata: Record<string, unknown>; created_at: string }>
   creations: Array<{ id: string; kind: string; url: string | null; metadata: Record<string, unknown>; created_at: string }>
   toolkitEntries: Array<{ section_id: string; content_md: string; updated_at: string }>
+  subtab: ArsenalSubtab
+  brandPrimary: string | null
+  brandSecondary: string | null
 }) {
   const remaining = Math.max(0, assetsTotal - assetsUsed)
   const pct = assetsTotal > 0 ? Math.min(100, Math.round((assetsUsed / assetsTotal) * 100)) : 0
@@ -913,22 +931,97 @@ function ArsenalView({
         </div>
       </div>
 
-      <ArsenalGrid brandId={brandId} hasFinal={hasFinal} />
+      <ArsenalSubtabs brandId={brandId} active={subtab} />
 
-      <YourCreations brandId={brandId} creations={creations} />
+      {subtab === 'create' && (
+        <>
+          <ArsenalGrid brandId={brandId} hasFinal={hasFinal} />
+          <YourCreations brandId={brandId} creations={creations} />
+        </>
+      )}
 
-      <BrandToolkit brandId={brandId} entries={toolkitEntries} />
+      {subtab === 'logo_animation' && (
+        <>
+          <LogoAnimationTab brandId={brandId} hasFinal={hasFinal} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => c.kind === 'logo_animation')}
+          />
+        </>
+      )}
 
-      <div>
-        <p className="text-eyebrow text-primary">Quick-generate add-ons</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Composited assets — logo animation, brand voice doc, QR code, social avatar pack,
-          trading card. These ship instantly — no waiting.
-        </p>
-        <div className="mt-3">
-          <AddonsSection brandId={brandId} hasSelected={hasFinal} existing={existingAddons} />
-        </div>
-      </div>
+      {subtab === 'trading_card' && (
+        <>
+          <TradingCardTab brandId={brandId} hasFinal={hasFinal} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => c.kind === 'trading_card')}
+          />
+        </>
+      )}
+
+      {subtab === 'brand_voice' && (
+        <>
+          <BrandVoiceTab brandId={brandId} hasFinal={hasFinal} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter(
+              (c) => c.kind === 'brand_voice_lines' || c.kind === 'brand_voice_doc'
+            )}
+          />
+        </>
+      )}
+
+      {subtab === 'qr_code' && (
+        <>
+          <QrCodeTab
+            brandId={brandId}
+            hasFinal={hasFinal}
+            brandPrimary={brandPrimary}
+            brandSecondary={brandSecondary}
+          />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => c.kind === 'qr_code')}
+          />
+        </>
+      )}
+
+      {subtab === 'email_signature' && (
+        <>
+          <EmailSignatureTab
+            brandId={brandId}
+            hasFinal={hasFinal}
+            brandPrimary={brandPrimary}
+          />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter(
+              (c) => c.kind === 'email_signature' || c.kind === 'email_signature_image'
+            )}
+          />
+        </>
+      )}
+
+      {subtab === 'social_avatars' && (
+        <>
+          <SocialAvatarsTab brandId={brandId} hasFinal={hasFinal} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => c.kind === 'social_avatars')}
+          />
+        </>
+      )}
+
+      {subtab === 'brand_toolkit' && (
+        <BrandToolkit brandId={brandId} entries={toolkitEntries} />
+      )}
+
+      {/* Suppress unused-prop lint for now; AddonsSection is still callable
+          from the legacy add-ons path. */}
+      {false && (
+        <AddonsSection brandId={brandId} hasSelected={hasFinal} existing={existingAddons} />
+      )}
     </div>
   )
 }
