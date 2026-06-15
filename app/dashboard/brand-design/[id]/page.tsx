@@ -388,26 +388,24 @@ function ConceptsTab({
 }) {
   return (
     <div className="space-y-6">
-      <PreferencesForm brandId={brandId} initial={prefsInitial} />
+      <PreferencesForm
+        brandId={brandId}
+        initial={prefsInitial}
+        generateRound={concepts.length === 0 ? 1 : currentRound}
+        generateCount={10}
+      />
 
       <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
         <div>
           <p className="text-eyebrow text-primary">Design Concepts</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {concepts.length === 0
-              ? 'Save your preferences above, then kick off Round 1 — our designer creates 10 logo concepts using your settings.'
+              ? 'Edit your preferences above, then click "Save & Generate" — your latest preferences are used every time.'
               : 'Tap ♡ to shortlist favorites, then refine for the next round.'}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          {concepts.length === 0 ? (
-            <GenerateConceptsButton
-              brandId={brandId}
-              round={1}
-              count={10}
-              label="Generate 10 concepts"
-            />
-          ) : (
+          {concepts.length > 0 && (
             <>
               <GenerateConceptsButton
                 brandId={brandId}

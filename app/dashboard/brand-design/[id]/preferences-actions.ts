@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { generateConcepts } from '@/app/dashboard/brand-design/actions'
 
-export type PrefsState = { ok?: boolean; error?: string }
+export type PrefsState = { ok?: boolean; error?: string; generated?: number }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 
@@ -79,6 +80,29 @@ export async function saveBrandPreferencesAction(
     brand_elements: pickStr(form.get('elements')),
   }
   await supabase.from('profiles').update(profileUpdates).eq('id', user.id)
+
+  // Optional: kick off concept generation immediately after save. The
+  // "Save & Generate" button on the prefs form sets `generate_count`
+  // (and optionally `generate_round`) so the talent doesn't have to
+  // click two buttons in sequence — and so brand-new preferences are
+  // guaranteed to be the ones the generator reads.
+  const rawCount = String(form.get('generate_count') ?? '').trim()
+  if (rawCount) {
+    const count = Math.max(1, Math.min(20, Number(rawCount) || 10))
+    const round = Math.max(1, Math.min(3, Number(form.get('generate_round') ?? '1') || 1))
+    const genForm = new FormData()
+    genForm.set('brand_id', brandId)
+    genForm.set('round', String(round))
+    genForm.set('count', String(count))
+    try {
+      await generateConcepts(genForm)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Generation failed'
+      return { error: `Saved preferences, but generation failed: ${msg}` }
+    }
+    revalidatePath(`/dashboard/brand-design/${brandId}`)
+    return { ok: true, generated: count }
+  }
 
   revalidatePath(`/dashboard/brand-design/${brandId}`)
   return { ok: true }

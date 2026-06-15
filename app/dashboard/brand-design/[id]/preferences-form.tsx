@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useRef, useState } from 'react'
 import {
   saveBrandPreferencesAction,
   type PrefsState,
@@ -44,15 +44,26 @@ const BG_OPTIONS = [
 export function PreferencesForm({
   brandId,
   initial,
+  generateRound,
+  generateCount,
 }: {
   brandId: string
   initial: BrandPreferencesValues
+  /** When provided, render a "Save & Generate" button that submits the
+   *  preferences AND triggers concept generation in a single click. */
+  generateRound?: number
+  generateCount?: number
 }) {
   const [state, action, pending] = useActionState<PrefsState, FormData>(
     saveBrandPreferencesAction,
     {}
   )
   const [values, setValues] = useState<BrandPreferencesValues>(initial)
+  // Toggled by the two submit buttons so the same form can either just
+  // save, or save AND generate. onClick fires synchronously before the
+  // form submit event, so setting the value here is captured.
+  const generateCountRef = useRef<HTMLInputElement>(null)
+  const showGenerate = typeof generateCount === 'number' && generateCount > 0
 
   const update = <K extends keyof BrandPreferencesValues>(
     key: K,
@@ -233,20 +244,48 @@ export function PreferencesForm({
         </div>
       </div>
 
+      {/* Hidden inputs the two submit buttons toggle to switch between
+          "just save" and "save + generate". Setting the ref's value in
+          the button's onClick lands before form submission. */}
+      <input ref={generateCountRef} type="hidden" name="generate_count" defaultValue="" />
+      {showGenerate && (
+        <input type="hidden" name="generate_round" value={String(generateRound ?? 1)} />
+      )}
+
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
         <button
           type="submit"
           disabled={pending}
-          className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
+          onClick={() => {
+            if (generateCountRef.current) generateCountRef.current.value = ''
+          }}
+          className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground disabled:opacity-50"
         >
           {pending ? 'Saving…' : 'Save preferences'}
         </button>
+        {showGenerate && (
+          <button
+            type="submit"
+            disabled={pending}
+            onClick={() => {
+              if (generateCountRef.current)
+                generateCountRef.current.value = String(generateCount)
+            }}
+            className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
+          >
+            {pending ? `Generating ${generateCount}…` : `Save & Generate ${generateCount} concepts`}
+          </button>
+        )}
         <p className="text-xs text-muted-foreground">Edits sync back to your profile.</p>
-        {state.ok && (
+        {state.ok && state.generated ? (
+          <span className="text-display rounded-full bg-success/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-success">
+            ✓ Saved · {state.generated} new concepts
+          </span>
+        ) : state.ok ? (
           <span className="text-display rounded-full bg-success/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-success">
             ✓ Saved
           </span>
-        )}
+        ) : null}
         {state.error && (
           <span className="text-display rounded-full bg-destructive/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-destructive">
             {state.error}
