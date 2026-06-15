@@ -420,6 +420,22 @@ function HeadingBlock({
   )
 }
 
+const LINE_HEIGHT: Record<string, number> = {
+  tight: 1.25,
+  snug: 1.375,
+  normal: 1.5,
+  relaxed: 1.625,
+  loose: 2,
+}
+const LETTER_SPACING_FULL: Record<string, string> = {
+  tighter: '-0.05em',
+  tight: '-0.025em',
+  normal: '0',
+  wide: '0.025em',
+  wider: '0.05em',
+  widest: '0.18em',
+}
+
 function TextBlock({
   props,
   tokens,
@@ -428,17 +444,38 @@ function TextBlock({
   tokens: ThemeTokens
 }) {
   const content = getStr(props, 'content', '')
-  const alignment = getStr(props, 'alignment', 'left') as 'left' | 'center' | 'right'
+  const alignment = getStr(props, 'alignment', 'left') as 'left' | 'center' | 'right' | 'justify'
   const maxWidth = getStr(props, 'max_width', '720px')
+  const textColor = getStr(props, 'text_color')
+  const bgColor = getStr(props, 'bg_color')
+  const fontSize = FONT_SIZE[getStr(props, 'font_size', 'base')] ?? FONT_SIZE.base
+  const fontWeight = FONT_WEIGHT[getStr(props, 'font_weight', 'normal')] ?? FONT_WEIGHT.normal
+  const fontFamilyKey = getStr(props, 'font_family', 'body')
+  const fontFamily =
+    fontFamilyKey === 'heading'
+      ? tokens.font_heading
+      : fontFamilyKey === 'mono'
+      ? 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace'
+      : fontFamilyKey === 'serif'
+      ? 'Georgia, "Times New Roman", Times, serif'
+      : tokens.font_body
+  const lineHeight = LINE_HEIGHT[getStr(props, 'line_height', 'relaxed')] ?? LINE_HEIGHT.relaxed
+  const letterSpacing =
+    LETTER_SPACING_FULL[getStr(props, 'letter_spacing', 'normal')] ?? '0'
+
   return (
-    <section className="px-6 py-12">
+    <section className="px-6 py-12" style={bgColor ? { background: bgColor } : undefined}>
       <div
-        className="mx-auto leading-relaxed"
+        className="mx-auto"
         style={{
           maxWidth,
           textAlign: alignment,
-          color: tokens.text_color,
-          fontFamily: tokens.font_body,
+          color: textColor || tokens.text_color,
+          fontFamily,
+          fontSize,
+          fontWeight,
+          lineHeight,
+          letterSpacing,
         }}
         dangerouslySetInnerHTML={{ __html: content }}
       />
@@ -541,9 +578,39 @@ function CtaBlock({
   const buttonUrl = getStr(props, 'button_url', '#contact')
   const bgColor = getStr(props, 'bg_color', tokens.card_bg)
   const textColor = getStr(props, 'text_color', tokens.heading_color)
+  const bgImage = getStr(props, 'bg_image')
+  const overlayColor = getStr(props, 'bg_overlay_color', '#000000')
+  const overlayOpacityRaw = props.bg_overlay_opacity
+  const overlayOpacity =
+    typeof overlayOpacityRaw === 'number'
+      ? Math.max(0, Math.min(1, overlayOpacityRaw))
+      : 0.45
+
   return (
-    <section style={{ background: bgColor }} className="px-6 py-16 text-center">
-      <div className="mx-auto max-w-3xl">
+    <section
+      className="relative overflow-hidden px-6 py-16 text-center"
+      style={{
+        background: bgImage ? bgColor || tokens.card_bg : bgColor,
+        ...(bgImage
+          ? {
+              backgroundImage: `url(${bgImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }
+          : {}),
+      }}
+    >
+      {bgImage && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: overlayColor,
+            opacity: overlayOpacity,
+          }}
+        />
+      )}
+      <div className="relative z-10 mx-auto max-w-3xl">
         <h2
           className="text-3xl font-black tracking-tight sm:text-4xl"
           style={{ color: textColor, fontFamily: tokens.font_heading }}
