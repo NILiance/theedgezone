@@ -74,6 +74,9 @@ export async function generateConcepts(formData: FormData) {
     .eq('round', parsed.data.round)
   const startIndex = existingCount ?? 0
 
+  // Throws with the underlying API error (quota, billing, model gating)
+  // when every call fails. useActionState forwards it to the inline
+  // error block, so the user sees what's actually wrong.
   const concepts = await generateLogoConcepts({
     brandId: parsed.data.brand_id,
     prefs,
@@ -81,12 +84,6 @@ export async function generateConcepts(formData: FormData) {
     count: parsed.data.count,
     startIndex,
   })
-
-  if (concepts.length === 0) {
-    throw new Error(
-      'Our designer is offline right now. Try again in a moment — if this keeps happening, ping support.'
-    )
-  }
 
   const rows = concepts.map((c) => ({
     brand_design_id: parsed.data.brand_id,
@@ -301,11 +298,6 @@ export async function refineRound(brandId: string) {
   )
 
   const flat = batches.flat()
-  if (flat.length === 0) {
-    throw new Error(
-      'Our designer is offline right now. Try again in a moment — if this keeps happening, ping support.'
-    )
-  }
 
   const rows = flat.map((c) => ({
     brand_design_id: brandId,

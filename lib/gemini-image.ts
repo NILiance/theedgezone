@@ -45,16 +45,19 @@ interface GeminiResponse {
 }
 
 /**
- * Single Gemini image call. Returns the public storage URL after upload,
- * or null on failure. Caller is responsible for the upload path so we
- * can namespace per-brand without leaking it here.
+ * Single Gemini image call. Returns the public storage URL after upload.
+ * Throws on failure with a sanitized message — the wrapper functions
+ * forward the message so users see the actual cause (rate limit, model
+ * unavailable, billing not enabled) instead of a generic 'offline'.
  */
 async function callGeminiOnce(opts: {
   prompt: string
   referenceImageUrl?: string
   uploadPath: string
-}): Promise<GeneratedConcept | null> {
-  if (!env.GEMINI_API_KEY) return null
+}): Promise<GeneratedConcept> {
+  if (!env.GEMINI_API_KEY) {
+    throw new Error('Designer not configured — admin needs to set the API key.')
+  }
 
   // Build parts: reference image FIRST (when present), then text.
   const parts: GeminiPart[] = []
@@ -71,39 +74,51 @@ async function callGeminiOnce(opts: {
     generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
   }
 
+  let res: Response
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${env.GEMINI_API_KEY}`, {
+    res = await fetch(`${GEMINI_URL}?key=${env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) {
-      const text = await res.text()
-      console.error('[gemini]', res.status, text.slice(0, 300))
-      return null
-    }
-    const json = (await res.json()) as GeminiResponse
-    const imagePart = json.candidates?.[0]?.content?.parts?.find(
-      (p) => p.inlineData?.data
-    )
-    if (!imagePart?.inlineData?.data) {
-      console.error('[gemini] no image in response')
-      return null
-    }
-    const mimeType = imagePart.inlineData.mimeType ?? 'image/png'
-    const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
-
-    const url = await uploadBuffer(opts.uploadPath, buffer, mimeType)
-    if (!url) return null
-
-    return {
-      url,
-      prompt: opts.prompt,
-      metadata: { provider: 'gemini', model: GEMINI_MODEL },
-    }
   } catch (err) {
+    const message = err instanceof Error ? err.message : 'network error'
     console.error('[gemini] fetch failed', err)
-    return null
+    throw new Error(`Designer unreachable: ${message}`)
+  }
+
+  if (!res.ok) {
+    const text = await res.text()
+    console.error('[gemini]', res.status, text.slice(0, 300))
+    // Bubble the underlying API error so the admin (and Mike) can see
+    // exactly what's wrong — usually quota, billing, or model gating.
+    let apiMsg = ''
+    try {
+      const parsed = JSON.parse(text) as { error?: { message?: string } }
+      apiMsg = parsed.error?.message ?? text.slice(0, 200)
+    } catch {
+      apiMsg = text.slice(0, 200)
+    }
+    throw new Error(`Designer error (HTTP ${res.status}): ${apiMsg}`)
+  }
+  const json = (await res.json()) as GeminiResponse
+  const imagePart = json.candidates?.[0]?.content?.parts?.find(
+    (p) => p.inlineData?.data
+  )
+  if (!imagePart?.inlineData?.data) {
+    console.error('[gemini] no image in response')
+    throw new Error('Designer returned no image — try a simpler prompt or retry.')
+  }
+  const mimeType = imagePart.inlineData.mimeType ?? 'image/png'
+  const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
+
+  const url = await uploadBuffer(opts.uploadPath, buffer, mimeType)
+  if (!url) throw new Error('Generated image upload failed — check storage configuration.')
+
+  return {
+    url,
+    prompt: opts.prompt,
+    metadata: { provider: 'gemini', model: GEMINI_MODEL },
   }
 }
 
@@ -190,11 +205,25 @@ export async function generateLogoConcepts(
   })
 
   const results = await Promise.allSettled(calls)
-  return results
-    .filter((r): r is PromiseFulfilledResult<GeneratedConcept> =>
-      r.status === 'fulfilled' && r.value !== null
-    )
+  const concepts = results
+    .filter((r): r is PromiseFulfilledResult<GeneratedConcept> => r.status === 'fulfilled')
     .map((r) => r.value)
+  // If every parallel call failed, surface the FIRST failure reason so
+  // the user sees the actual problem (quota, billing, model gating, etc.)
+  // instead of a generic 'designer is offline' message.
+  if (concepts.length === 0) {
+    const firstReason = results.find(
+      (r): r is PromiseRejectedResult => r.status === 'rejected'
+    )?.reason
+    const msg =
+      firstReason instanceof Error
+        ? firstReason.message
+        : typeof firstReason === 'string'
+          ? firstReason
+          : 'Designer returned nothing.'
+    throw new Error(msg)
+  }
+  return concepts
 }
 
 /**

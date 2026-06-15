@@ -99,6 +99,13 @@ interface ProfileEditorProps {
     brand_values: string[]
     brand_inspiration_urls: string[]
     brand_avoid: string | null
+    brand_initials: string | null
+    brand_vibe: string | null
+    brand_bg_pref: string | null
+    brand_elements: string | null
+    brand_include_name: boolean | null
+    brand_include_initials: boolean | null
+    brand_include_jersey: boolean | null
     bio: string | null
     achievements: string | null
     socials: Record<string, string>
@@ -331,10 +338,102 @@ function AthleticForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
 // ── BRAND ─────────────────────────────────────────────────────────────────
 function BrandForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
   const [state, action, pending] = useActionState<SectionState, FormData>(saveBrand, undefined)
+  const VIBE_OPTIONS = [
+    'Tech & Modern',
+    'Bold',
+    'Premium',
+    'Futuristic',
+    'Classic',
+    'Vintage',
+    'Streetwear',
+    'Playful',
+  ]
   return (
     <form action={action}>
       <SectionShell state={state} pending={pending}>
         <div className="space-y-6">
+          {/* Logo Designer Preferences — mirrors the Brand Preferences
+              panel on /dashboard/brand-design/[id]. Editing here saves
+              the same columns; both surfaces stay in lockstep. */}
+          <div>
+            <p className="text-eyebrow text-primary">Logo designer preferences</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              These power the Brand Design Studio. Editing them here or on the studio page
+              writes to the same fields.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <FormField label="Initials for logo">
+                <Input
+                  name="brand_initials"
+                  defaultValue={profile.brand_initials ?? ''}
+                  maxLength={5}
+                  placeholder="MR"
+                />
+              </FormField>
+              <FormField label="Brand vibe">
+                <select
+                  name="brand_vibe"
+                  defaultValue={profile.brand_vibe ?? VIBE_OPTIONS[0]}
+                  className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                >
+                  {VIBE_OPTIONS.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label="Background preference">
+                <select
+                  name="brand_bg_pref"
+                  defaultValue={profile.brand_bg_pref ?? 'variety'}
+                  className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="variety">Variety (Best Match)</option>
+                  <option value="light">Light / White</option>
+                  <option value="dark">Dark / Black</option>
+                  <option value="gradient">Gradient</option>
+                </select>
+              </FormField>
+              <FormField label="Include these elements in the logo">
+                <Input
+                  name="brand_elements"
+                  defaultValue={profile.brand_elements ?? ''}
+                  placeholder="devil, football, crown…"
+                />
+              </FormField>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="brand_include_name"
+                  defaultChecked={profile.brand_include_name ?? true}
+                  className="h-4 w-4 cursor-pointer"
+                />
+                <span>Include my name in the logo</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="brand_include_initials"
+                  defaultChecked={profile.brand_include_initials ?? false}
+                  className="h-4 w-4 cursor-pointer"
+                />
+                <span>Include my initials</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="brand_include_jersey"
+                  defaultChecked={profile.brand_include_jersey ?? false}
+                  className="h-4 w-4 cursor-pointer"
+                />
+                <span>Include my jersey number</span>
+              </label>
+            </div>
+          </div>
+
           {/* Colors */}
           <div>
             <p className="text-eyebrow text-primary">Brand colors</p>

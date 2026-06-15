@@ -135,6 +135,15 @@ const brandSchema = z.object({
   brand_values: z.string().max(2000).optional(),
   brand_inspiration_urls: z.string().max(4000).optional(),
   brand_avoid: z.string().max(2000).optional(),
+  // Logo-designer prefs — same ones surfaced on the Brand Design page so
+  // editing either place keeps the talent in lockstep.
+  brand_initials: z.string().max(8).optional(),
+  brand_vibe: z.string().max(60).optional(),
+  brand_bg_pref: z.string().max(20).optional(),
+  brand_elements: z.string().max(500).optional(),
+  brand_include_name: z.coerce.boolean().optional(),
+  brand_include_initials: z.coerce.boolean().optional(),
+  brand_include_jersey: z.coerce.boolean().optional(),
 })
 
 export async function saveBrand(_prev: SectionState, formData: FormData): Promise<SectionState> {
@@ -153,6 +162,13 @@ export async function saveBrand(_prev: SectionState, formData: FormData): Promis
     brand_values: formData.get('brand_values'),
     brand_inspiration_urls: formData.get('brand_inspiration_urls'),
     brand_avoid: formData.get('brand_avoid'),
+    brand_initials: formData.get('brand_initials'),
+    brand_vibe: formData.get('brand_vibe'),
+    brand_bg_pref: formData.get('brand_bg_pref'),
+    brand_elements: formData.get('brand_elements'),
+    brand_include_name: formData.has('brand_include_name'),
+    brand_include_initials: formData.has('brand_include_initials'),
+    brand_include_jersey: formData.has('brand_include_jersey'),
   })
   if (!parsed.success) return { error: parsed.error.errors[0].message }
 
@@ -182,6 +198,13 @@ export async function saveBrand(_prev: SectionState, formData: FormData): Promis
       brand_values: values,
       brand_inspiration_urls: inspirationUrls,
       brand_avoid: parsed.data.brand_avoid || null,
+      brand_initials: parsed.data.brand_initials || null,
+      brand_vibe: parsed.data.brand_vibe || null,
+      brand_bg_pref: parsed.data.brand_bg_pref || 'variety',
+      brand_elements: parsed.data.brand_elements || null,
+      brand_include_name: parsed.data.brand_include_name ?? true,
+      brand_include_initials: parsed.data.brand_include_initials ?? false,
+      brand_include_jersey: parsed.data.brand_include_jersey ?? false,
     })
     .eq('id', user.id)
 
