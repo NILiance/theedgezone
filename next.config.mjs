@@ -11,6 +11,9 @@ const nextConfig = {
       { protocol: 'https', hostname: 'placehold.co' },
     ],
   },
+  // Keep sharp's native binary outside the webpack bundle so its
+  // platform-specific .node + libvips files load correctly at runtime.
+  serverExternalPackages: ['sharp'],
   experimental: {
     serverActions: { bodySizeLimit: '10mb' },
   },
