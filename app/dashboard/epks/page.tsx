@@ -84,11 +84,19 @@ export default async function EpksIndexPage() {
                   <Link href={`/dashboard/epks/${epk.id}`}>
                     <Button size="sm">Edit</Button>
                   </Link>
-                  <Link href={`/epk/${epk.slug}`} target="_blank">
-                    <Button size="sm" variant="outline">
-                      View
-                    </Button>
-                  </Link>
+                  {epk.status === 'published' ? (
+                    <Link href={`/epk/${epk.slug}`} target="_blank">
+                      <Button size="sm" variant="outline">
+                        View live
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href={`/epk/${epk.slug}?preview=1`} target="_blank">
+                      <Button size="sm" variant="outline">
+                        Preview
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>

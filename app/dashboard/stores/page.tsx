@@ -85,11 +85,19 @@ export default async function StoresIndexPage() {
                   <Link href={`/dashboard/stores/${s.id}`}>
                     <Button size="sm">Manage</Button>
                   </Link>
-                  <Link href={`/store/${s.slug}`} target="_blank">
-                    <Button size="sm" variant="outline">
-                      View
-                    </Button>
-                  </Link>
+                  {s.status === 'open' ? (
+                    <Link href={`/store/${s.slug}`} target="_blank">
+                      <Button size="sm" variant="outline">
+                        View live
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href={`/store/${s.slug}?preview=1`} target="_blank">
+                      <Button size="sm" variant="outline">
+                        Preview
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>

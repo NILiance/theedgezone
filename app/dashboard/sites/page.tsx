@@ -86,11 +86,19 @@ export default async function SitesIndexPage() {
                   <Link href={`/dashboard/sites/${site.id}`}>
                     <Button size="sm">Edit</Button>
                   </Link>
-                  <Link href={`/site/${site.slug}`} target="_blank">
-                    <Button size="sm" variant="outline">
-                      View
-                    </Button>
-                  </Link>
+                  {site.status === 'published' ? (
+                    <Link href={`/site/${site.slug}`} target="_blank">
+                      <Button size="sm" variant="outline">
+                        View live
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href={`/site/${site.slug}?preview=1`} target="_blank">
+                      <Button size="sm" variant="outline">
+                        Preview
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>
