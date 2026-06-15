@@ -35,26 +35,33 @@ async function recordAddon(opts: {
   url: string
   metadata: Record<string, unknown>
   bumpCredits?: boolean
-}) {
-  const service = createServiceClient()
-  if (!service) return
-  await service.from('brand_design_addons').insert({
+}): Promise<{ error?: string }> {
+  // Prefer the auth-bound client so RLS (owner-insert policy) governs
+  // writes. Fall back to service-role if the env supplies one — keeps
+  // background paths working without changes.
+  const supabase = await createClient()
+  const writer = createServiceClient() ?? supabase
+  const { error } = await writer.from('brand_design_addons').insert({
     brand_design_id: opts.brandId,
     kind: opts.kind,
     url: opts.url,
     metadata: opts.metadata,
   })
+  if (error) {
+    return { error: `Couldn't save to Your Creations: ${error.message}` }
+  }
   if (opts.bumpCredits) {
-    const { data: brand } = await service
+    const { data: brand } = await writer
       .from('brand_designs')
       .select('asset_credits_used')
       .eq('id', opts.brandId)
       .maybeSingle()
-    await service
+    await writer
       .from('brand_designs')
       .update({ asset_credits_used: (brand?.asset_credits_used ?? 0) + 1 })
       .eq('id', opts.brandId)
   }
+  return {}
 }
 
 async function ownedBrand(brandId: string, userId: string) {
@@ -92,13 +99,14 @@ export async function generateLogoAnimationAction(
   }
   try {
     const result = await generateLogoAnimation(brandId, options)
-    await recordAddon({
+    const rec = await recordAddon({
       brandId,
       kind: 'logo_animation',
       url: result.url,
       metadata: options as unknown as Record<string, unknown>,
       bumpCredits: true,
     })
+    if (rec.error) return { error: rec.error }
     revalidatePath(`/dashboard/brand-design/${brandId}`)
     return { ok: true, url: result.url }
   } catch (err) {
@@ -184,13 +192,14 @@ export async function generateTradingCardAction(
     const path = `${brandId}/addons/trading-card-${style}-${Date.now()}.png`
     const url = await uploadToBucket(path, png, 'image/png')
 
-    await recordAddon({
+    const rec = await recordAddon({
       brandId,
       kind: 'trading_card',
       url,
       metadata: { style, stats, tagline },
       bumpCredits: true,
     })
+    if (rec.error) return { error: rec.error }
     revalidatePath(`/dashboard/brand-design/${brandId}`)
     return { ok: true, url }
   } catch (err) {
@@ -298,13 +307,14 @@ Output exactly 6 lines. Put each line on its own line. No numbering, no preamble
   const md = `# ${contentLabel} · ${tone}\n\n${context ? `> Context: ${context}\n\n` : ''}${lines.map((l) => `- ${l}`).join('\n')}\n`
   const path = `${brandId}/addons/brand-voice-${contentType}-${Date.now()}.md`
   const url = await uploadToBucket(path, Buffer.from(md, 'utf-8'), 'text/markdown')
-  await recordAddon({
+  const rec = await recordAddon({
     brandId,
     kind: 'brand_voice_lines',
     url,
     metadata: { contentType, contentLabel, tone, context, lines },
     bumpCredits: true,
   })
+  if (rec.error) return { error: rec.error }
   revalidatePath(`/dashboard/brand-design/${brandId}`)
   return { ok: true, url, lines, contentType, tone }
 }
@@ -378,13 +388,14 @@ export async function generateQrCodeAction(
 
     const path = `${brandId}/addons/qr-${Date.now()}.png`
     const url = await uploadToBucket(path, png, 'image/png')
-    await recordAddon({
+    const rec = await recordAddon({
       brandId,
       kind: 'qr_code',
       url,
       metadata: { target, qrColor, bgColor, includeLogo },
       bumpCredits: true,
     })
+    if (rec.error) return { error: rec.error }
     revalidatePath(`/dashboard/brand-design/${brandId}`)
     return { ok: true, url }
   } catch (err) {
@@ -478,13 +489,14 @@ p.lead{color:#555;line-height:1.5;}
 
   const path = `${brandId}/addons/email-signature-${Date.now()}.html`
   const url = await uploadToBucket(path, Buffer.from(wrapper, 'utf-8'), 'text/html')
-  await recordAddon({
+  const rec = await recordAddon({
     brandId,
     kind: 'email_signature',
     url,
     metadata: { title, phone, website, bg, nameColor, bodyColor, linkColor },
     bumpCredits: true,
   })
+  if (rec.error) return { error: rec.error }
   revalidatePath(`/dashboard/brand-design/${brandId}`)
   return { ok: true, url }
 }
@@ -507,13 +519,14 @@ export async function generateSocialAvatarsAction(
   try {
     const { generateSocialAvatars } = await import('@/lib/brand-addons')
     const result = await generateSocialAvatars(brandId)
-    await recordAddon({
+    const rec = await recordAddon({
       brandId,
       kind: 'social_avatars',
       url: result.url,
       metadata: { count: result.count },
       bumpCredits: true,
     })
+    if (rec.error) return { error: rec.error }
     revalidatePath(`/dashboard/brand-design/${brandId}`)
     return { ok: true, url: result.url, count: result.count }
   } catch (err) {

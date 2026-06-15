@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { generateArsenalImage } from '@/lib/gemini-image'
 import { slugify } from '@/lib/provisioning'
 import {
@@ -199,27 +199,30 @@ export async function generateArsenalAsset(
     return { error: msg }
   }
 
-  // Persist + bump credits.
-  const service = createServiceClient()
-  if (service) {
-    await service.from('brand_design_addons').insert({
-      brand_design_id: brandId,
-      kind: category,
-      url: result.url,
-      metadata: {
-        provider: 'gemini',
-        category,
-        option,
-        style: styleOpt,
-        sport: sportOverride || null,
-        prompt: result.prompt,
-      },
-    })
-    await service
-      .from('brand_designs')
-      .update({ asset_credits_used: used + 1 })
-      .eq('id', brandId)
+  // Persist + bump credits via the regular auth-bound client so RLS
+  // (owner-insert policy) governs writes — no service-role required.
+  const { error: insertError } = await supabase.from('brand_design_addons').insert({
+    brand_design_id: brandId,
+    kind: category,
+    url: result.url,
+    metadata: {
+      provider: 'gemini',
+      category,
+      option,
+      style: styleOpt,
+      sport: sportOverride || null,
+      prompt: result.prompt,
+    },
+  })
+  if (insertError) {
+    return {
+      error: `Saved image but couldn't record it in Your Creations: ${insertError.message}`,
+    }
   }
+  await supabase
+    .from('brand_designs')
+    .update({ asset_credits_used: used + 1 })
+    .eq('id', brandId)
 
   revalidatePath(`/dashboard/brand-design/${brandId}`)
   return { ok: true, url: result.url }
