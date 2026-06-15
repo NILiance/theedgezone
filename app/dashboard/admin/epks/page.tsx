@@ -73,9 +73,18 @@ export default async function EpksAdminPage() {
                     {new Date(e.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <a href={`/epk/${e.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary hover:underline">
-                      View →
-                    </a>
+                    {e.status === 'published' ? (
+                      <a
+                        href={`/epk/${e.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-primary hover:underline"
+                      >
+                        View live →
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Draft</span>
+                    )}
                   </td>
                 </tr>
               )

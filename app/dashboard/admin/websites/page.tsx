@@ -84,9 +84,18 @@ export default async function WebsitesAdminPage() {
                     {new Date(s.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <a href={`/site/${s.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary hover:underline">
-                      View →
-                    </a>
+                    {s.status === 'published' ? (
+                      <a
+                        href={`/site/${s.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-primary hover:underline"
+                      >
+                        View live →
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground capitalize">{s.status}</span>
+                    )}
                   </td>
                 </tr>
               )

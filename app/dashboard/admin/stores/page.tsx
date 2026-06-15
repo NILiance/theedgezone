@@ -91,9 +91,18 @@ export default async function StoresAdminPage() {
                     ${(stats.revenue / 100).toFixed(0)}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <a href={`/store/${s.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary hover:underline">
-                      View →
-                    </a>
+                    {s.status === 'open' ? (
+                      <a
+                        href={`/store/${s.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-primary hover:underline"
+                      >
+                        View live →
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground capitalize">{s.status}</span>
+                    )}
                   </td>
                 </tr>
               )
