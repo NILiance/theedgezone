@@ -22,7 +22,7 @@ const KIND_LABEL: Record<string, string> = {
   merch_mockup: 'Merch Mockup',
   social_media: 'Social Media',
   business_card: 'Business Card',
-  email_signature_image: 'Email Signature',
+  email_signature_image: 'Signature Graphic',
   virtual_background: 'Virtual Background',
   phone_wallpaper: 'Phone Wallpaper',
   story_highlight: 'Story Highlight',
@@ -34,10 +34,27 @@ const KIND_LABEL: Record<string, string> = {
   game_day: 'Game Day',
   logo_animation: 'Logo Animation',
   brand_voice_doc: 'Brand Voice',
+  brand_voice_lines: 'Brand Voice',
   qr_code: 'QR Code',
-  email_signature: 'Email Signature',
+  email_signature: 'Email Signature (HTML)',
   social_avatars: 'Social Avatars',
   trading_card: 'Trading Card',
+}
+
+// Visual icon shown when the addon URL isn't a viewable image
+// (HTML email signatures, markdown voice docs, etc.).
+const KIND_ICON: Record<string, string> = {
+  email_signature: '✉️',
+  brand_voice_doc: '🗣️',
+  brand_voice_lines: '🗣️',
+  logo_animation: '🎬',
+}
+
+function isImageUrl(url: string | null): boolean {
+  if (!url) return false
+  // Strip query string before checking extension.
+  const clean = url.split('?')[0]!.toLowerCase()
+  return /\.(png|jpe?g|webp|gif|svg|avif|bmp)$/.test(clean)
 }
 
 /**
@@ -119,10 +136,16 @@ function CreationTile({
     delAction(fd)
   }
 
+  const showImage = isImageUrl(creation.url)
+  const placeholderIcon = KIND_ICON[creation.kind] ?? '📄'
   return (
     <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
-      <div className="flex aspect-square items-center justify-center bg-white">
-        {creation.url ? (
+      <div
+        className={`flex aspect-square items-center justify-center ${
+          showImage ? 'bg-white' : 'bg-panel-elevated'
+        }`}
+      >
+        {showImage && creation.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={creation.url}
@@ -130,7 +153,17 @@ function CreationTile({
             className="max-h-full max-w-full object-contain"
           />
         ) : (
-          <span className="text-display text-4xl text-muted-foreground">📄</span>
+          <div className="flex flex-col items-center gap-2 px-3 text-center">
+            <span className="text-display text-5xl" aria-hidden>
+              {placeholderIcon}
+            </span>
+            <span className="text-display text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {KIND_LABEL[creation.kind] ?? creation.kind}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              Click Download to view
+            </span>
+          </div>
         )}
       </div>
       <div className="p-3">

@@ -11,7 +11,11 @@ import { AddonsSection } from './addons-section'
 import { ArsenalGrid } from './arsenal-grid'
 import { YourCreations } from './your-creations'
 import { BrandToolkit } from './brand-toolkit'
-import { ArsenalSubtabs, type ArsenalSubtab } from './arsenal-subtabs'
+import {
+  ArsenalSubtabs,
+  FOCUSED_CATEGORY_SUBTABS,
+  type ArsenalSubtab,
+} from './arsenal-subtabs'
 import { LogoAnimationTab } from './tab-logo-animation'
 import { TradingCardTab } from './tab-trading-card'
 import { BrandVoiceTab } from './tab-brand-voice'
@@ -1009,6 +1013,16 @@ function ArsenalView({
           <YourCreations
             brandId={brandId}
             creations={creations.filter((c) => c.kind === 'social_avatars')}
+          />
+        </>
+      )}
+
+      {FOCUSED_CATEGORY_SUBTABS.includes(subtab) && (
+        <>
+          <ArsenalGrid brandId={brandId} hasFinal={hasFinal} focusedCategoryId={subtab} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => c.kind === subtab)}
           />
         </>
       )}

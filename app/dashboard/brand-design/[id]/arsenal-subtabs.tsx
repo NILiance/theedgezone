@@ -5,12 +5,29 @@ import { useEffect, useRef, useState } from 'react'
 
 export type ArsenalSubtab =
   | 'create'
+  // Visual Assets
   | 'logo_animation'
   | 'trading_card'
+  | 'social_avatars'
+  // Comms
   | 'brand_voice'
   | 'qr_code'
   | 'email_signature'
-  | 'social_avatars'
+  // Print
+  | 'business_card'
+  | 'letterhead'
+  | 'thank_you_card'
+  | 'presentation'
+  | 'media_kit'
+  // Digital
+  | 'social_media'
+  | 'phone_wallpaper'
+  | 'story_highlight'
+  | 'virtual_background'
+  | 'email_signature_image'
+  | 'icon_generator'
+  | 'game_day'
+  // Toolkit
   | 'brand_toolkit'
 
 type LeafEntry = { kind: 'leaf'; id: ArsenalSubtab; label: string }
@@ -40,8 +57,34 @@ const NAV: NavEntry[] = [
     label: 'Comms',
     items: [
       { id: 'brand_voice', label: 'Brand Voice' },
-      { id: 'email_signature', label: 'Email Signature' },
+      { id: 'email_signature', label: 'Email Signature (HTML)' },
       { id: 'qr_code', label: 'QR Code' },
+    ],
+  },
+  {
+    kind: 'group',
+    id: 'print',
+    label: 'Print',
+    items: [
+      { id: 'business_card', label: 'Business Card' },
+      { id: 'letterhead', label: 'Letterhead' },
+      { id: 'thank_you_card', label: 'Thank You Card' },
+      { id: 'presentation', label: 'Presentation Template' },
+      { id: 'media_kit', label: 'Media Kit Cover' },
+    ],
+  },
+  {
+    kind: 'group',
+    id: 'digital',
+    label: 'Digital',
+    items: [
+      { id: 'social_media', label: 'Social Media' },
+      { id: 'phone_wallpaper', label: 'Phone Wallpaper' },
+      { id: 'story_highlight', label: 'Story Highlight Covers' },
+      { id: 'virtual_background', label: 'Virtual Background' },
+      { id: 'email_signature_image', label: 'Signature Graphic' },
+      { id: 'icon_generator', label: 'Icon Generator' },
+      { id: 'game_day', label: 'Game Day' },
     ],
   },
   { kind: 'leaf', id: 'brand_toolkit', label: 'Brand Toolkit' },
@@ -89,7 +132,7 @@ export function ArsenalSubtabs({
           if (entry.kind === 'leaf') {
             const isActive = entry.id === active
             return (
-              <li key={entry.id} className="flex-1 min-w-[120px]">
+              <li key={entry.id} className="flex-1 min-w-[110px]">
                 <Link
                   href={hrefFor(brandId, entry.id)}
                   scroll={false}
@@ -105,7 +148,7 @@ export function ArsenalSubtabs({
           const isGroupActive = Boolean(activeChild)
           const isOpen = openGroup === entry.id
           return (
-            <li key={entry.id} className="relative flex-1 min-w-[180px]">
+            <li key={entry.id} className="relative flex-1 min-w-[160px]">
               <button
                 type="button"
                 onClick={() => setOpenGroup(isOpen ? null : entry.id)}
@@ -164,7 +207,7 @@ export function ArsenalSubtabs({
 }
 
 function tabClass(isActive: boolean): string {
-  return `text-display flex h-12 w-full items-center justify-center rounded-[var(--radius-sm)] px-4 text-[11px] font-bold uppercase tracking-widest transition-colors ${
+  return `text-display flex h-12 w-full items-center justify-center rounded-[var(--radius-sm)] px-3 text-[11px] font-bold uppercase tracking-widest transition-colors ${
     isActive
       ? 'border-2 border-primary bg-primary/10 text-primary'
       : 'text-muted-foreground hover:text-foreground hover:bg-panel/40'
@@ -190,5 +233,24 @@ function Chevron({ open }: { open: boolean }) {
     </svg>
   )
 }
+
+/**
+ * Subtab IDs that map directly to a CategoryDef in arsenal-grid.tsx.
+ * Used by page.tsx to render the focused single-category view.
+ */
+export const FOCUSED_CATEGORY_SUBTABS: ReadonlyArray<ArsenalSubtab> = [
+  'business_card',
+  'letterhead',
+  'thank_you_card',
+  'presentation',
+  'media_kit',
+  'social_media',
+  'phone_wallpaper',
+  'story_highlight',
+  'virtual_background',
+  'email_signature_image',
+  'icon_generator',
+  'game_day',
+]
 
 export { ALL_LEAVES as ARSENAL_SUBTABS }

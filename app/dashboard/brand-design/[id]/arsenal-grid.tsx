@@ -224,7 +224,17 @@ const STANDARD: CategoryDef[] = [
   },
 ]
 
-export function ArsenalGrid({ brandId, hasFinal }: { brandId: string; hasFinal: boolean }) {
+export function ArsenalGrid({
+  brandId,
+  hasFinal,
+  focusedCategoryId,
+}: {
+  brandId: string
+  hasFinal: boolean
+  /** When set, render ONLY the matching category card (no tile grid).
+   *  Used by the Print / Digital sub-tabs to show one focused generator. */
+  focusedCategoryId?: string
+}) {
   // The grid renders compact tile chips. Clicking a tile opens an inline
   // panel below the grid with that category's form. Only one panel is
   // open at a time — clicking another tile swaps it. Matches the legacy
@@ -243,6 +253,44 @@ export function ArsenalGrid({ brandId, hasFinal }: { brandId: string; hasFinal: 
   }
 
   const all = [...FEATURED, ...STANDARD]
+
+  // Focused-category mode: render just one generator card with a header.
+  if (focusedCategoryId) {
+    const def = all.find((c) => c.id === focusedCategoryId)
+    if (!def) {
+      return (
+        <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-8 text-center">
+          <p className="text-sm text-muted-foreground">Unknown category.</p>
+        </div>
+      )
+    }
+    return (
+      <div>
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-md text-2xl"
+            style={{ background: `${def.color}22`, color: def.color }}
+            aria-hidden
+          >
+            {def.icon}
+          </span>
+          <div>
+            <p
+              className="text-display text-2xl font-black"
+              style={{ color: def.color }}
+            >
+              {def.label}
+            </p>
+            <p className="text-xs text-muted-foreground">{def.blurb}</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <CategoryCard brandId={brandId} def={def} featured={FEATURED.includes(def)} />
+        </div>
+      </div>
+    )
+  }
+
   const openDef = openId ? all.find((c) => c.id === openId) ?? null : null
 
   return (
