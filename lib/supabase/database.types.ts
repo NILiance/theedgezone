@@ -754,6 +754,47 @@ export type Database = {
           },
         ]
       }
+      brand_toolkit_entries: {
+        Row: {
+          brand_design_id: string
+          content_md: string
+          created_at: string
+          id: string
+          model_used: string | null
+          section_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_design_id: string
+          content_md: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          section_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_design_id?: string
+          content_md?: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          section_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_toolkit_entries_brand_design_id_fkey"
+            columns: ["brand_design_id"]
+            isOneToOne: false
+            referencedRelation: "brand_designs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branding_settings: {
         Row: {
           id: number
