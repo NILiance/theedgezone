@@ -54,18 +54,28 @@ export const getDashboardData = cache(async (userId: string) => {
   return { profile, orders }
 })
 
-/** Maps NIL readiness score to a letter grade matching the legacy display. */
+/**
+ * Maps NIL readiness score to an encouraging tier label. We avoid letter
+ * grades (especially "F") so partial-profile athletes aren't told they're
+ * failing — they're early in the journey.
+ */
 export function readinessGrade(score: number): string {
-  if (score >= 93) return 'A+'
-  if (score >= 87) return 'A'
-  if (score >= 83) return 'A-'
-  if (score >= 80) return 'B+'
-  if (score >= 73) return 'B'
-  if (score >= 70) return 'B-'
-  if (score >= 67) return 'C+'
-  if (score >= 60) return 'C'
-  if (score >= 50) return 'D'
-  return 'F'
+  if (score >= 93) return 'NIL READY'
+  if (score >= 80) return 'STRONG'
+  if (score >= 67) return 'PROMISING'
+  if (score >= 50) return 'IN PROGRESS'
+  if (score >= 30) return 'GETTING STARTED'
+  return 'JUST BEGINNING'
+}
+
+/** Optional short coaching note that pairs with the tier label. */
+export function readinessHint(score: number): string {
+  if (score >= 93) return 'You’re positioned for top NIL deals.'
+  if (score >= 80) return 'A few quick wins away from elite.'
+  if (score >= 67) return 'Solid foundation — keep building.'
+  if (score >= 50) return 'Plenty of upside. Finish your profile sections.'
+  if (score >= 30) return 'Add socials and bio to unlock matches.'
+  return 'Welcome — let’s start with the basics.'
 }
 
 /**

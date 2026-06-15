@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { BlockRenderer, type SiteBlock, type SiteData } from '@/components/site/block-renderer'
 import { TrackView } from '@/components/site/track-view'
@@ -136,6 +137,58 @@ export default async function PublicSitePage({ params, searchParams }: PageProps
 
   const isPreview = preview === '1' && site.status !== 'published'
 
+  // Detect which URL shape we're being served under so internal nav links
+  // route correctly in both modes:
+  //   - On <slug>.mytalentsite.com → '/about' is fine (middleware rewrites)
+  //   - On theedgezone.com/site/<slug> → links must be '/site/<slug>/about'
+  // Anything else (Vercel preview alias, custom domain) we treat as
+  // subdomain mode because middleware also rewrites those.
+  const hdrs = await headers()
+  const host = (hdrs.get('host') ?? '').toLowerCase()
+  const isPathBased =
+    host.startsWith('theedgezone.') ||
+    host.startsWith('www.theedgezone.') ||
+    host.endsWith('.vercel.app') ||
+    host.startsWith('localhost')
+  const basePath = isPathBased ? `/site/${site.slug}` : ''
+
+  // Rewrite any block prop that looks like an internal link (button_url,
+  // cta_url, link_url, etc.) so a stored value of '/about' resolves under
+  // the current host. Anchors, external URLs, and tel:/mailto: pass through.
+  const LINK_KEYS = new Set(['button_url', 'cta_url', 'link_url', 'url', 'href'])
+  const rewriteLink = (val: unknown): unknown => {
+    if (typeof val !== 'string') return val
+    if (
+      val.startsWith('/') &&
+      !val.startsWith('//') &&
+      !val.startsWith('/site/') &&
+      !val.startsWith('/epk/') &&
+      !val.startsWith('/store/')
+    ) {
+      return `${basePath}${val === '/' ? '' : val}` || '/'
+    }
+    return val
+  }
+  const rewriteProps = (props: Record<string, unknown>): Record<string, unknown> => {
+    const out: Record<string, unknown> = { ...props }
+    for (const k of Object.keys(out)) {
+      if (LINK_KEYS.has(k)) {
+        out[k] = rewriteLink(out[k])
+      } else if (Array.isArray(out[k])) {
+        out[k] = (out[k] as unknown[]).map((item) =>
+          item && typeof item === 'object' && !Array.isArray(item)
+            ? rewriteProps(item as Record<string, unknown>)
+            : item
+        )
+      }
+    }
+    return out
+  }
+  const normalizedBlocks = (blocks ?? []).map((b) => ({
+    ...b,
+    props: rewriteProps((b.props ?? {}) as Record<string, unknown>),
+  }))
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       {isPreview && (
@@ -145,8 +198,12 @@ export default async function PublicSitePage({ params, searchParams }: PageProps
       )}
       {!isPreview && <TrackView siteId={site.id} pageId={page.id} path={requestedPath} />}
       <AffiliateRefCapture />
-      <SiteNav site={{ display_name: site.display_name, slug: site.slug }} pages={pages ?? []} />
-      {(blocks ?? []).map((b) => (
+      <SiteNav
+        site={{ display_name: site.display_name, slug: site.slug }}
+        pages={pages ?? []}
+        basePath={basePath}
+      />
+      {normalizedBlocks.map((b) => (
         <BlockRenderer
           key={b.id}
           block={b as SiteBlock}
@@ -164,10 +221,13 @@ export default async function PublicSitePage({ params, searchParams }: PageProps
 function SiteNav({
   site,
   pages,
+  basePath,
 }: {
   site: { display_name: string | null; slug: string }
   pages: Array<{ path: string; title: string }>
+  basePath: string
 }) {
+  const href = (p: string) => `${basePath}${p === '/' ? '' : p}` || '/'
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -176,13 +236,13 @@ function SiteNav({
             middleware rewrite). next/link would prefetch real Next routes,
             which these aren't — they're dynamic per-tenant pages. */}
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a href="/" className="text-display font-black tracking-tight">
+        <a href={href('/')} className="text-display font-black tracking-tight">
           {site.display_name ?? site.slug}
         </a>
         <nav className="flex items-center gap-6 text-sm">
           {pages.map((p) => (
             /* eslint-disable-next-line @next/next/no-html-link-for-pages */
-            <a key={p.path} href={p.path} className="text-muted-foreground hover:text-foreground">
+            <a key={p.path} href={href(p.path)} className="text-muted-foreground hover:text-foreground">
               {p.title}
             </a>
           ))}

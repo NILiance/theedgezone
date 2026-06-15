@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
-import { getDashboardData, getProductActions, readinessGrade } from '@/lib/dashboard'
+import { getDashboardData, getProductActions, readinessGrade, readinessHint } from '@/lib/dashboard'
 import { NilianceBanner } from '@/components/dashboard/niliance-banner'
 import { DashboardTabs } from '@/components/dashboard/dashboard-tabs'
 import { Button } from '@/components/ui/button'
@@ -104,8 +104,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <span className="text-display text-2xl text-muted-foreground">/ 100</span>
             </div>
             <p className="mt-1 text-display text-xl font-bold text-foreground">
-              Grade: {readinessGrade(readinessScore)}
+              {readinessGrade(readinessScore)}
             </p>
+            <p className="mt-1 text-xs text-primary">{readinessHint(readinessScore)}</p>
             <p className="mt-3 text-xs text-muted-foreground">
               Score increases as you complete profile sections, purchase services, and engage
               with opportunities.
