@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createBrandDesign } from '@/app/dashboard/brand-design/actions'
 import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
+import { getBrandDesignExtras } from '@/lib/service-pricing'
+import { AdditionalBrandButton } from './additional-brand-button'
 
 export const metadata = { title: 'Brand Design' }
 
@@ -17,6 +19,12 @@ export default async function BrandDesignIndexPage() {
     .select('id, brand_name, sport, status, created_at, asset_credits_used, asset_credits_total')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
+
+  const hasBrand = (brands?.length ?? 0) > 0
+  const extras = await getBrandDesignExtras()
+  const additionalPriceLabel = extras.additional_brand_price_cents
+    ? `$${(extras.additional_brand_price_cents / 100).toFixed(0)}`
+    : ''
 
   return (
     <div className="space-y-8">
@@ -36,12 +44,16 @@ export default async function BrandDesignIndexPage() {
             20 concepts included per brand. Generate, shortlist, refine, polish — yours forever.
           </p>
         </div>
-        <BuildFromPicker
-          action={createBrandDesign}
-          what="Brand"
-          profileSections={['name', 'sport', 'school', 'jersey number', 'brand colors']}
-          triggerLabel="+ Start new brand"
-        />
+        {hasBrand ? (
+          <AdditionalBrandButton priceLabel={additionalPriceLabel} />
+        ) : (
+          <BuildFromPicker
+            action={createBrandDesign}
+            what="Brand"
+            profileSections={['name', 'sport', 'school', 'jersey number', 'brand colors']}
+            triggerLabel="+ Start your brand"
+          />
+        )}
       </div>
 
       {(!brands || brands.length === 0) && (

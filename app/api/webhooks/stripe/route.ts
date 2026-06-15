@@ -222,6 +222,16 @@ async function handleCheckoutCompleted(
     return
   }
 
+  // Brand-design extras — additional brand purchase or paid revision.
+  if (metadata.kind === 'bd_additional') {
+    await handleBrandDesignAdditional(supabase, session)
+    return
+  }
+  if (metadata.kind === 'bd_revision') {
+    await handleBrandDesignRevision(supabase, session)
+    return
+  }
+
   const userId = metadata.user_id
   const productSlug = metadata.product_slug
   const productTitle = metadata.product_title
@@ -312,6 +322,73 @@ async function handleCheckoutCompleted(
   } catch (err) {
     console.error('[stripe-webhook] post-purchase email failed', err)
   }
+}
+
+/**
+ * Brand-design "additional logo" purchase completed — spin up a new
+ * brand_designs row owned by the talent. The talent's first BD is
+ * provisioned through provisionOrder + the catalog product; this one
+ * is a self-serve add-on so we bypass orders entirely.
+ */
+async function handleBrandDesignAdditional(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const metadata = session.metadata ?? {}
+  const userId = metadata.user_id
+  if (!userId) return
+
+  // Idempotency — skip if we've already created a brand_design for this
+  // Stripe session.
+  const { data: existing } = await supabase
+    .from('brand_designs')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle()
+  if (existing) return
+
+  const { provisionBrandDesign } = await import('@/lib/provisioning')
+  const result = await provisionBrandDesign(supabase, userId, undefined, {
+    fromProfile: true,
+  })
+  if (result.entity_id) {
+    await supabase
+      .from('brand_designs')
+      .update({ stripe_session_id: session.id })
+      .eq('id', result.entity_id)
+  }
+}
+
+/**
+ * Paid revision purchase completed — append a brand_design_revisions
+ * row pulled from the session metadata.
+ */
+async function handleBrandDesignRevision(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const metadata = session.metadata ?? {}
+  const userId = metadata.user_id
+  const brandId = metadata.brand_id
+  if (!userId || !brandId) return
+
+  // Idempotency on the Stripe session id.
+  const { data: existing } = await supabase
+    .from('brand_design_revisions')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle()
+  if (existing) return
+
+  await supabase.from('brand_design_revisions').insert({
+    brand_design_id: brandId,
+    user_id: userId,
+    notes: typeof metadata.notes === 'string' ? metadata.notes : null,
+    source: 'paid',
+    amount_cents: session.amount_total ?? 0,
+    status: 'pending',
+    stripe_session_id: session.id,
+  })
 }
 
 /**

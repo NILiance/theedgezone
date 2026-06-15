@@ -42,6 +42,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: 'Orders', href: '/dashboard/admin/orders' },
       { label: 'Payouts', href: '/dashboard/admin/payouts' },
       { label: 'Brand Designs', href: '/dashboard/admin/brands' },
+      { label: 'Brand Revisions', href: '/dashboard/admin/brand-revisions' },
       { label: 'Websites', href: '/dashboard/admin/websites' },
       { label: 'EPKs', href: '/dashboard/admin/epks' },
       { label: 'Apps', href: '/dashboard/admin/apps' },

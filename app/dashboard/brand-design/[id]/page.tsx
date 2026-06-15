@@ -12,6 +12,7 @@ import { ArsenalGrid } from './arsenal-grid'
 import { PreferencesForm } from './preferences-form'
 import { GenerateConceptsButton } from './generate-form'
 import { ConceptsGrid } from './concepts-grid'
+import { RequestRevisionButton } from './revision-button'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -93,6 +94,20 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
     )
     .eq('id', user.id)
     .maybeSingle()
+
+  // Revisions: fetch any existing ones plus the configured prices so the
+  // Final Logo card can offer the right CTA (free vs paid).
+  const { count: revisionCount } = await supabase
+    .from('brand_design_revisions')
+    .select('id', { count: 'exact', head: true })
+    .eq('brand_design_id', id)
+  const { getBrandDesignExtras } = await import('@/lib/service-pricing')
+  const bdExtras = await getBrandDesignExtras()
+  const revisionPaidLabel = bdExtras.revision_price_cents
+    ? `$${(bdExtras.revision_price_cents / 100).toFixed(0)}`
+    : ''
+  const firstRevisionIsFree =
+    bdExtras.first_revision_free && (revisionCount ?? 0) === 0
 
   const prefsInitial = {
     brand_name: brand.brand_name,
@@ -200,6 +215,9 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           selectedConcept={selectedConcept}
           hasFinal={hasFinal}
           prefsInitial={prefsInitial}
+          revisionCount={revisionCount ?? 0}
+          revisionPaidLabel={revisionPaidLabel}
+          firstRevisionIsFree={firstRevisionIsFree}
         />
       )}
 
@@ -230,6 +248,9 @@ function StudioView({
   selectedConcept,
   hasFinal,
   prefsInitial,
+  revisionCount,
+  revisionPaidLabel,
+  firstRevisionIsFree,
 }: {
   brand: any
   tab: StudioTab
@@ -240,6 +261,9 @@ function StudioView({
   selectedConcept: any
   hasFinal: boolean
   prefsInitial: any
+  revisionCount: number
+  revisionPaidLabel: string
+  firstRevisionIsFree: boolean
 }) {
   return (
     <div className="space-y-6">
@@ -276,6 +300,9 @@ function StudioView({
         <FinalLogoTab
           brand={brand}
           selectedConcept={selectedConcept}
+          revisionCount={revisionCount}
+          revisionPaidLabel={revisionPaidLabel}
+          firstRevisionIsFree={firstRevisionIsFree}
         />
       )}
       {tab === 'modify' && (
@@ -412,9 +439,15 @@ function ConceptsTab({
 function FinalLogoTab({
   brand,
   selectedConcept,
+  revisionCount,
+  revisionPaidLabel,
+  firstRevisionIsFree,
 }: {
   brand: any
   selectedConcept: any
+  revisionCount: number
+  revisionPaidLabel: string
+  firstRevisionIsFree: boolean
 }) {
   if (!selectedConcept) {
     return (
@@ -475,6 +508,12 @@ function FinalLogoTab({
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <AssembleKitButton brandId={brand.id} existingKitUrl={brand.brand_kit_url ?? null} />
+              <RequestRevisionButton
+                brandId={brand.id}
+                paidPriceLabel={revisionPaidLabel}
+                firstIsFree={firstRevisionIsFree}
+                existingCount={revisionCount}
+              />
             </div>
           </div>
           <a

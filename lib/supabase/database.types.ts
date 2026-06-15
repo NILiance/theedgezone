@@ -494,6 +494,59 @@ export type Database = {
           },
         ]
       }
+      brand_design_revisions: {
+        Row: {
+          amount_cents: number
+          brand_design_id: string
+          created_at: string
+          delivered_at: string | null
+          delivered_by: string | null
+          delivered_concept_url: string | null
+          id: string
+          notes: string | null
+          source: string
+          status: string
+          stripe_session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          brand_design_id: string
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivered_concept_url?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          stripe_session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          brand_design_id?: string
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivered_concept_url?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          stripe_session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_design_revisions_brand_design_id_fkey"
+            columns: ["brand_design_id"]
+            isOneToOne: false
+            referencedRelation: "brand_designs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_designs: {
         Row: {
           accent_color: string | null
@@ -527,6 +580,7 @@ export type Database = {
           secondary_color: string | null
           sport: string | null
           status: string
+          stripe_session_id: string | null
           style_seed: string | null
           updated_at: string
           user_id: string
@@ -563,6 +617,7 @@ export type Database = {
           secondary_color?: string | null
           sport?: string | null
           status?: string
+          stripe_session_id?: string | null
           style_seed?: string | null
           updated_at?: string
           user_id: string
@@ -599,6 +654,7 @@ export type Database = {
           secondary_color?: string | null
           sport?: string | null
           status?: string
+          stripe_session_id?: string | null
           style_seed?: string | null
           updated_at?: string
           user_id?: string
