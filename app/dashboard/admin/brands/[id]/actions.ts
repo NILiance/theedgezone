@@ -291,6 +291,11 @@ export async function adminDeleteBrand(form: FormData) {
   if (!brandId) return
   const supabase = createServiceClient()
   if (!supabase) return
+  // Cascade: remove the matching order(s) so the talent's dashboard
+  // doesn't keep showing a "Personal Brand Design · READY" card linking
+  // to a now-deleted brand. provisioned_entity_id is a free-form uuid
+  // (no FK), so the cleanup has to happen here.
+  await supabase.from('orders').delete().eq('provisioned_entity_id', brandId)
   await supabase.from('brand_designs').delete().eq('id', brandId)
   revalidatePath('/dashboard/admin/brands')
   redirect('/dashboard/admin/brands')

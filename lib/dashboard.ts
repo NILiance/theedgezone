@@ -28,6 +28,16 @@ export interface DashboardOrder {
   provisioned_entity_id: string | null
 }
 
+// Maps a product_slug to the underlying entity table whose row backs
+// the dashboard card. When admin deletes a row from that table without
+// also deleting the order, the order becomes an orphan — we skip it
+// here so the user doesn't see a "ready" card linking to a 404.
+const ORDER_ENTITY_TABLE: Record<string, 'brand_designs' | 'sites'> = {
+  'personal-brand-design': 'brand_designs',
+  'brand-lite': 'brand_designs',
+  'personal-website': 'sites',
+}
+
 export const getDashboardData = cache(async (userId: string) => {
   const supabase = await createClient()
 
@@ -50,7 +60,33 @@ export const getDashboardData = cache(async (userId: string) => {
   ])
 
   const profile = (profileRes.data ?? null) as DashboardProfile | null
-  const orders = (ordersRes.data ?? []) as DashboardOrder[]
+  const rawOrders = (ordersRes.data ?? []) as DashboardOrder[]
+
+  // Group the orphan check by target table so we can ask Postgres for
+  // existence once per table instead of once per order.
+  const idsByTable = new Map<'brand_designs' | 'sites', string[]>()
+  for (const o of rawOrders) {
+    const table = ORDER_ENTITY_TABLE[o.product_slug]
+    if (!table || !o.provisioned_entity_id) continue
+    const list = idsByTable.get(table) ?? []
+    list.push(o.provisioned_entity_id)
+    idsByTable.set(table, list)
+  }
+
+  const existsByTable = new Map<'brand_designs' | 'sites', Set<string>>()
+  await Promise.all(
+    Array.from(idsByTable.entries()).map(async ([table, ids]) => {
+      const { data } = await supabase.from(table).select('id').in('id', ids)
+      existsByTable.set(table, new Set((data ?? []).map((r) => r.id as string)))
+    })
+  )
+
+  const orders = rawOrders.filter((o) => {
+    const table = ORDER_ENTITY_TABLE[o.product_slug]
+    if (!table) return true // slugs we don't have orphan-checking for
+    if (!o.provisioned_entity_id) return true // not yet provisioned — keep
+    return existsByTable.get(table)?.has(o.provisioned_entity_id) ?? false
+  })
 
   return { profile, orders }
 })

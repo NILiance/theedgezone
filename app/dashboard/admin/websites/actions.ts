@@ -10,6 +10,9 @@ export async function deleteSite(form: FormData) {
   if (!supabase) return
   const id = String(form.get('site_id') ?? '')
   if (!id) return
+  // Cascade: drop the order(s) pointing to this site so the talent's
+  // dashboard stops showing a "Personal Website · READY" orphan card.
+  await supabase.from('orders').delete().eq('provisioned_entity_id', id)
   await supabase.from('sites').delete().eq('id', id)
   revalidatePath('/dashboard/admin/websites')
 }
