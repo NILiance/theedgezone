@@ -571,6 +571,7 @@ export type Database = {
           finalized_at: string | null
           id: string
           jersey_number: string | null
+          kit_files: Json
           logo_concept_credits: number
           mascot: string | null
           neutral_color: string | null
@@ -608,6 +609,7 @@ export type Database = {
           finalized_at?: string | null
           id?: string
           jersey_number?: string | null
+          kit_files?: Json
           logo_concept_credits?: number
           mascot?: string | null
           neutral_color?: string | null
@@ -645,6 +647,7 @@ export type Database = {
           finalized_at?: string | null
           id?: string
           jersey_number?: string | null
+          kit_files?: Json
           logo_concept_credits?: number
           mascot?: string | null
           neutral_color?: string | null

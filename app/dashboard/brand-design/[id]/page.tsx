@@ -613,26 +613,113 @@ function BrandGuideTab({ brand, hasFinal }: { brand: any; hasFinal: boolean }) {
           </div>
         </CardContent>
       </Card>
-      {brand.brand_kit_url && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Brand kit</CardTitle>
-            <CardDescription>
-              ZIP with 12+ files — full logo set, social sizes, brand guide PDF.
-            </CardDescription>
-          </CardHeader>
+      <KitFileGrid
+        files={Array.isArray(brand.kit_files) ? brand.kit_files : []}
+        kitUrl={brand.brand_kit_url ?? null}
+      />
+    </div>
+  )
+}
+
+interface KitFile {
+  name: string
+  label: string
+  mimeType: string
+  shortMeta: string
+  url: string
+}
+
+function KitFileGrid({ files, kitUrl }: { files: KitFile[]; kitUrl: string | null }) {
+  if (files.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Brand kit assembling…</CardTitle>
+          <CardDescription>
+            Your downloadable files appear here once the kit finishes. If they don&rsquo;t
+            show up, click <strong>Rebuild kit</strong> on the Final Logo tab.
+          </CardDescription>
+        </CardHeader>
+        {kitUrl && (
           <CardContent>
             <a
-              href={brand.brand_kit_url}
+              href={kitUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-display inline-block rounded-[var(--radius-sm)] bg-success/20 border border-success/40 px-3 py-2 text-xs font-bold uppercase tracking-widest text-success"
             >
-              ⬇ Download brand kit
+              ⬇ Download brand kit ZIP
             </a>
           </CardContent>
-        </Card>
-      )}
+        )}
+      </Card>
+    )
+  }
+  return (
+    <section>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-eyebrow text-primary">Brand assets</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Every file in your brand kit. Download individually, or grab the full ZIP for a
+            collaborator.
+          </p>
+        </div>
+        {kitUrl && (
+          <a
+            href={kitUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-success"
+          >
+            ⬇ Download full ZIP
+          </a>
+        )}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {files.map((f) => (
+          <KitFileCard key={f.name} file={f} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function KitFileCard({ file }: { file: KitFile }) {
+  const isImage = file.mimeType.startsWith('image/')
+  return (
+    <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
+      <div className="flex aspect-[4/3] items-center justify-center bg-panel-elevated">
+        {isImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={file.url}
+            alt={file.label}
+            className="max-h-full max-w-full object-contain"
+            style={{
+              background:
+                file.name.includes('on-black') || file.name.includes('-black')
+                  ? '#000'
+                  : '#fff',
+            }}
+          />
+        ) : (
+          <span className="text-display text-4xl text-muted-foreground">📄</span>
+        )}
+      </div>
+      <div className="p-3">
+        <p className="text-display text-sm font-bold">{file.label}</p>
+        <p className="mt-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+          {file.shortMeta}
+        </p>
+        <a
+          href={file.url}
+          download={file.name}
+          className="text-display mt-3 inline-block rounded-[var(--radius-sm)] bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+        >
+          ⬇ Download
+        </a>
+      </div>
     </div>
   )
 }

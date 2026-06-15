@@ -475,12 +475,45 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
     publicUrl = pub.publicUrl
   }
 
+  // Upload each individual kit file to brand-assets storage and stash a
+  // `kit_files` array on the brand row so the Brand Guide tab can render
+  // a per-file grid (matching the legacy WP UI).
+  const kitFiles: Array<{
+    name: string
+    label: string
+    mimeType: string
+    shortMeta: string
+    url: string
+  }> = []
+  for (const f of kit.files) {
+    const path = `${brandId}/kit/${f.name}`
+    const { error: fErr } = await supabase.storage
+      .from('brand-assets')
+      .upload(path, new Uint8Array(f.buffer), {
+        contentType: f.mimeType,
+        upsert: true,
+      })
+    if (fErr) {
+      console.error('[brand-kit] file upload failed', f.name, fErr.message)
+      continue
+    }
+    const { data: pub } = supabase.storage.from('brand-assets').getPublicUrl(path)
+    kitFiles.push({
+      name: f.name,
+      label: f.label,
+      mimeType: f.mimeType,
+      shortMeta: f.shortMeta,
+      url: pub.publicUrl,
+    })
+  }
+
   await supabase
     .from('brand_designs')
     .update({
       brand_kit_url: publicUrl,
       brand_kit_drive_id: driveId,
       brand_kit_assembled_at: new Date().toISOString(),
+      kit_files: kitFiles,
     })
     .eq('id', brandId)
 
@@ -573,7 +606,7 @@ export async function assembleAndUploadKit(
   }
 
   // Build the kit ZIP
-  let kit: { zipBuffer: Buffer; filename: string }
+  let kit: Awaited<ReturnType<typeof assembleBrandKit>>
   try {
     kit = await assembleBrandKit({
       brand_name: brand.brand_name ?? 'untitled',
@@ -619,6 +652,36 @@ export async function assembleAndUploadKit(
     publicUrl = pub.publicUrl
   }
 
+  // Upload each individual file so the Brand Guide grid can show them.
+  const kitFiles: Array<{
+    name: string
+    label: string
+    mimeType: string
+    shortMeta: string
+    url: string
+  }> = []
+  for (const f of kit.files) {
+    const path = `${parsed.data.brand_id}/kit/${f.name}`
+    const { error: fErr } = await supabase.storage
+      .from('brand-assets')
+      .upload(path, new Uint8Array(f.buffer), {
+        contentType: f.mimeType,
+        upsert: true,
+      })
+    if (fErr) {
+      console.error('[brand-kit] file upload failed', f.name, fErr.message)
+      continue
+    }
+    const { data: pub } = supabase.storage.from('brand-assets').getPublicUrl(path)
+    kitFiles.push({
+      name: f.name,
+      label: f.label,
+      mimeType: f.mimeType,
+      shortMeta: f.shortMeta,
+      url: pub.publicUrl,
+    })
+  }
+
   // Stamp on the brand row
   await supabase
     .from('brand_designs')
@@ -626,6 +689,7 @@ export async function assembleAndUploadKit(
       brand_kit_url: publicUrl,
       brand_kit_drive_id: driveId,
       brand_kit_assembled_at: new Date().toISOString(),
+      kit_files: kitFiles,
     })
     .eq('id', parsed.data.brand_id)
 

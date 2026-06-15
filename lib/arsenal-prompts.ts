@@ -381,11 +381,7 @@ interface UniformItemConfig {
 }
 
 const UNIFORM_ITEMS: Record<string, UniformItemConfig> = {
-  full_uniform: {
-    desc: 'complete game-day uniform set showing jersey, shorts/pants, and accessories together as a flat-lay or mannequin display',
-    logoPos: 'on the chest of the jersey',
-    aspect: '3:4',
-  },
+  full_uniform: { desc: 'complete game-day uniform set showing jersey, shorts/pants, and accessories together as a flat-lay or mannequin display', logoPos: 'on the chest of the jersey', aspect: '3:4' },
   home_jersey: { desc: 'home game jersey (front view), crisp and clean', logoPos: 'centered on the chest', aspect: '3:4' },
   away_jersey: { desc: 'away/road game jersey (front view) in contrasting colors', logoPos: 'centered on the chest', aspect: '3:4' },
   warm_up: { desc: 'pre-game warm-up jacket or pullover with athletic cut', logoPos: 'on the left chest area', aspect: '3:4' },
@@ -396,11 +392,78 @@ const UNIFORM_ITEMS: Record<string, UniformItemConfig> = {
   team_jacket: { desc: 'team jacket, windbreaker, or zip-up — outerwear only', logoPos: 'on the left chest and large on the back', aspect: '3:4' },
   helmet: { desc: 'sports helmet ONLY (football or baseball style) — NO jersey, just the helmet on a clean surface', logoPos: 'on both sides of the helmet as decals', aspect: '1:1' },
   cleats: { desc: 'a pair of athletic cleats/shoes ONLY — NO clothing, just the footwear from a 3/4 angle', logoPos: 'on the tongue and heel of the shoe', aspect: '1:1' },
+  headband_game: { desc: 'athletic headband ONLY — shown flat or on a head form, NO other clothing', logoPos: 'centered on the front of the headband', aspect: '16:9' },
+  shooting_shirt: { desc: 'warm-up shooting shirt or short-sleeve athletic top', logoPos: 'on the left chest', aspect: '3:4' },
+  track_suit: { desc: 'full track suit (jacket + pants) displayed together', logoPos: 'on the left chest of the jacket and down the leg', aspect: '3:4' },
+  sideline_gear: { desc: 'sideline outfit — team polo or quarter-zip with cap', logoPos: 'on the left chest and on the cap', aspect: '3:4' },
   letterman_jacket: { desc: 'classic letterman jacket with leather sleeves and wool body', logoPos: 'large chenille patch on the left chest and school letter on the back', aspect: '3:4' },
+  game_socks: { desc: 'athletic game socks, knee-high or crew length', logoPos: 'on the calf area of each sock', aspect: '1:1' },
+  batting_gloves: { desc: 'baseball/softball batting gloves, pair displayed', logoPos: 'on the back of each glove', aspect: '1:1' },
+  goalkeeper_kit: { desc: 'soccer goalkeeper jersey and gloves set, bright contrasting colors', logoPos: 'centered on the chest of the jersey', aspect: '3:4' },
+  swim_cap: { desc: 'competition swim cap displayed on a head form', logoPos: 'centered on both sides of the cap', aspect: '1:1' },
+  wrestling_singlet: { desc: 'wrestling singlet, front and back view', logoPos: 'centered on the chest', aspect: '3:4' },
+  lacrosse_pinnie: { desc: 'lacrosse pinnie/practice jersey, mesh material', logoPos: 'centered on the chest', aspect: '3:4' },
   golf_polo: { desc: 'golf polo shirt, crisp collar, performance fabric', logoPos: 'on the left chest embroidered', aspect: '3:4' },
+  tennis_skirt: { desc: 'tennis skirt and top set, athletic feminine cut', logoPos: 'on the left chest of the top', aspect: '3:4' },
+  cheerleader: { desc: 'cheerleader uniform — shell top, skirt, and bow', logoPos: 'centered on the chest of the shell', aspect: '3:4' },
+  dance_leotard: { desc: 'dance or gymnastics leotard, competition style', logoPos: 'small on the upper chest', aspect: '3:4' },
+  boxing_robe: { desc: 'boxing robe and trunks set, satin material', logoPos: 'large on the back of the robe and on the waistband of trunks', aspect: '3:4' },
+  ski_suit: { desc: 'ski or snowboard race suit, one-piece or jacket+pants', logoPos: 'on the chest and on the thigh', aspect: '3:4' },
 }
 
 export const UNIFORM_ITEM_KEYS = Object.keys(UNIFORM_ITEMS)
+
+/**
+ * Icon Generator — produces a clean iconographic version of the logo
+ * suitable for app icons, favicons, watch faces, and other tiny surfaces.
+ */
+export function iconGeneratorPrompt(
+  ctx: ArsenalContext,
+  variant: string
+): ArsenalPromptResult {
+  const variantLabel: Record<string, string> = {
+    app_icon: 'iOS-style rounded square app icon, the logo centered with subtle drop shadow',
+    favicon: 'simple flat favicon, the logo reduced to its essential mark on a clean square',
+    watch_face: 'circular watch face icon, the logo centered with a thin ring around it',
+    chat_avatar: 'circular chat/Discord avatar, the logo centered with a slight gradient background',
+  }
+  const desc = variantLabel[variant] ?? variantLabel.app_icon!
+  return {
+    aspect: '1:1',
+    prompt:
+      `I am providing a logo image. Create a 1024x1024 ${desc} for ${ctx.brandName}.\n\n` +
+      `${logoRule(ctx.colors)}\n\n` +
+      `Use ONLY these colors: ${ctx.colors}. Treat the logo as the centerpiece — do not modify it. ` +
+      `Backgrounds, gradients, and accents must draw from the brand palette. Clean, premium, instantly recognizable.\n\n` +
+      `${brandCtx(ctx)}`,
+  }
+}
+
+/**
+ * Game Day — gameday hype social post with the logo + game info area.
+ */
+export function gameDayPrompt(
+  ctx: ArsenalContext,
+  variant: string
+): ArsenalPromptResult {
+  const variantDesc: Record<string, string> = {
+    matchup: 'matchup graphic showing two team logos side by side with VS in the middle and a "GAME DAY" header',
+    countdown: 'countdown-to-kickoff graphic with the logo and big "GAME DAY" type and game date placeholder',
+    score_announcement: 'final score announcement template with the logo, big "FINAL SCORE" text, and placeholder numbers',
+    hype: 'high-energy game day hype graphic with motion lines, the logo centered, and "GAME DAY" type',
+  }
+  const desc = variantDesc[variant] ?? variantDesc.hype!
+  return {
+    aspect: '1:1',
+    prompt:
+      `I am providing a logo image. Create a 1080x1080 ${desc} for ${ctx.brandName}.\n\n` +
+      `${logoRule(ctx.colors)}\n\n` +
+      `Use ONLY these colors: ${ctx.colors}. ${bgTheme(ctx.colorMode)}. Bold, sports-broadcast aesthetic. ` +
+      `Leave enough negative space for the talent to overlay opponent name or score by hand.\n\n` +
+      `${spellRule(ctx.brandName)}\n\n` +
+      `${brandCtx(ctx)}`,
+  }
+}
 
 export function uniformPrompt(
   ctx: ArsenalContext,

@@ -19,6 +19,8 @@ import {
   socialMediaPrompt,
   merchPrompt,
   uniformPrompt,
+  iconGeneratorPrompt,
+  gameDayPrompt,
 } from '@/lib/arsenal-prompts'
 
 export type ArsenalGenState = { ok?: boolean; error?: string; url?: string }
@@ -36,6 +38,8 @@ export type ArsenalCategory =
   | 'social_media'
   | 'merch_mockup'
   | 'sport_uniform'
+  | 'icon_generator'
+  | 'game_day'
 
 const VALID: ArsenalCategory[] = [
   'business_card',
@@ -50,6 +54,8 @@ const VALID: ArsenalCategory[] = [
   'social_media',
   'merch_mockup',
   'sport_uniform',
+  'icon_generator',
+  'game_day',
 ]
 
 /**
@@ -159,6 +165,12 @@ export async function generateArsenalAsset(
         break
       case 'sport_uniform':
         built = uniformPrompt(ctx, option || 'home_jersey', notes || null)
+        break
+      case 'icon_generator':
+        built = iconGeneratorPrompt(ctx, option || 'app_icon')
+        break
+      case 'game_day':
+        built = gameDayPrompt(ctx, option || 'hype')
         break
     }
   } catch (err) {

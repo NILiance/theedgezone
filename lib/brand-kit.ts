@@ -46,6 +46,20 @@ export interface BrandKitInput {
   final_logo_url: string
 }
 
+/** One downloadable file produced by the kit assembler. */
+export interface BrandKitFile {
+  /** Filename inside the ZIP (e.g. `logo-transparent.png`). */
+  name: string
+  /** Human-readable label for the download grid (e.g. `Logo Transparent BG`). */
+  label: string
+  /** MIME type for storage uploads + the grid `download` attribute. */
+  mimeType: string
+  /** Raw bytes. */
+  buffer: Buffer
+  /** Short display label like 'PNG · 600x600' or 'PDF · 8 Pages'. */
+  shortMeta: string
+}
+
 const SOCIAL_SIZES: Array<{ size: number; label: string; uses: string[] }> = [
   { size: 1080, label: 'instagram-facebook', uses: ['Instagram profile', 'Facebook profile'] },
   { size: 800, label: 'youtube', uses: ['YouTube channel'] },
@@ -211,36 +225,114 @@ function makeBrandGuidePdf(input: BrandKitInput, logoBase64: string): Buffer {
 
 export async function assembleBrandKit(
   input: BrandKitInput
-): Promise<{ zipBuffer: Buffer; filename: string }> {
+): Promise<{ zipBuffer: Buffer; filename: string; files: BrandKitFile[] }> {
   const sharp = await getSharp()
   const zip = new JSZip()
+  const files: BrandKitFile[] = []
 
-  // 1. Original logo
+  function addFile(file: BrandKitFile, zipPath?: string) {
+    files.push(file)
+    zip.file(zipPath ?? file.name, file.buffer)
+  }
+
+  // 1. Original logo on white (full res)
   const sourceRes = await fetch(input.final_logo_url)
   if (!sourceRes.ok) {
     throw new Error(`Failed to fetch final logo (HTTP ${sourceRes.status})`)
   }
   const sourceBuffer = Buffer.from(await sourceRes.arrayBuffer())
-  zip.file('logo.png', sourceBuffer)
+  const sourceMeta = await sharp(sourceBuffer).metadata()
+  const sourceDim = `${sourceMeta.width ?? 600}x${sourceMeta.height ?? 600}`
+  addFile({
+    name: 'logo.png',
+    label: 'Logo Original',
+    mimeType: 'image/png',
+    buffer: sourceBuffer,
+    shortMeta: `PNG · ${sourceDim}`,
+  })
 
   // 2. JPG-on-white (smaller for documents that don't need alpha)
   const jpgBuffer = await sharp(sourceBuffer)
     .flatten({ background: { r: 255, g: 255, b: 255 } })
     .jpeg({ quality: 92 })
     .toBuffer()
-  zip.file('logo-on-white.jpg', jpgBuffer)
+  addFile({
+    name: 'logo-on-white.jpg',
+    label: 'Logo White Background',
+    mimeType: 'image/jpeg',
+    buffer: jpgBuffer,
+    shortMeta: `JPG · ${sourceDim}`,
+  })
+
+  // 2b. JPG-on-black (inverse mate for dark-mode docs)
+  const blackJpgBuffer = await sharp(sourceBuffer)
+    .flatten({ background: { r: 0, g: 0, b: 0 } })
+    .jpeg({ quality: 92 })
+    .toBuffer()
+  addFile({
+    name: 'logo-on-black.jpg',
+    label: 'Logo Black Background',
+    mimeType: 'image/jpeg',
+    buffer: blackJpgBuffer,
+    shortMeta: `JPG · ${sourceDim}`,
+  })
 
   // 3. Full-resolution transparent
-  zip.file('logo-transparent.png', await makeTransparent(sourceBuffer))
+  const transparentBuf = await makeTransparent(sourceBuffer)
+  addFile({
+    name: 'logo-transparent.png',
+    label: 'Logo Transparent BG',
+    mimeType: 'image/png',
+    buffer: transparentBuf,
+    shortMeta: `PNG · ${sourceDim}`,
+  })
 
   // 4. 512×512 transparent (app icons + favicons)
-  zip.file('logo-transparent-512.png', await makeTransparent(sourceBuffer, 512))
+  addFile({
+    name: 'logo-transparent-512.png',
+    label: 'Logo Transparent 512px',
+    mimeType: 'image/png',
+    buffer: await makeTransparent(sourceBuffer, 512),
+    shortMeta: 'PNG · 512x512',
+  })
 
-  // 5. SVG (true vector or raster-embedded)
-  const svgContent = await makeSvg(input, sourceBuffer)
-  zip.file('logo.svg', svgContent)
+  // 4b. 128×128 icon (favicon / chat avatar)
+  const icon128 = await sharp(sourceBuffer)
+    .resize(128, 128, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+    .png()
+    .toBuffer()
+  addFile({
+    name: 'logo-128.png',
+    label: 'Logo 128px Icon',
+    mimeType: 'image/png',
+    buffer: icon128,
+    shortMeta: 'PNG · 128x128',
+  })
 
-  // 6. Social avatar sizes
+  // 5. SVG — true vector via Vectorizer.ai when configured, else
+  //    raster-embedded. We embed against the white-flattened JPG for the
+  //    primary SVG and against the transparent PNG for the transparent
+  //    variant — both look right when dropped on any background.
+  const svgWhite = await makeSvg(input, jpgBuffer)
+  addFile({
+    name: 'logo.svg',
+    label: 'Logo Vector (SVG)',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from(svgWhite, 'utf-8'),
+    shortMeta: 'SVG · Scalable',
+  })
+
+  const svgTransparent = await makeSvg(input, transparentBuf)
+  addFile({
+    name: 'logo-transparent.svg',
+    label: 'Logo Vector Transparent (SVG)',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from(svgTransparent, 'utf-8'),
+    shortMeta: 'SVG · Scalable',
+  })
+
+  // 6. Social avatar sizes (kept inside ZIP, but only the most-used surfaces
+  //    in the grid — covered by the 128px icon above).
   const social = zip.folder('social') ?? zip
   for (const variant of SOCIAL_SIZES) {
     const sized = await sharp(sourceBuffer)
@@ -254,7 +346,26 @@ export async function assembleBrandKit(
   }
 
   // 7. Typography specimen
-  zip.file('typography-specimen.png', await makeTypographySpecimen(input))
+  const typoBuf = await makeTypographySpecimen(input)
+  addFile({
+    name: 'typography-specimen.png',
+    label: 'Typography Specimen',
+    mimeType: 'image/png',
+    buffer: typoBuf,
+    shortMeta: 'PNG · 1600x600',
+  })
+
+  // 7b. Brand guidelines preview PNG (1200x800) — a single composite
+  //     showing the logo, palette, and font pair at a glance. Useful for
+  //     pasting into Slack/email without sending the full PDF.
+  const guidesPreview = await makeGuidelinesPreview(input, transparentBuf)
+  addFile({
+    name: 'brand-guidelines.png',
+    label: 'Brand Guidelines',
+    mimeType: 'image/png',
+    buffer: guidesPreview,
+    shortMeta: 'PNG · 1200x800',
+  })
 
   // 8. Fonts list
   const fontPair = input.font_pair ?? 'Inter Display / Inter'
@@ -271,7 +382,13 @@ export async function assembleBrandKit(
     fontLines.push(`  Google Fonts: https://fonts.google.com/specimen/${slug}`)
     fontLines.push('')
   }
-  zip.file('fonts.txt', fontLines.join('\n'))
+  addFile({
+    name: 'fonts.txt',
+    label: 'Font Reference',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(fontLines.join('\n'), 'utf-8'),
+    shortMeta: 'TXT',
+  })
 
   // 9. Brand metadata
   const brandJson = {
@@ -292,10 +409,14 @@ export async function assembleBrandKit(
   zip.file('brand.json', JSON.stringify(brandJson, null, 2))
 
   // 10. Brand guide PDF
-  zip.file(
-    'brand-guide.pdf',
-    makeBrandGuidePdf(input, jpgBuffer.toString('base64'))
-  )
+  const pdfBuf = makeBrandGuidePdf(input, jpgBuffer.toString('base64'))
+  addFile({
+    name: 'brand-guide.pdf',
+    label: 'Brand Guidelines (PDF)',
+    mimeType: 'application/pdf',
+    buffer: pdfBuf,
+    shortMeta: 'PDF · 1 Page',
+  })
 
   // 11. README
   zip.file(
@@ -344,5 +465,58 @@ export async function assembleBrandKit(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40) || 'brand-kit'
-  return { zipBuffer, filename: `${safeName}-brand-kit.zip` }
+  return { zipBuffer, filename: `${safeName}-brand-kit.zip`, files }
+}
+
+/**
+ * 1200×800 PNG composite that summarizes the brand at a glance: logo,
+ * color palette swatches, font pair. Hand-built as an SVG then rasterized
+ * via sharp so it lives inside our existing rendering pipeline.
+ */
+async function makeGuidelinesPreview(
+  input: BrandKitInput,
+  transparentLogoBuf: Buffer
+): Promise<Buffer> {
+  const sharp = await getSharp()
+  const fontPair = input.font_pair ?? 'Inter Display / Inter'
+  const headingFont = fontPair.split(/[\/,]/)[0]?.trim() || 'Inter'
+  const primary = input.primary_color
+  const secondary = input.secondary_color
+  const accent = input.accent_color ?? primary
+  const tagline = input.tagline ?? ''
+
+  const logoBase64 = transparentLogoBuf.toString('base64')
+
+  // 1200×800 dark canvas with three color blocks + logo + typography.
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <rect width="1200" height="800" fill="#0a0a12"/>
+  <!-- title -->
+  <text x="60" y="80" font-family="${escapeXml(headingFont)}, Impact, sans-serif" font-size="44" font-weight="900" fill="#ffffff">${escapeXml(input.brand_name).toUpperCase()}</text>
+  <text x="60" y="115" font-family="ui-monospace, monospace" font-size="14" fill="#888">BRAND GUIDELINES</text>
+  <!-- logo block -->
+  <rect x="60" y="170" width="320" height="320" fill="#ffffff" rx="12"/>
+  <image href="data:image/png;base64,${logoBase64}" x="100" y="210" width="240" height="240" preserveAspectRatio="xMidYMid meet"/>
+  <!-- color palette -->
+  <text x="430" y="200" font-family="ui-monospace, monospace" font-size="14" fill="#888">COLOR PALETTE</text>
+  <rect x="430" y="220" width="240" height="120" fill="${escapeXml(primary)}" rx="8"/>
+  <text x="450" y="250" font-family="ui-monospace, monospace" font-size="12" fill="#ffffff" opacity="0.85">PRIMARY</text>
+  <text x="450" y="320" font-family="ui-monospace, monospace" font-size="18" font-weight="700" fill="#ffffff">${escapeXml(primary).toUpperCase()}</text>
+  <rect x="690" y="220" width="240" height="120" fill="${escapeXml(secondary)}" rx="8"/>
+  <text x="710" y="250" font-family="ui-monospace, monospace" font-size="12" fill="#ffffff" opacity="0.85">SECONDARY</text>
+  <text x="710" y="320" font-family="ui-monospace, monospace" font-size="18" font-weight="700" fill="#ffffff">${escapeXml(secondary).toUpperCase()}</text>
+  <rect x="950" y="220" width="180" height="120" fill="${escapeXml(accent)}" rx="8"/>
+  <text x="970" y="250" font-family="ui-monospace, monospace" font-size="12" fill="#ffffff" opacity="0.85">ACCENT</text>
+  <text x="970" y="320" font-family="ui-monospace, monospace" font-size="16" font-weight="700" fill="#ffffff">${escapeXml(accent).toUpperCase()}</text>
+  <!-- typography -->
+  <text x="430" y="400" font-family="ui-monospace, monospace" font-size="14" fill="#888">TYPOGRAPHY</text>
+  <text x="430" y="450" font-family="${escapeXml(headingFont)}, Impact, sans-serif" font-size="48" font-weight="900" fill="#ffffff">${escapeXml(headingFont)}</text>
+  <text x="430" y="490" font-family="${escapeXml(headingFont)}, sans-serif" font-size="20" fill="#cccccc">The quick brown fox jumps over the lazy dog.</text>
+  <text x="430" y="540" font-family="ui-monospace, monospace" font-size="12" fill="#666">Pair: ${escapeXml(fontPair)}</text>
+  ${tagline ? `<text x="60" y="640" font-family="${escapeXml(headingFont)}, sans-serif" font-size="24" font-style="italic" fill="#ffffff" opacity="0.7">&quot;${escapeXml(tagline)}&quot;</text>` : ''}
+  <!-- footer -->
+  <text x="60" y="740" font-family="ui-monospace, monospace" font-size="11" fill="#444">Generated by The Edge Zone Brand Design Studio</text>
+  <text x="60" y="758" font-family="ui-monospace, monospace" font-size="11" fill="#444">${escapeXml(new Date().toISOString().slice(0, 10))}</text>
+</svg>`
+  return sharp(Buffer.from(svg)).png().toBuffer()
 }
