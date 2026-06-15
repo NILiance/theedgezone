@@ -313,7 +313,7 @@ function CategoryCard({
       </div>
       {pending && (
         <p className="text-[10px] text-muted-foreground">
-          Gemini renders this in ~30–60 seconds. Stay on the page.
+          Our designer renders this in ~30–60 seconds. Stay on the page.
         </p>
       )}
       {state.error && (

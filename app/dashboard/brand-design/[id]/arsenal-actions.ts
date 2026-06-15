@@ -175,7 +175,7 @@ export async function generateArsenalAsset(
       filenameHint: option || category,
     })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Gemini failed to generate'
+    const msg = err instanceof Error ? err.message : 'Our designer failed to generate this asset'
     return { error: msg }
   }
 

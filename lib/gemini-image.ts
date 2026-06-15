@@ -213,7 +213,7 @@ export async function generateArsenalImage(opts: {
   filenameHint?: string
 }): Promise<GeneratedConcept> {
   if (!env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is not configured')
+    throw new Error('Our designer is not configured yet — admins should set it up under Integrations.')
   }
   const slug = (opts.filenameHint ?? opts.category).replace(/[^a-zA-Z0-9_-]/g, '_')
   const uploadPath = `${opts.brandId}/arsenal/${opts.category}/${Date.now()}-${slug}.png`
@@ -222,7 +222,7 @@ export async function generateArsenalImage(opts: {
     referenceImageUrl: opts.referenceImageUrl,
     uploadPath,
   })
-  if (!result) throw new Error('Gemini returned no image — check the prompt and API key.')
+  if (!result) throw new Error('Our designer returned no image. Try again, or simplify the prompt.')
   return result
 }
 

@@ -96,7 +96,7 @@ export async function generateConcepts(formData: FormData) {
 
   if (concepts.length === 0) {
     throw new Error(
-      'Gemini returned no concepts — check that GEMINI_API_KEY is set in Vercel env vars.'
+      'Our designer is offline right now. Try again in a moment — if this keeps happening, ping support.'
     )
   }
 
@@ -280,7 +280,7 @@ export async function refineRound(brandId: string) {
   const flat = batches.flat()
   if (flat.length === 0) {
     throw new Error(
-      'Gemini returned no refined concepts — check GEMINI_API_KEY in Vercel env vars.'
+      'Our designer is offline right now. Try again in a moment — if this keeps happening, ping support.'
     )
   }
 

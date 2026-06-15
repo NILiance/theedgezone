@@ -186,7 +186,7 @@ export default async function AdminBrandDetailPage({
           </div>
         ) : (
           <p className="rounded-[var(--radius)] border border-dashed border-border bg-panel/30 p-6 text-center text-sm text-muted-foreground">
-            No Ideogram concepts yet.
+            No concepts generated yet.
           </p>
         )}
       </section>

@@ -91,7 +91,7 @@ function PendingBanner({ count }: { count: number }) {
           Generating concepts
         </span>
         <span className="text-muted-foreground">
-          Gemini is rendering {count} concept{count === 1 ? '' : 's'}. Estimated wait{' '}
+          Our designer is rendering {count} concept{count === 1 ? '' : 's'}. Estimated wait{' '}
           {minWait === maxWait ? `~${minWait} min` : `${minWait}–${maxWait} min`}. Stay on this
           page — concepts will appear when ready.
         </span>

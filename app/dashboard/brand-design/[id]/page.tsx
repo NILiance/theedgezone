@@ -284,7 +284,7 @@ function ConceptsTab({
           <p className="text-eyebrow text-primary">Design Concepts</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {concepts.length === 0
-              ? 'Kick off Round 1 — Ideogram generates 10 logo concepts using your brand colors.'
+              ? 'Kick off Round 1 — our designer creates 10 logo concepts using your brand colors.'
               : 'Tap ♡ to shortlist favorites, then refine for the next round.'}
           </p>
         </div>
@@ -371,10 +371,9 @@ function ConceptsTab({
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Click <strong>Generate 10 concepts</strong> above to kick off Round 1. We use
-              Ideogram V3 with your brand colors as the palette seed. If nothing happens after
-              clicking, check that <code className="font-mono">GEMINI_API_KEY</code> is set in
-              Vercel.
+              Click <strong>Generate 10 concepts</strong> above to kick off Round 1. Our designer
+              uses your brand colors as the palette seed. If nothing happens after clicking, our
+              designer may be briefly offline — try again in a moment.
             </p>
           </CardContent>
         </Card>
@@ -615,7 +614,7 @@ function HelpTab() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">Round 1</strong> — Ideogram generates 10 logo
+            <strong className="text-foreground">Round 1</strong> — our designer creates 10 logo
             concepts from your brand basics + colors. Shortlist your favorites with ♡.
           </p>
           <p>
@@ -639,13 +638,8 @@ function HelpTab() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            If <em>Generate</em> doesn&rsquo;t produce concepts, check that{' '}
-            <code className="font-mono">GEMINI_API_KEY</code> is set in Vercel Environment
-            Variables. Admins can see all integrations under{' '}
-            <Link href="/dashboard/admin/integrations" className="text-primary hover:underline">
-              Admin → Integrations
-            </Link>
-            .
+            If <em>Generate</em> doesn&rsquo;t produce concepts, our designer may be briefly
+            offline. Wait a moment and try again. If it keeps happening, ping support.
           </p>
         </CardContent>
       </Card>
@@ -720,7 +714,7 @@ function ArsenalView({
         <p className="text-eyebrow text-primary">Quick-generate add-ons</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Composited assets — logo animation, brand voice doc, QR code, social avatar pack,
-          trading card. These don&rsquo;t use Gemini, they ship instantly.
+          trading card. These ship instantly — no waiting.
         </p>
         <div className="mt-3">
           <AddonsSection brandId={brandId} hasSelected={hasFinal} existing={existingAddons} />

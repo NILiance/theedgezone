@@ -37,7 +37,7 @@ export function BrandAdminTools({
           brandId={brandId}
           action={adminUploadFinalLogo}
           title="Upload final logo"
-          help="Bypass Ideogram — stamp this image as the chosen final and mark the brand as selected."
+          help="Bypass the auto designer — stamp this image as the chosen final and mark the brand as selected."
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
         />
         <UploadCard
