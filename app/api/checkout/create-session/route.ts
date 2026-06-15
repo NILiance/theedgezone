@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Service not found.' }, { status: 404 })
   }
 
-  const pricing = getServicePricing(body.slug, body.tier)
+  const pricing = await getServicePricing(body.slug, body.tier)
   if (!pricing) {
     return NextResponse.json(
       { error: 'This service does not have a fixed price — contact us to get started.' },

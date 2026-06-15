@@ -19,7 +19,7 @@ export async function createCheckoutSession(formData: FormData) {
   const service = SERVICES.find((s) => s.id === slug)
   if (!service) throw new Error('Service not found.')
 
-  const pricing = getServicePricing(slug, tierLabel)
+  const pricing = await getServicePricing(slug, tierLabel)
   if (!pricing) {
     throw new Error('This service does not have a fixed price — contact us to get started.')
   }
