@@ -5,16 +5,13 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  toggleShortlist,
-  refineRound,
-  selectFinalConcept,
-} from '@/app/dashboard/brand-design/actions'
+import { refineRound } from '@/app/dashboard/brand-design/actions'
 import { AssembleKitButton } from './assemble-kit'
 import { AddonsSection } from './addons-section'
 import { ArsenalGrid } from './arsenal-grid'
 import { PreferencesForm } from './preferences-form'
 import { GenerateConceptsButton } from './generate-form'
+import { ConceptsGrid } from './concepts-grid'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -386,15 +383,10 @@ function ConceptsTab({
                     : 'Locked'}
                 </p>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {list.map((c) => (
-                  <ConceptTile
-                    key={c.id}
-                    concept={c}
-                    canSelect={round === currentRound && round === 3}
-                  />
-                ))}
-              </div>
+              <ConceptsGrid
+                concepts={list}
+                canSelect={round === currentRound && round === 3}
+              />
             </section>
           )
         })}
@@ -852,79 +844,6 @@ async function PrintShopView({
 }
 
 // ── Building blocks ─────────────────────────────────────────────────────────
-
-function ConceptTile({
-  concept,
-  canSelect,
-}: {
-  concept: {
-    id: string
-    image_url: string
-    thumbnail_url: string | null
-    is_shortlisted: boolean
-    is_selected: boolean
-  }
-  canSelect: boolean
-}) {
-  return (
-    <div
-      className={`group relative overflow-hidden rounded-[var(--radius-sm)] border bg-panel ${
-        concept.is_selected
-          ? 'border-success ring-2 ring-success/40'
-          : concept.is_shortlisted
-            ? 'border-primary'
-            : 'border-border'
-      }`}
-    >
-      <Image
-        src={concept.thumbnail_url ?? concept.image_url}
-        alt="Logo concept"
-        width={256}
-        height={256}
-        className="aspect-square w-full bg-white object-contain"
-        unoptimized
-      />
-      <form
-        action={async () => {
-          'use server'
-          await toggleShortlist(concept.id)
-        }}
-        className="absolute right-2 top-2"
-      >
-        <button
-          type="submit"
-          aria-label="Toggle shortlist"
-          className={`flex h-8 w-8 items-center justify-center rounded-full text-lg backdrop-blur transition-colors ${
-            concept.is_shortlisted
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-background/80 text-foreground/70 hover:bg-primary/40 hover:text-primary-foreground'
-          }`}
-        >
-          {concept.is_shortlisted ? '♥' : '♡'}
-        </button>
-      </form>
-
-      {canSelect && !concept.is_selected && (
-        <form action={selectFinalConcept} className="absolute inset-x-2 bottom-2">
-          <input type="hidden" name="concept_id" value={concept.id} />
-          <button
-            type="submit"
-            className="text-display w-full rounded-[var(--radius-sm)] bg-success/90 px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-success-foreground opacity-0 transition-opacity hover:bg-success group-hover:opacity-100"
-          >
-            Select as final
-          </button>
-        </form>
-      )}
-      {concept.is_selected && (
-        <div className="absolute left-2 top-2">
-          <span className="text-display rounded-full bg-success px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-success-foreground">
-            ✓ Final
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function MissingBrandState() {
   return (
