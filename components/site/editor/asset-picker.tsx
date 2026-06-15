@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { uploadAsset, listAssets, deleteAsset } from '@/app/dashboard/sites/actions'
+import { uploadAsset, listAssets, deleteAsset, generateImageAsset } from '@/app/dashboard/sites/actions'
 
 interface Asset {
   id: string
@@ -36,6 +36,7 @@ export function AssetPicker({ value, onChange, siteId, placeholder, accept = 'im
   const [dragOver, setDragOver] = useState(false)
   const [showUrl, setShowUrl] = useState(false)
   const [browseOpen, setBrowseOpen] = useState(false)
+  const [generateOpen, setGenerateOpen] = useState(false)
 
   useEffect(() => {
     setPreview(value)
@@ -120,6 +121,15 @@ export function AssetPicker({ value, onChange, siteId, placeholder, accept = 'im
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
+                  onClick={() => setGenerateOpen(true)}
+                  disabled={isPending}
+                >
+                  Generate
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
                   variant="ghost"
                   onClick={() => {
                     onChange('')
@@ -155,9 +165,20 @@ export function AssetPicker({ value, onChange, siteId, placeholder, accept = 'im
           <p className="mt-1 text-xs text-muted-foreground">
             PNG, JPG, WebP, GIF, SVG, MP4, WebM · 10 MB max
           </p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
             <Button type="button" size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setBrowseOpen(true) }}>
               Browse uploads
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation()
+                setGenerateOpen(true)
+              }}
+            >
+              Generate from description
             </Button>
             <Button
               type="button"
@@ -207,6 +228,129 @@ export function AssetPicker({ value, onChange, siteId, placeholder, accept = 'im
           onClose={() => setBrowseOpen(false)}
         />
       )}
+
+      {generateOpen && (
+        <GenerateImage
+          siteId={siteId}
+          onCreated={(url) => {
+            onChange(url)
+            setPreview(url)
+            setGenerateOpen(false)
+          }}
+          onClose={() => setGenerateOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function GenerateImage({
+  siteId,
+  onCreated,
+  onClose,
+}: {
+  siteId?: string
+  onCreated: (url: string) => void
+  onClose: () => void
+}) {
+  const [prompt, setPrompt] = useState('')
+  const [aspect, setAspect] = useState<'1x1' | '16x9' | '9x16' | '4x3' | '3x4'>('16x9')
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = () => {
+    if (prompt.trim().length < 5) {
+      setError('Describe what you want in at least 5 characters')
+      return
+    }
+    setError(null)
+    const fd = new FormData()
+    if (siteId) fd.set('site_id', siteId)
+    fd.set('prompt', prompt)
+    fd.set('aspect_ratio', aspect)
+    startTransition(async () => {
+      try {
+        const { url } = await generateImageAsset(fd)
+        onCreated(url)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Generation failed')
+      }
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-lg flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-background"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div>
+            <p className="text-eyebrow text-primary">Generate image</p>
+            <p className="text-display text-lg font-bold">Describe what you want</p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={onClose} disabled={pending}>
+            Close
+          </Button>
+        </div>
+        <div className="space-y-4 p-5">
+          <label className="block text-sm">
+            <span className="block text-xs text-muted-foreground">Description</span>
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={4}
+              placeholder="Stadium tunnel shot from behind, athlete walking out into the field at dusk, dramatic lighting, photo-realistic"
+              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm leading-relaxed"
+              disabled={pending}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="block text-xs text-muted-foreground">Aspect ratio</span>
+            <select
+              value={aspect}
+              onChange={(e) =>
+                setAspect(e.target.value as '1x1' | '16x9' | '9x16' | '4x3' | '3x4')
+              }
+              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm"
+              disabled={pending}
+            >
+              <option value="16x9">Wide (16:9) — hero banners</option>
+              <option value="1x1">Square (1:1) — thumbnails</option>
+              <option value="9x16">Tall (9:16) — phone wallpapers</option>
+              <option value="4x3">Landscape (4:3)</option>
+              <option value="3x4">Portrait (3:4)</option>
+            </select>
+          </label>
+          {error && (
+            <p className="rounded-[var(--radius-sm)] border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+              {error}
+            </p>
+          )}
+          {pending && (
+            <p className="text-xs text-muted-foreground">
+              Generating… this usually takes 5–15 seconds.
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onClose}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button type="button" size="sm" onClick={submit} disabled={pending}>
+              {pending ? 'Generating…' : 'Generate image'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

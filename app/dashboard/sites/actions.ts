@@ -680,6 +680,63 @@ const MAX_BYTES = 10 * 1024 * 1024
  * `{user_id}/{site_id|root}/{uuid}.{ext}`, records it in site_assets,
  * and returns the public URL.
  */
+/**
+ * Generates an image from a text description (Ideogram V3) and uploads
+ * the result into the site-assets bucket so it acts exactly like a
+ * normal upload. Returns the public URL.
+ */
+export async function generateImageAsset(formData: FormData): Promise<{ url: string; path: string }> {
+  const user = await requireUser()
+  const prompt = String(formData.get('prompt') ?? '').trim()
+  const siteId = String(formData.get('site_id') ?? '').trim() || null
+  const aspectRaw = String(formData.get('aspect_ratio') ?? '1x1').trim()
+  const aspect = (['1x1', '16x9', '9x16', '4x3', '3x4'].includes(aspectRaw)
+    ? aspectRaw
+    : '1x1') as '1x1' | '16x9' | '9x16' | '4x3' | '3x4'
+  if (prompt.length < 5) throw new Error('Describe what you want in at least 5 characters')
+
+  const { generateConcepts } = await import('@/lib/ideogram')
+  const results = await generateConcepts({ prompt, count: 1, aspect_ratio: aspect })
+  const first = results[0]
+  if (!first?.url) throw new Error('Image generation failed — try again')
+
+  const sourceRes = await fetch(first.url)
+  if (!sourceRes.ok) throw new Error(`Could not download generated image (HTTP ${sourceRes.status})`)
+  const arrayBuffer = await sourceRes.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  const contentType = sourceRes.headers.get('content-type') ?? 'image/png'
+  const ext = contentType.includes('jpeg') ? 'jpg' : contentType.includes('webp') ? 'webp' : 'png'
+
+  const uid = crypto.randomUUID()
+  const path = `${user.id}/${siteId ?? 'shared'}/generated-${uid}.${ext}`
+  const supabase = await createClient()
+
+  const { error: uploadError } = await supabase.storage
+    .from('site-assets')
+    .upload(path, new Uint8Array(buffer), {
+      contentType,
+      cacheControl: '31536000',
+      upsert: false,
+    })
+  if (uploadError) throw new Error(uploadError.message)
+
+  const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
+  const url = pub.publicUrl
+  const safeFilename = `generated-${prompt.slice(0, 40).replace(/[^a-z0-9-]+/gi, '-')}.${ext}`
+
+  await supabase.from('site_assets').insert({
+    user_id: user.id,
+    site_id: siteId,
+    path,
+    url,
+    filename: safeFilename,
+    mime_type: contentType,
+    size_bytes: buffer.length,
+  })
+
+  return { url, path }
+}
+
 export async function uploadAsset(formData: FormData): Promise<{ url: string; path: string }> {
   const user = await requireUser()
   const parsed = uploadAssetSchema.safeParse({
