@@ -32,7 +32,7 @@ export async function createBrandDesign(formData?: FormData) {
 const generateSchema = z.object({
   brand_id: z.string().uuid(),
   round: z.coerce.number().int().min(1).max(3),
-  count: z.coerce.number().int().min(1).max(20).default(20),
+  count: z.coerce.number().int().min(1).max(20).default(10),
 })
 
 export async function generateConcepts(formData: FormData) {
