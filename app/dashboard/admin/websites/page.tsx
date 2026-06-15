@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { DeleteSiteButton } from './delete-button'
 
 export const metadata = { title: 'Websites' }
 
@@ -84,18 +85,31 @@ export default async function WebsitesAdminPage() {
                     {new Date(s.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {s.status === 'published' ? (
-                      <a
-                        href={`/site/${s.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-bold text-primary hover:underline"
-                      >
-                        View live →
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground capitalize">{s.status}</span>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {s.status === 'published' ? (
+                        <a
+                          href={`/site/${s.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          View live →
+                        </a>
+                      ) : (
+                        <a
+                          href={`/site/${s.slug}?preview=1`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-accent hover:underline"
+                        >
+                          Preview →
+                        </a>
+                      )}
+                      <DeleteSiteButton
+                        siteId={s.id}
+                        label={s.display_name ?? s.slug}
+                      />
+                    </div>
                   </td>
                 </tr>
               )

@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { DeleteStoreButton } from './delete-button'
 
 export const metadata = { title: 'Stores' }
 
@@ -91,18 +92,28 @@ export default async function StoresAdminPage() {
                     ${(stats.revenue / 100).toFixed(0)}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {s.status === 'open' ? (
-                      <a
-                        href={`/store/${s.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-bold text-primary hover:underline"
-                      >
-                        View live →
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground capitalize">{s.status}</span>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {s.status === 'open' ? (
+                        <a
+                          href={`/store/${s.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          View live →
+                        </a>
+                      ) : (
+                        <a
+                          href={`/store/${s.slug}?preview=1`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-accent hover:underline"
+                        >
+                          Preview →
+                        </a>
+                      )}
+                      <DeleteStoreButton storeId={s.id} label={s.name} />
+                    </div>
                   </td>
                 </tr>
               )

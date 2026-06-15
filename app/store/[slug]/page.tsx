@@ -5,6 +5,23 @@ import { StoreCheckoutButton } from './checkout-button'
 
 interface PageProps {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ preview?: string }>
+}
+
+async function viewerCanPreview(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ownerUserId: string
+): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+  if (user.id === ownerUserId) return true
+  const { data: adminRow } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+    .maybeSingle()
+  return Boolean(adminRow)
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -23,19 +40,25 @@ export async function generateMetadata({ params }: PageProps) {
   }
 }
 
-export default async function PublicStorePage({ params }: PageProps) {
+export default async function PublicStorePage({ params, searchParams }: PageProps) {
   const { slug } = await params
+  const { preview } = await searchParams
   const supabase = await createClient()
 
   const { data: store } = await supabase
     .from('stores')
     .select(
-      'id, slug, name, tagline, description, hero_image_url, logo_url, primary_color, secondary_color, status'
+      'id, slug, name, tagline, description, hero_image_url, logo_url, primary_color, secondary_color, status, user_id'
     )
     .eq('slug', slug)
     .maybeSingle()
   if (!store) notFound()
-  if (store.status !== 'open') notFound()
+  if (store.status !== 'open') {
+    if (preview !== '1' || !(await viewerCanPreview(supabase, store.user_id))) {
+      notFound()
+    }
+  }
+  const isPreview = preview === '1' && store.status !== 'open'
 
   const { data: products } = await supabase
     .from('store_products')
@@ -49,6 +72,11 @@ export default async function PublicStorePage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen" style={{ background: store.secondary_color }}>
+      {isPreview && (
+        <div className="bg-accent text-accent-foreground px-4 py-2 text-center text-xs font-bold uppercase tracking-widest">
+          Preview · {store.status} · not visible to the public
+        </div>
+      )}
       <section
         className="relative px-6 py-16 text-center"
         style={{ color: '#fff' }}

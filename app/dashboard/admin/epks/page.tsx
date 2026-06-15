@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { DeleteEpkButton } from './delete-button'
 
 export const metadata = { title: 'EPKs' }
 
@@ -73,18 +74,28 @@ export default async function EpksAdminPage() {
                     {new Date(e.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {e.status === 'published' ? (
-                      <a
-                        href={`/epk/${e.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-bold text-primary hover:underline"
-                      >
-                        View live →
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Draft</span>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {e.status === 'published' ? (
+                        <a
+                          href={`/epk/${e.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-primary hover:underline"
+                        >
+                          View live →
+                        </a>
+                      ) : (
+                        <a
+                          href={`/epk/${e.slug}?preview=1`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-accent hover:underline"
+                        >
+                          Preview →
+                        </a>
+                      )}
+                      <DeleteEpkButton epkId={e.id} label={e.display_name ?? e.slug} />
+                    </div>
                   </td>
                 </tr>
               )

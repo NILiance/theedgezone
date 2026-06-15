@@ -2,9 +2,25 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BlockRenderer, type SiteBlock, type SiteData } from '@/components/site/block-renderer'
 
+async function viewerCanPreview(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ownerUserId: string
+): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+  if (user.id === ownerUserId) return true
+  const { data: adminRow } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+    .maybeSingle()
+  return Boolean(adminRow)
+}
+
 interface PageProps {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ print?: string }>
+  searchParams: Promise<{ print?: string; preview?: string }>
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -26,17 +42,22 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PublicEpkPage({ params, searchParams }: PageProps) {
   const { slug } = await params
-  const { print } = await searchParams
+  const { print, preview } = await searchParams
   const isPrint = print === '1'
   const supabase = await createClient()
 
   const { data: epk } = await supabase
     .from('epks')
-    .select('id, slug, display_name, tagline, theme, social, status')
+    .select('id, slug, display_name, tagline, theme, social, status, user_id')
     .eq('slug', slug)
     .maybeSingle()
   if (!epk) notFound()
-  if (epk.status !== 'published') notFound()
+  if (epk.status !== 'published') {
+    if (preview !== '1' || !(await viewerCanPreview(supabase, epk.user_id))) {
+      notFound()
+    }
+  }
+  const isPreview = preview === '1' && epk.status !== 'published'
 
   const { data: blocks } = await supabase
     .from('epk_blocks')
@@ -57,6 +78,11 @@ export default async function PublicEpkPage({ params, searchParams }: PageProps)
 
   return (
     <main className={isPrint ? 'epk-print-mode' : 'min-h-screen bg-background text-foreground'}>
+      {isPreview && !isPrint && (
+        <div className="bg-accent text-accent-foreground px-4 py-2 text-center text-xs font-bold uppercase tracking-widest">
+          Preview · {epk.status} · not visible to the public
+        </div>
+      )}
       <style>{`
         @media print {
           @page { size: letter; margin: 0.5in; }

@@ -6,6 +6,7 @@ import { AffiliateRefCapture } from '@/components/site/checkout-buttons'
 
 interface PageProps {
   params: Promise<{ slug: string; path?: string[] }>
+  searchParams: Promise<{ preview?: string }>
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -25,23 +26,41 @@ export async function generateMetadata({ params }: PageProps) {
   }
 }
 
-export default async function PublicSitePage({ params }: PageProps) {
+async function isViewerAuthorized(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siteUserId: string
+): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+  if (user.id === siteUserId) return true
+  const { data: adminRow } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+    .maybeSingle()
+  return Boolean(adminRow)
+}
+
+export default async function PublicSitePage({ params, searchParams }: PageProps) {
   const { slug, path } = await params
+  const { preview } = await searchParams
   const supabase = await createClient()
 
   const { data: site } = await supabase
     .from('sites')
-    .select('id, slug, display_name, tagline, theme, status, social, header, footer')
+    .select('id, slug, display_name, tagline, theme, status, social, header, footer, user_id')
     .eq('slug', slug)
     .maybeSingle()
 
   if (!site) notFound()
 
-  // Owner can view drafts; everyone else can only view published. For now,
-  // public renderer enforces published-only — owner preview goes via the
-  // editor URL.
+  // Owner + admin can preview drafts via ?preview=1; public visitors only
+  // get published sites.
   if (site.status !== 'published') {
-    notFound()
+    if (preview !== '1' || !(await isViewerAuthorized(supabase, site.user_id))) {
+      notFound()
+    }
   }
 
   const requestedPath = '/' + (path?.join('/') ?? '')
@@ -115,9 +134,16 @@ export default async function PublicSitePage({ params }: PageProps) {
 
   const social = (site.social ?? {}) as Record<string, string>
 
+  const isPreview = preview === '1' && site.status !== 'published'
+
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <TrackView siteId={site.id} pageId={page.id} path={requestedPath} />
+      {isPreview && (
+        <div className="bg-accent text-accent-foreground px-4 py-2 text-center text-xs font-bold uppercase tracking-widest">
+          Preview · {site.status} · not visible to the public
+        </div>
+      )}
+      {!isPreview && <TrackView siteId={site.id} pageId={page.id} path={requestedPath} />}
       <AffiliateRefCapture />
       <SiteNav site={{ display_name: site.display_name, slug: site.slug }} pages={pages ?? []} />
       {(blocks ?? []).map((b) => (
