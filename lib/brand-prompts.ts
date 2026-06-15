@@ -1,11 +1,15 @@
 /**
  * Logo prompt builder — verbatim port of the legacy WP plugin's
- * `nilbd_build_prompts` (BrandDesign.php:5680).
+ * `nilbd_build_prompts` (BrandDesign.php:5680), simplified to a single
+ * `vibe` descriptor instead of the legacy adj1/adj2/adj3 + design-style
+ * chips combo (those were redundant in practice — concept variation
+ * already comes from the 6 rotating STYLE_MODS, not from layering
+ * three free-text adjectives).
  *
- * Why match exactly: Mike already validated these prompts produce great
- * logos with Gemini 2.5 Flash Image. The letter-by-letter spelling block
- * is the killer feature — Gemini reliably renders the athlete's name
- * correctly because we hand it the spelling pre-broken-out.
+ * Why the structure: Mike already validated the legacy prompts produce
+ * great logos with our designer. The letter-by-letter spelling block is
+ * the killer feature — it reliably renders the athlete's name correctly
+ * because we hand the model the spelling pre-broken-out.
  */
 
 export interface BrandPrefs {
@@ -14,17 +18,22 @@ export interface BrandPrefs {
   position?: string | null
   jerseyNum?: string | null
   initials?: string | null
-  symbol?: string | null
-  /** Free-text style adjectives. Default: 'bold' / 'modern' / 'dynamic'. */
-  adj1?: string | null
-  adj2?: string | null
-  adj3?: string | null
-  /** Free-text color description (e.g. 'navy and gold'). */
-  colors?: string | null
-  /** Free-text vibe (e.g. 'bold'). */
+  /** Free-text "include in logo" list (e.g. "devil, football, crown"). */
+  elements?: string | null
+  /** Single vibe descriptor (e.g. "Tech & Modern" or "Bold"). */
   vibe?: string | null
+  /** Free-text color description, e.g. "navy and gold" or "#7a0000 and #808080". */
+  colors?: string | null
+  /** 'variety' | 'light' | 'dark' | 'gradient' — drives background guidance. */
+  backgroundPref?: string | null
   /** Free-text brand inspirations. */
   inspiration?: string | null
+  /** Whether to include the athlete name as readable text in the logo. */
+  includeName?: boolean
+  /** Whether to include the initials in the logo. */
+  includeInitials?: boolean
+  /** Whether to include the jersey number in the logo. */
+  includeJersey?: boolean
 }
 
 const STYLE_MODS: ReadonlyArray<ReadonlyArray<string>> = [
@@ -72,6 +81,20 @@ function buildInitialsBlock(initialsUpper: string): string {
   return ` The initials are exactly "${initialsUpper}" (${spelled}) — render these letters precisely.`
 }
 
+function buildBackgroundGuidance(pref: string | null | undefined): string {
+  switch (pref) {
+    case 'light':
+      return 'Background: clean light/white background (no gradients, no patterns).'
+    case 'dark':
+      return 'Background: deep dark/black background that makes the logo pop.'
+    case 'gradient':
+      return 'Background: subtle gradient in the brand colors — modern, premium feel.'
+    case 'variety':
+    default:
+      return 'Background: choose whatever background suits this concept best (white, dark, or subtle gradient — pick what makes the logo strongest).'
+  }
+}
+
 export interface LogoPromptOptions {
   prefs: BrandPrefs
   /** Round 1 = no reference image. Round 2 = refined with chosen R1 as ref. */
@@ -83,9 +106,9 @@ export interface LogoPromptOptions {
 }
 
 /**
- * Returns the exact text prompt to send to Gemini 2.5 Flash Image.
- * For Round 2 you also pass the chosen R1 image as the first `inlineData`
- * part on the API call — see lib/gemini-image.ts.
+ * Returns the exact text prompt to send to our designer. For Round 2 you
+ * also pass the chosen R1 image as the first `inlineData` part — see
+ * lib/gemini-image.ts.
  */
 export function buildLogoPrompt(opts: LogoPromptOptions): string {
   const { prefs, round, conceptIndex, refinementSeed } = opts
@@ -93,12 +116,9 @@ export function buildLogoPrompt(opts: LogoPromptOptions): string {
   const sport = (prefs.sport || 'athlete').trim()
   const jersey = (prefs.jerseyNum || '').trim()
   const initials = (prefs.initials || '').trim()
-  const symbol = (prefs.symbol || '').trim()
-  const adj1 = (prefs.adj1 || 'bold').trim()
-  const adj2 = (prefs.adj2 || 'modern').trim()
-  const adj3 = (prefs.adj3 || 'dynamic').trim()
+  const elements = (prefs.elements || '').trim()
+  const vibe = (prefs.vibe || 'Bold').trim()
   const colors = (prefs.colors || 'blue and black').trim()
-  const vibe = (prefs.vibe || 'bold').trim()
   const inspo = (prefs.inspiration || '').trim()
 
   const nameUpper = name.toUpperCase()
@@ -106,32 +126,42 @@ export function buildLogoPrompt(opts: LogoPromptOptions): string {
 
   const spellingBlock = buildSpellingBlock(nameUpper)
   const initialsBlock = buildInitialsBlock(initialsUpper)
+  const backgroundLine = buildBackgroundGuidance(prefs.backgroundPref)
 
+  // Style mod rotation gives per-concept variety.
   const mod = STYLE_MODS[conceptIndex % STYLE_MODS.length]!
-  let conceptStyle = `${adj1}, ${adj2}, ${adj3}, ${vibe} aesthetic, color palette of ${colors}, ${mod.join(', ')}`
+  let conceptStyle = `${vibe} aesthetic, color palette of ${colors}, ${mod.join(', ')}`
   if (refinementSeed) conceptStyle += `, inspired by ${refinementSeed}`
   if (inspo) conceptStyle += `, influenced by brands like ${inspo}`
 
-  // Athlete descriptor
   const athleteDesc =
     `${name}, personal brand identity` +
     (sport ? `. Incorporate subtle ${sport}-inspired visual elements.` : '')
 
-  // Optional logo-element list
+  // Build the optional include block based on the talent's toggle choices.
   const logoElements: string[] = []
-  if (initialsUpper) {
-    logoElements.push(`featuring the initials "${initialsUpper}" (spelled ${letterByLetter(initialsUpper)})`)
+  if (prefs.includeName !== false && name) {
+    logoElements.push(`incorporating the athlete name "${nameUpper}" as readable wordmark text`)
   }
-  if (symbol) logoElements.push(`incorporating a ${symbol} motif`)
-  if (jersey) logoElements.push(`optionally referencing jersey number ${jersey}`)
+  if (prefs.includeInitials && initialsUpper) {
+    logoElements.push(
+      `featuring the initials "${initialsUpper}" (spelled ${letterByLetter(initialsUpper)})`
+    )
+  }
+  if (prefs.includeJersey && jersey) {
+    logoElements.push(`prominently displaying jersey number ${jersey}`)
+  }
+  if (elements) {
+    logoElements.push(`incorporating these visual elements: ${elements}`)
+  }
   const logoDetail = logoElements.length ? ` ${logoElements.join(', ')}.` : ''
 
   if (round === 1) {
     return (
-      `IMPORTANT: Generate exactly ONE logo design centered on a pure white background. Do NOT show multiple logos, variations, or a logo sheet.\n\n` +
+      `IMPORTANT: Generate exactly ONE logo design centered on a clean background. Do NOT show multiple logos, variations, or a logo sheet.\n\n` +
       `${spellingBlock}\n\n` +
       `Design a single professional logo for ${athleteDesc}. Style: ${conceptStyle}. ` +
-      `Clean white background. Vector illustration style. One monogram, wordmark, or icon mark${logoDetail}${initialsBlock}. ` +
+      `${backgroundLine} Vector illustration style. One monogram, wordmark, or icon mark${logoDetail}${initialsBlock}. ` +
       `High quality brand identity design. Professional and polished. One logo only, centered. ` +
       `If the design includes the name "${nameUpper}" or initials, spell every character exactly correct.`
     )
@@ -139,10 +169,10 @@ export function buildLogoPrompt(opts: LogoPromptOptions): string {
 
   // Round 2 — refined logo, expects chosen R1 as reference image
   return (
-    `CRITICAL INSTRUCTION: Generate exactly ONE logo. The entire image must contain a SINGLE logo design centered on a pure white background. Do NOT create a logo sheet, do NOT show multiple versions side by side, do NOT show lockups or variations, do NOT show a primary and secondary version. ONE logo only.\n\n` +
+    `CRITICAL INSTRUCTION: Generate exactly ONE logo. The entire image must contain a SINGLE logo design centered on a clean background. Do NOT create a logo sheet, do NOT show multiple versions side by side, do NOT show lockups or variations, do NOT show a primary and secondary version. ONE logo only.\n\n` +
     `${spellingBlock}\n\n` +
     `Design a single, refined professional logo for ${athleteDesc}. Style direction: ${conceptStyle}. ` +
-    `Pure white background, vector illustration style${logoDetail}${initialsBlock}. ` +
+    `${backgroundLine} Vector illustration style${logoDetail}${initialsBlock}. ` +
     `This is ONE standalone logo — clean, centered, production-ready. ` +
     `All text must spell "${nameUpper}" exactly.`
   )

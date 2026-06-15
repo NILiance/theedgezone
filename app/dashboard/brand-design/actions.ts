@@ -52,30 +52,18 @@ export async function generateConcepts(formData: FormData) {
     throw new Error('Brand design not found or not yours')
   }
 
-  // Pull the matching profile fields so the prompt has initials, position,
-  // and any inspiration the talent set in their profile editor.
+  // Pull the matching profile fields so the prompt has initials,
+  // elements, vibe, background pref, include toggles, and any
+  // inspiration the talent set in the Preferences panel.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, brand_initials, brand_symbol, brand_inspiration_urls, brand_audience, brand_mood, brand_values')
+    .select(
+      'display_name, brand_initials, brand_elements, brand_vibe, brand_bg_pref, brand_include_name, brand_include_initials, brand_include_jersey, brand_inspiration_urls'
+    )
     .eq('id', user.id)
     .maybeSingle()
 
-  const colorWords = describeColors(brand.primary_color, brand.secondary_color)
-  const inspirationFreeText = Array.isArray(profile?.brand_inspiration_urls)
-    ? (profile?.brand_inspiration_urls as string[]).slice(0, 3).join(', ')
-    : ''
-
-  const prefs: BrandPrefs = {
-    name: brand.brand_name ?? profile?.display_name ?? 'NIL Talent',
-    sport: brand.sport,
-    position: brand.athletic_position,
-    jerseyNum: brand.jersey_number,
-    initials: (profile as { brand_initials?: string | null } | null)?.brand_initials ?? null,
-    symbol: (profile as { brand_symbol?: string | null } | null)?.brand_symbol ?? null,
-    colors: colorWords,
-    vibe: brand.style_seed ?? null,
-    inspiration: inspirationFreeText || null,
-  }
+  const prefs = buildPrefsFromBrandAndProfile(brand, profile)
 
   // Cycle concept index from the count of existing concepts so the style
   // mod rotation continues across "+10 more" batches.
@@ -120,6 +108,54 @@ export async function generateConcepts(formData: FormData) {
  * Best-effort: turn the two hex colors stored on the brand into the
  * free-text "colors" string the prompt expects ("navy and gold").
  */
+/**
+ * Builds the prompt prefs object from a brand_designs row + the talent's
+ * profile. Single source of truth so generateConcepts and refineRound
+ * stay in sync.
+ */
+function buildPrefsFromBrandAndProfile(
+  brand: {
+    brand_name: string | null
+    sport: string | null
+    athletic_position: string | null
+    jersey_number: string | null
+    primary_color: string | null
+    secondary_color: string | null
+    style_seed: string | null
+  },
+  profile: {
+    display_name: string | null
+    brand_initials?: string | null
+    brand_elements?: string | null
+    brand_vibe?: string | null
+    brand_bg_pref?: string | null
+    brand_include_name?: boolean | null
+    brand_include_initials?: boolean | null
+    brand_include_jersey?: boolean | null
+    brand_inspiration_urls?: unknown
+  } | null
+): BrandPrefs {
+  const colorWords = describeColors(brand.primary_color, brand.secondary_color)
+  const inspirationFreeText = Array.isArray(profile?.brand_inspiration_urls)
+    ? (profile.brand_inspiration_urls as string[]).slice(0, 3).join(', ')
+    : ''
+  return {
+    name: brand.brand_name ?? profile?.display_name ?? 'NIL Talent',
+    sport: brand.sport,
+    position: brand.athletic_position,
+    jerseyNum: brand.jersey_number,
+    initials: profile?.brand_initials ?? null,
+    elements: profile?.brand_elements ?? null,
+    colors: colorWords,
+    vibe: profile?.brand_vibe ?? brand.style_seed ?? null,
+    backgroundPref: profile?.brand_bg_pref ?? 'variety',
+    includeName: profile?.brand_include_name ?? true,
+    includeInitials: profile?.brand_include_initials ?? false,
+    includeJersey: profile?.brand_include_jersey ?? false,
+    inspiration: inspirationFreeText || null,
+  }
+}
+
 function describeColors(primary: string | null, secondary: string | null): string {
   const named = [hexToName(primary), hexToName(secondary)].filter(Boolean)
   if (named.length === 2) return `${named[0]} and ${named[1]}`
@@ -210,7 +246,9 @@ export async function refineRound(brandId: string) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, brand_initials, brand_symbol, brand_inspiration_urls')
+    .select(
+      'display_name, brand_initials, brand_elements, brand_vibe, brand_bg_pref, brand_include_name, brand_include_initials, brand_include_jersey, brand_inspiration_urls'
+    )
     .eq('id', user.id)
     .maybeSingle()
 
@@ -239,26 +277,11 @@ export async function refineRound(brandId: string) {
   const maxSources = nextRound === 2 ? 6 : 8
   const trimmedSources = sources.slice(0, maxSources)
 
-  const colorWords = describeColors(brand.primary_color, brand.secondary_color)
-  const inspirationFreeText = Array.isArray(profile?.brand_inspiration_urls)
-    ? (profile?.brand_inspiration_urls as string[]).slice(0, 3).join(', ')
-    : ''
-
-  const prefs: BrandPrefs = {
-    name: brand.brand_name ?? profile?.display_name ?? 'NIL Talent',
-    sport: brand.sport,
-    position: brand.athletic_position,
-    jerseyNum: brand.jersey_number,
-    initials: (profile as { brand_initials?: string | null } | null)?.brand_initials ?? null,
-    symbol: (profile as { brand_symbol?: string | null } | null)?.brand_symbol ?? null,
-    colors: colorWords,
-    vibe: brand.style_seed ?? null,
-    inspiration: inspirationFreeText || null,
-  }
+  const prefs = buildPrefsFromBrandAndProfile(brand, profile)
 
   // For each source, generate `variationsPer` refined concepts using the
-  // source image as the Gemini reference. Cycle refinement seeds so each
-  // variation tries a different direction.
+  // source image as our designer's reference. Cycle refinement seeds so
+  // each variation tries a different direction.
   const batches = await Promise.all(
     trimmedSources.map((src, srcIdx) => {
       const seedOffset = srcIdx * variationsPer

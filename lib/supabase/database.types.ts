@@ -1911,7 +1911,12 @@ export type Database = {
           brand_accent_color: string | null
           brand_audience: string | null
           brand_avoid: string | null
+          brand_bg_pref: string | null
+          brand_elements: string | null
           brand_font_pair: string | null
+          brand_include_initials: boolean | null
+          brand_include_jersey: boolean | null
+          brand_include_name: boolean | null
           brand_initials: string | null
           brand_inspiration_urls: Json
           brand_mood: string | null
@@ -1922,6 +1927,7 @@ export type Database = {
           brand_symbol: string | null
           brand_tagline: string | null
           brand_values: Json
+          brand_vibe: string | null
           brand_voice: string | null
           city: string | null
           conference: string | null
@@ -1978,7 +1984,12 @@ export type Database = {
           brand_accent_color?: string | null
           brand_audience?: string | null
           brand_avoid?: string | null
+          brand_bg_pref?: string | null
+          brand_elements?: string | null
           brand_font_pair?: string | null
+          brand_include_initials?: boolean | null
+          brand_include_jersey?: boolean | null
+          brand_include_name?: boolean | null
           brand_initials?: string | null
           brand_inspiration_urls?: Json
           brand_mood?: string | null
@@ -1989,6 +2000,7 @@ export type Database = {
           brand_symbol?: string | null
           brand_tagline?: string | null
           brand_values?: Json
+          brand_vibe?: string | null
           brand_voice?: string | null
           city?: string | null
           conference?: string | null
@@ -2045,7 +2057,12 @@ export type Database = {
           brand_accent_color?: string | null
           brand_audience?: string | null
           brand_avoid?: string | null
+          brand_bg_pref?: string | null
+          brand_elements?: string | null
           brand_font_pair?: string | null
+          brand_include_initials?: boolean | null
+          brand_include_jersey?: boolean | null
+          brand_include_name?: boolean | null
           brand_initials?: string | null
           brand_inspiration_urls?: Json
           brand_mood?: string | null
@@ -2056,6 +2073,7 @@ export type Database = {
           brand_symbol?: string | null
           brand_tagline?: string | null
           brand_values?: Json
+          brand_vibe?: string | null
           brand_voice?: string | null
           city?: string | null
           conference?: string | null

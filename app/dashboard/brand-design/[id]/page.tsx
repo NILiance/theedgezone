@@ -13,7 +13,7 @@ import {
 import { AssembleKitButton } from './assemble-kit'
 import { AddonsSection } from './addons-section'
 import { ArsenalGrid } from './arsenal-grid'
-import { BasicsForm } from './basics-form'
+import { PreferencesForm } from './preferences-form'
 import { GenerateConceptsButton } from './generate-form'
 
 interface PageProps {
@@ -86,6 +86,33 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
     metadata: (a.metadata as Record<string, unknown>) ?? {},
     created_at: a.created_at,
   }))
+
+  // Load preferences from profile so the Brand Preferences panel seeds
+  // from whatever the talent already entered.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select(
+      'brand_initials, brand_vibe, brand_bg_pref, brand_include_name, brand_include_initials, brand_include_jersey, brand_elements'
+    )
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const prefsInitial = {
+    brand_name: brand.brand_name,
+    initials: profile?.brand_initials ?? null,
+    sport: brand.sport,
+    athletic_position: brand.athletic_position,
+    school: brand.school,
+    jersey_number: brand.jersey_number,
+    primary_color: brand.primary_color,
+    secondary_color: brand.secondary_color,
+    vibe: profile?.brand_vibe ?? brand.style_seed ?? 'Bold',
+    bg_pref: profile?.brand_bg_pref ?? 'variety',
+    include_name: profile?.brand_include_name ?? true,
+    include_initials: profile?.brand_include_initials ?? false,
+    include_jersey: profile?.brand_include_jersey ?? false,
+    elements: profile?.brand_elements ?? null,
+  }
 
   return (
     <div className="space-y-6">
@@ -175,6 +202,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           shortlistedCurrentRound={shortlistedCurrentRound}
           selectedConcept={selectedConcept}
           hasFinal={hasFinal}
+          prefsInitial={prefsInitial}
         />
       )}
 
@@ -204,6 +232,7 @@ function StudioView({
   shortlistedCurrentRound,
   selectedConcept,
   hasFinal,
+  prefsInitial,
 }: {
   brand: any
   tab: StudioTab
@@ -213,6 +242,7 @@ function StudioView({
   shortlistedCurrentRound: number
   selectedConcept: any
   hasFinal: boolean
+  prefsInitial: any
 }) {
   return (
     <div className="space-y-6">
@@ -242,6 +272,7 @@ function StudioView({
           conceptsByRound={conceptsByRound}
           currentRound={currentRound}
           shortlistedCurrentRound={shortlistedCurrentRound}
+          prefsInitial={prefsInitial}
         />
       )}
       {tab === 'final' && (
@@ -270,21 +301,25 @@ function ConceptsTab({
   conceptsByRound,
   currentRound,
   shortlistedCurrentRound,
+  prefsInitial,
 }: {
   brandId: string
   concepts: any[]
   conceptsByRound: Record<number, any[]>
   currentRound: number
   shortlistedCurrentRound: number
+  prefsInitial: any
 }) {
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <PreferencesForm brandId={brandId} initial={prefsInitial} />
+
+      <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border pt-4">
         <div>
           <p className="text-eyebrow text-primary">Design Concepts</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {concepts.length === 0
-              ? 'Kick off Round 1 — our designer creates 10 logo concepts using your brand colors.'
+              ? 'Save your preferences above, then kick off Round 1 — our designer creates 10 logo concepts using your settings.'
               : 'Tap ♡ to shortlist favorites, then refine for the next round.'}
           </p>
         </div>
@@ -575,26 +610,21 @@ function InfoTab({ brand }: { brand: any }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Brand basics</CardTitle>
+        <CardTitle>Account snapshot</CardTitle>
         <CardDescription>
-          We pre-fill from your profile. Edit and save — changes sync back to your profile so the
-          rest of the app sees them too.
+          Edit your full brand preferences on the <strong>Design Concepts</strong> tab — that&rsquo;s
+          where everything saves and where new concepts get generated from.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <BasicsForm
-          brandId={brand.id}
-          initial={{
-            brand_name: brand.brand_name,
-            sport: brand.sport,
-            athletic_position: brand.athletic_position,
-            school: brand.school,
-            jersey_number: brand.jersey_number,
-            style_seed: brand.style_seed,
-            primary_color: brand.primary_color,
-            secondary_color: brand.secondary_color,
-          }}
-        />
+      <CardContent className="space-y-3 text-sm">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Snapshot label="Brand name" value={brand.brand_name} />
+          <Snapshot label="Sport" value={brand.sport} />
+          <Snapshot label="Position" value={brand.athletic_position} />
+          <Snapshot label="School" value={brand.school} />
+          <Snapshot label="Jersey #" value={brand.jersey_number} />
+          <Snapshot label="Status" value={brand.status} />
+        </div>
         <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
           Asset credits: {brand.asset_credits_used ?? 0} / {brand.asset_credits_total ?? 10}
           {' · '}
@@ -602,6 +632,15 @@ function InfoTab({ brand }: { brand: any }) {
         </p>
       </CardContent>
     </Card>
+  )
+}
+
+function Snapshot({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-foreground">{value ?? '—'}</p>
+    </div>
   )
 }
 
