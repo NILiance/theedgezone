@@ -176,6 +176,13 @@ function UserRow({ user }: { user: Row }) {
         {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '—'}
       </td>
       <td className="px-3 py-2 text-right">
+        <a
+          href={`/dashboard/admin/users/impersonate?user_id=${user.id}&return=/dashboard`}
+          className="text-display mr-2 inline-block rounded-[var(--radius-sm)] border border-primary bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary"
+          title="View site as this user — useful for debugging and demos"
+        >
+          👁 View as
+        </a>
         <Button
           size="sm"
           variant="ghost"

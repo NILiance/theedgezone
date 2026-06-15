@@ -498,6 +498,12 @@ export type Database = {
         Row: {
           accent_color: string | null
           active_logo_id: string | null
+          admin_brand_guide_url: string | null
+          admin_concepts: Json
+          admin_final_logo_url: string | null
+          admin_notes: string | null
+          admin_updated_at: string | null
+          admin_updated_by: string | null
           asset_credits_total: number
           asset_credits_used: number
           athletic_position: string | null
@@ -528,6 +534,12 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           active_logo_id?: string | null
+          admin_brand_guide_url?: string | null
+          admin_concepts?: Json
+          admin_final_logo_url?: string | null
+          admin_notes?: string | null
+          admin_updated_at?: string | null
+          admin_updated_by?: string | null
           asset_credits_total?: number
           asset_credits_used?: number
           athletic_position?: string | null
@@ -558,6 +570,12 @@ export type Database = {
         Update: {
           accent_color?: string | null
           active_logo_id?: string | null
+          admin_brand_guide_url?: string | null
+          admin_concepts?: Json
+          admin_final_logo_url?: string | null
+          admin_notes?: string | null
+          admin_updated_at?: string | null
+          admin_updated_by?: string | null
           asset_credits_total?: number
           asset_credits_used?: number
           athletic_position?: string | null
@@ -586,6 +604,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "brand_designs_admin_updated_by_fkey"
+            columns: ["admin_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "brand_designs_order_id_fkey"
             columns: ["order_id"]

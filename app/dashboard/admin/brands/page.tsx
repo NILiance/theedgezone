@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -53,6 +54,7 @@ export default async function BrandsAdminPage() {
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Kit</th>
               <th className="px-3 py-2 text-left">Created</th>
+              <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -84,12 +86,20 @@ export default async function BrandsAdminPage() {
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {new Date(b.created_at).toLocaleDateString()}
                   </td>
+                  <td className="px-3 py-2 text-right">
+                    <Link
+                      href={`/dashboard/admin/brands/${b.id}`}
+                      className="text-xs font-bold text-primary hover:underline"
+                    >
+                      Open →
+                    </Link>
+                  </td>
                 </tr>
               )
             })}
             {(brands ?? []).length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">
                   No brand designs yet.
                 </td>
               </tr>
