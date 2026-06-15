@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { DeleteBrandButton } from './delete-brand-button'
 
 export const metadata = { title: 'Brand Designs' }
 
@@ -87,12 +88,18 @@ export default async function BrandsAdminPage() {
                     {new Date(b.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <Link
-                      href={`/dashboard/admin/brands/${b.id}`}
-                      className="text-xs font-bold text-primary hover:underline"
-                    >
-                      Open →
-                    </Link>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Link
+                        href={`/dashboard/admin/brands/${b.id}`}
+                        className="text-xs font-bold text-primary hover:underline"
+                      >
+                        Open →
+                      </Link>
+                      <DeleteBrandButton
+                        brandId={b.id}
+                        brandLabel={b.brand_name ?? 'Unnamed'}
+                      />
+                    </div>
                   </td>
                 </tr>
               )

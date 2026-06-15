@@ -12,6 +12,7 @@ import {
 } from '@/app/dashboard/brand-design/actions'
 import { AssembleKitButton } from './assemble-kit'
 import { AddonsSection } from './addons-section'
+import { ArsenalGrid } from './arsenal-grid'
 import { BasicsForm } from './basics-form'
 import { GenerateConceptsButton } from './generate-form'
 
@@ -713,25 +714,18 @@ function ArsenalView({
         </div>
       </div>
 
-      <AddonsSection brandId={brandId} hasSelected={hasFinal} existing={existingAddons} />
+      <ArsenalGrid brandId={brandId} hasFinal={hasFinal} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>More categories coming online</CardTitle>
-          <CardDescription>
-            Logo On Your Photo · Sport Uniforms · Merch Lab · Social Media · Business Card ·
-            Virtual Background · Phone Wallpaper · Story Highlight Covers · Letterhead ·
-            Presentation Template · Thank You Card · Media Kit Cover.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground">
-            We&rsquo;re bringing every legacy Brand Arsenal generator into the new shell. The
-            categories above ship next; the six showing now (Logo Animation, Brand Voice, QR
-            Code, Email Signature, Social Avatars, Trading Card) are live.
-          </p>
-        </CardContent>
-      </Card>
+      <div>
+        <p className="text-eyebrow text-primary">Quick-generate add-ons</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Composited assets — logo animation, brand voice doc, QR code, social avatar pack,
+          trading card. These don&rsquo;t use Gemini, they ship instantly.
+        </p>
+        <div className="mt-3">
+          <AddonsSection brandId={brandId} hasSelected={hasFinal} existing={existingAddons} />
+        </div>
+      </div>
     </div>
   )
 }
