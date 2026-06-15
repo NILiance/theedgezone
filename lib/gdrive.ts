@@ -50,9 +50,10 @@ async function getDriveClient() {
  * a new one under `parentId`. Matches the legacy WP plugin's
  * `ezf_gdrive_ensure_folder` so the resulting structure is the same.
  */
+type DriveClient = NonNullable<Awaited<ReturnType<typeof getDriveClient>>>
+
 async function ensureFolder(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  drive: any,
+  drive: DriveClient,
   parentId: string,
   folderName: string
 ): Promise<string> {
