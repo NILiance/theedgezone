@@ -16,7 +16,9 @@ export default async function BrandDesignIndexPage() {
 
   const { data: brands } = await supabase
     .from('brand_designs')
-    .select('id, brand_name, sport, status, created_at, asset_credits_used, asset_credits_total')
+    .select(
+      'id, brand_name, sport, status, created_at, asset_credits_used, asset_credits_total, final_logo_url'
+    )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
@@ -81,7 +83,7 @@ export default async function BrandDesignIndexPage() {
                   </CardTitle>
                   <span
                     className={`text-display rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                      brand.status === 'completed'
+                      brand.status === 'delivered' || brand.status === 'completed'
                         ? 'bg-success/20 text-success'
                         : 'bg-primary/20 text-primary'
                     }`}
@@ -95,6 +97,23 @@ export default async function BrandDesignIndexPage() {
                 </p>
               </CardHeader>
               <CardContent>
+                {/* Final logo preview — shows the chosen logo on a white
+                    tile so it reads against any color. Falls back to a
+                    placeholder until the talent picks one. */}
+                <div className="mb-3 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-border bg-white">
+                  {brand.final_logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={brand.final_logo_url}
+                      alt={`${brand.brand_name ?? 'Brand'} final logo`}
+                      className="max-h-full max-w-full object-contain p-4"
+                    />
+                  ) : (
+                    <span className="text-display text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      No final logo yet
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Asset credits: {brand.asset_credits_used} / {brand.asset_credits_total}
                 </p>
