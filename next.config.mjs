@@ -13,17 +13,10 @@ const nextConfig = {
   },
   // Keep sharp's native binary outside the webpack bundle so its
   // platform-specific .node + libvips files load correctly at runtime.
+  // Linux x64 binaries are pulled in via the explicit @img/sharp-*
+  // optionalDependencies in package.json — Vercel's nft picks them up
+  // naturally from node_modules without needing outputFileTracingIncludes.
   serverExternalPackages: ['sharp'],
-  // Force-include sharp's @img/sharp-libvips-linux-x64 sibling package
-  // in every server function's traced bundle. Sharp loads libvips via
-  // dynamic require at runtime, which Vercel's node-file-trace doesn't
-  // follow — so without this, deploys fail with:
-  //   ERR_DLOPEN_FAILED: libvips-cpp.so.8.18.3: cannot open shared object
-  // The glob covers @img/sharp-linux-x64 + @img/sharp-libvips-linux-x64
-  // for both glibc and musl.
-  outputFileTracingIncludes: {
-    '/**/*': ['./node_modules/@img/**/*'],
-  },
   experimental: {
     serverActions: { bodySizeLimit: '10mb' },
   },
