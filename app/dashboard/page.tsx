@@ -274,6 +274,16 @@ function ProductCard({
         </div>
         <StatusPill status={order.status} />
       </div>
+      {order.thumbnail_url && (
+        <div className="mt-3 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-border bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={order.thumbnail_url}
+            alt={`${order.product_title} preview`}
+            className="max-h-full max-w-full object-contain p-3"
+          />
+        </div>
+      )}
       <p className="mt-3 text-xs text-muted-foreground">Purchased {dateStr}</p>
       {actions.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">

@@ -50,6 +50,7 @@ export default async function BrandsAdminPage() {
         <table className="w-full text-sm">
           <thead className="bg-panel-elevated/50 text-[10px] uppercase tracking-widest text-muted-foreground">
             <tr>
+              <th className="px-3 py-2 text-left">Logo</th>
               <th className="px-3 py-2 text-left">Brand</th>
               <th className="px-3 py-2 text-left">Owner</th>
               <th className="px-3 py-2 text-left">Status</th>
@@ -63,6 +64,22 @@ export default async function BrandsAdminPage() {
               const owner = profilesById.get(b.user_id) ?? null
               return (
                 <tr key={b.id} className="border-t border-border">
+                  <td className="px-3 py-2">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded border border-border bg-white">
+                      {b.final_logo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={b.final_logo_url}
+                          alt=""
+                          className="max-h-full max-w-full object-contain p-1"
+                        />
+                      ) : (
+                        <span className="text-display text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                          —
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-2">
                     <p className="text-display font-bold">{b.brand_name ?? 'Unnamed'}</p>
                     <p className="text-[10px] text-muted-foreground">
@@ -106,7 +123,7 @@ export default async function BrandsAdminPage() {
             })}
             {(brands ?? []).length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                <td colSpan={7} className="px-3 py-10 text-center text-sm text-muted-foreground">
                   No brand designs yet.
                 </td>
               </tr>

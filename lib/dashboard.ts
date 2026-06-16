@@ -26,6 +26,9 @@ export interface DashboardOrder {
   purchased_at: string
   crm_synced_at: string | null
   provisioned_entity_id: string | null
+  /** Thumbnail for the dashboard card — final_logo_url for brand
+   *  designs, cover image for sites. Null until provisioned. */
+  thumbnail_url: string | null
 }
 
 // Maps a product_slug to the underlying entity table whose row backs
@@ -74,19 +77,44 @@ export const getDashboardData = cache(async (userId: string) => {
   }
 
   const existsByTable = new Map<'brand_designs' | 'sites', Set<string>>()
+  // Per-entity thumbnail map so product cards can show the final logo /
+  // site cover next to "READY" status.
+  const thumbByEntityId = new Map<string, string>()
   await Promise.all(
     Array.from(idsByTable.entries()).map(async ([table, ids]) => {
-      const { data } = await supabase.from(table).select('id').in('id', ids)
-      existsByTable.set(table, new Set((data ?? []).map((r) => r.id as string)))
+      if (table === 'brand_designs') {
+        const { data } = await supabase
+          .from('brand_designs')
+          .select('id, final_logo_url')
+          .in('id', ids)
+        existsByTable.set(table, new Set((data ?? []).map((r) => r.id as string)))
+        for (const r of data ?? []) {
+          if ((r as { final_logo_url?: string | null }).final_logo_url) {
+            thumbByEntityId.set(r.id as string, (r as { final_logo_url: string }).final_logo_url)
+          }
+        }
+      } else if (table === 'sites') {
+        const { data } = await supabase.from('sites').select('id').in('id', ids)
+        existsByTable.set(table, new Set((data ?? []).map((r) => r.id as string)))
+        // Sites don't have a single canonical thumbnail field yet — leave
+        // thumbnail_url null for those orders.
+      }
     })
   )
 
-  const orders = rawOrders.filter((o) => {
-    const table = ORDER_ENTITY_TABLE[o.product_slug]
-    if (!table) return true // slugs we don't have orphan-checking for
-    if (!o.provisioned_entity_id) return true // not yet provisioned — keep
-    return existsByTable.get(table)?.has(o.provisioned_entity_id) ?? false
-  })
+  const orders = rawOrders
+    .filter((o) => {
+      const table = ORDER_ENTITY_TABLE[o.product_slug]
+      if (!table) return true // slugs we don't have orphan-checking for
+      if (!o.provisioned_entity_id) return true // not yet provisioned — keep
+      return existsByTable.get(table)?.has(o.provisioned_entity_id) ?? false
+    })
+    .map((o) => ({
+      ...o,
+      thumbnail_url: o.provisioned_entity_id
+        ? thumbByEntityId.get(o.provisioned_entity_id) ?? null
+        : null,
+    }))
 
   return { profile, orders }
 })

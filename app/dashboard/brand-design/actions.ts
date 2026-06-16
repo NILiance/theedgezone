@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { generateLogoConcepts } from '@/lib/gemini-image'
 import { REFINEMENT_SEEDS, type BrandPrefs } from '@/lib/brand-prompts'
@@ -487,7 +487,11 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
 
   // Upload each individual kit file to brand-assets storage and stash a
   // `kit_files` array on the brand row so the Brand Guide tab can render
-  // a per-file grid (matching the legacy WP UI).
+  // a per-file grid (matching the legacy WP UI). Prefer the service-role
+  // client because brand-assets RLS may use the user's id in the path,
+  // and our kit path is brandId-rooted — the auth-bound client gets
+  // rejected on the storage.foldername(name)[1] = auth.uid() check.
+  const kitWriter = createServiceClient() ?? supabase
   const kitFiles: Array<{
     name: string
     label: string
@@ -497,7 +501,7 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
   }> = []
   for (const f of kit.files) {
     const path = `${brandId}/kit/${f.name}`
-    const { error: fErr } = await supabase.storage
+    const { error: fErr } = await kitWriter.storage
       .from('brand-assets')
       .upload(path, new Uint8Array(f.buffer), {
         contentType: f.mimeType,
@@ -507,7 +511,7 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
       console.error('[brand-kit] file upload failed', f.name, fErr.message)
       continue
     }
-    const { data: pub } = supabase.storage.from('brand-assets').getPublicUrl(path)
+    const { data: pub } = kitWriter.storage.from('brand-assets').getPublicUrl(path)
     kitFiles.push({
       name: f.name,
       label: f.label,
@@ -672,6 +676,9 @@ export async function assembleAndUploadKit(
   }
 
   // Upload each individual file so the Brand Guide grid can show them.
+  // Service client preferred — see comment on the auto-assemble path
+  // above for why the auth-bound client fails the brand-assets policy.
+  const kitWriter = createServiceClient() ?? supabase
   const kitFiles: Array<{
     name: string
     label: string
@@ -681,7 +688,7 @@ export async function assembleAndUploadKit(
   }> = []
   for (const f of kit.files) {
     const path = `${parsed.data.brand_id}/kit/${f.name}`
-    const { error: fErr } = await supabase.storage
+    const { error: fErr } = await kitWriter.storage
       .from('brand-assets')
       .upload(path, new Uint8Array(f.buffer), {
         contentType: f.mimeType,
@@ -691,7 +698,7 @@ export async function assembleAndUploadKit(
       console.error('[brand-kit] file upload failed', f.name, fErr.message)
       continue
     }
-    const { data: pub } = supabase.storage.from('brand-assets').getPublicUrl(path)
+    const { data: pub } = kitWriter.storage.from('brand-assets').getPublicUrl(path)
     kitFiles.push({
       name: f.name,
       label: f.label,
