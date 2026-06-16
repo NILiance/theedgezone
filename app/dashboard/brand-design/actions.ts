@@ -400,12 +400,22 @@ export async function selectFinalConcept(formData: FormData) {
   // Auto-assemble the brand kit inline so the talent doesn't need a
   // second click. Matches the legacy WP plugin flow. Fire as a normal
   // call (not background) so any failure surfaces in the action result.
+  // On failure we persist the error message to brand_kit_error so the
+  // brand-design page can show a banner with a Retry — the talent is no
+  // longer left guessing why the brand guide didn't materialize.
   try {
     await assembleKitForBrand(concept.brand_design_id, user.id)
+    await supabase
+      .from('brand_designs')
+      .update({ brand_kit_error: null })
+      .eq('id', concept.brand_design_id)
   } catch (err) {
-    // Kit failure shouldn't block the final-selection write — the talent
-    // can still hit the manual "Assemble brand kit" button.
+    const msg = err instanceof Error ? err.message : 'Auto-assemble failed'
     console.error('[brand-design] auto-assemble failed', err)
+    await supabase
+      .from('brand_designs')
+      .update({ brand_kit_error: msg })
+      .eq('id', concept.brand_design_id)
   }
 
   revalidatePath(`/dashboard/brand-design/${concept.brand_design_id}`)
@@ -514,6 +524,10 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
       brand_kit_drive_id: driveId,
       brand_kit_assembled_at: new Date().toISOString(),
       kit_files: kitFiles,
+      // Legacy WP plugin flipped status='delivered' the moment the kit
+      // finished assembling. Mirror that here so admin and the talent
+      // dashboard both see the brand as fully provisioned.
+      status: 'delivered',
     })
     .eq('id', brandId)
 
@@ -619,7 +633,12 @@ export async function assembleAndUploadKit(
       final_logo_url: brand.final_logo_url,
     })
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Kit build failed' }
+    const msg = err instanceof Error ? err.message : 'Kit build failed'
+    await supabase
+      .from('brand_designs')
+      .update({ brand_kit_error: msg })
+      .eq('id', parsed.data.brand_id)
+    return { ok: false, message: msg }
   }
 
   // Upload — if Drive isn't configured, return the zip via Supabase Storage instead.
@@ -682,7 +701,9 @@ export async function assembleAndUploadKit(
     })
   }
 
-  // Stamp on the brand row
+  // Stamp on the brand row and clear any stale auto-assemble error so the
+  // banner disappears after a successful retry. Legacy parity: bump
+  // status to 'delivered' the moment the kit finishes assembling.
   await supabase
     .from('brand_designs')
     .update({
@@ -690,6 +711,8 @@ export async function assembleAndUploadKit(
       brand_kit_drive_id: driveId,
       brand_kit_assembled_at: new Date().toISOString(),
       kit_files: kitFiles,
+      brand_kit_error: null,
+      status: 'delivered',
     })
     .eq('id', parsed.data.brand_id)
 

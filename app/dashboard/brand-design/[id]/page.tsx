@@ -27,6 +27,14 @@ import { GenerateConceptsButton } from './generate-form'
 import { ConceptsGrid } from './concepts-grid'
 import { RequestRevisionButton } from './revision-button'
 
+// The brand-kit auto-assemble (sharp + JSZip + Drive/Storage uploads)
+// can take 30-60s end-to-end. Default Vercel limit on Hobby is 10s,
+// Pro is 60s. Pinning the function explicitly so Pro deploys get the
+// full window — without this the selectFinalConcept action would
+// timeout halfway through the kit build and leave a half-written
+// brand_designs row.
+export const maxDuration = 60
+
 interface PageProps {
   params: Promise<{ id: string }>
   searchParams: Promise<{ view?: string; tab?: string; arsenalsubtab?: string }>
@@ -559,7 +567,13 @@ function FinalLogoTab({
                 ))}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <AssembleKitButton brandId={brand.id} existingKitUrl={brand.brand_kit_url ?? null} />
+              <AssembleKitButton
+                brandId={brand.id}
+                existingKitUrl={brand.brand_kit_url ?? null}
+                autoBuildError={
+                  (brand as { brand_kit_error?: string | null }).brand_kit_error ?? null
+                }
+              />
               <Link
                 href={`/dashboard/brand-design/${brand.id}/canvas`}
                 className="text-display rounded-[var(--radius-sm)] border border-primary bg-primary/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary"
