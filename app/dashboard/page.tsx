@@ -8,6 +8,7 @@ import { NilianceBanner } from '@/components/dashboard/niliance-banner'
 import { DashboardTabs } from '@/components/dashboard/dashboard-tabs'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { fulfillCheckoutSession } from '@/lib/checkout-fulfillment'
 
 export const metadata = { title: 'Dashboard' }
 
@@ -19,6 +20,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const checkoutSuccess = sp.checkout === 'success'
   const user = await requireUser()
+
+  // Synchronous fallback for the Stripe webhook. The talent just landed
+  // from checkout — if the webhook hasn't fired yet, the order row
+  // doesn't exist and "My Products" looks empty. Fulfilling inline here
+  // closes that gap; the call is idempotent so a webhook arriving later
+  // is a no-op via the stripe_session_id existence check.
+  if (checkoutSuccess && sp.session_id) {
+    await fulfillCheckoutSession(sp.session_id, user.id)
+  }
+
   const { profile, orders } = await getDashboardData(user.id)
 
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'there'
@@ -61,8 +72,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <div>
               <p className="text-display font-bold text-foreground">Payment received</p>
               <p className="text-sm text-muted-foreground">
-                Your new product will appear in &ldquo;My Products&rdquo; below within a few
-                seconds (provisioning runs after the Stripe webhook confirms).
+                Your new product is ready in &ldquo;My Products&rdquo; below.
               </p>
             </div>
           </div>
