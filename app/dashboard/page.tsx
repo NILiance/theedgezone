@@ -187,8 +187,278 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         panels={{
           'My Products': <MyProductsPanel orders={orders} />,
           Orders: <OrdersPanel orders={orders} />,
+          Services: <ServicesPanel />,
+          Roadmap: <RoadmapPanel />,
+          Resources: <ResourcesPanel />,
+          Profile: (
+            <ProfilePanel
+              completionPct={completionPct}
+              readinessScore={readinessScore}
+              email={user.email ?? null}
+            />
+          ),
+          Goals: <GoalsPanel />,
+          Points: <PointsPanel points={points} />,
+          'For You': <ForYouPanel />,
+          Account: <AccountPanel email={user.email ?? null} userType={userType} />,
+          Support: <SupportPanel />,
+          Insights: <InsightsPanel />,
         }}
       />
+    </div>
+  )
+}
+
+// ── Tab panels — each replaces "Coming soon" with real content + a CTA
+//    to the matching full page so the dashboard feels like a launchpad.
+
+function PanelShell({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-6">
+      <p className="text-eyebrow text-primary">{title}</p>
+      <p className="mt-2 max-w-prose text-sm text-muted-foreground">{description}</p>
+      {children && <div className="mt-5">{children}</div>}
+    </div>
+  )
+}
+
+function ServicesPanel() {
+  const featured: Array<{ slug: string; title: string; blurb: string }> = [
+    {
+      slug: 'personal-brand-design',
+      title: 'Personal Brand Design',
+      blurb: '20 concepts + brand kit. The cornerstone of every NIL deal.',
+    },
+    {
+      slug: 'personal-website',
+      title: 'Personal Website',
+      blurb: 'Drag-and-drop site builder with revenue blocks.',
+    },
+    {
+      slug: 'electronic-press-kit',
+      title: 'Electronic Press Kit',
+      blurb: 'Pitch-ready EPK with stats, story, and a shareable magic link.',
+    },
+  ]
+  return (
+    <PanelShell
+      title="Services"
+      description="Browse every NIL tool and program built for talent. New services drop monthly."
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        {featured.map((s) => (
+          <Link
+            key={s.slug}
+            href={`/services/${s.slug}`}
+            className="block rounded-[var(--radius-sm)] border border-border bg-panel-elevated p-4 transition-colors hover:border-primary/50"
+          >
+            <p className="text-display text-sm font-bold">{s.title}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{s.blurb}</p>
+          </Link>
+        ))}
+      </div>
+      <Link href="/services" className="mt-4 inline-block">
+        <Button>Browse all services →</Button>
+      </Link>
+    </PanelShell>
+  )
+}
+
+function RoadmapPanel() {
+  return (
+    <PanelShell
+      title="Roadmap"
+      description="Your personalized NIL roadmap. Adds milestones based on the services you've purchased and the gaps in your profile."
+    >
+      <div className="flex flex-wrap gap-3">
+        <Link href="/dashboard/roadmap">
+          <Button>Open my roadmap →</Button>
+        </Link>
+        <Link href="/roadmap">
+          <Button variant="outline">View the free roadmap</Button>
+        </Link>
+      </div>
+    </PanelShell>
+  )
+}
+
+function ResourcesPanel() {
+  return (
+    <PanelShell
+      title="Resources"
+      description="Templates, guides, and tools curated by the Edge Zone team. Pulled fresh as you complete more of your profile."
+    >
+      <div className="flex flex-wrap gap-3">
+        <Link href="/dashboard/resources">
+          <Button>My resources →</Button>
+        </Link>
+        <Link href="/resources">
+          <Button variant="outline">Free resources</Button>
+        </Link>
+      </div>
+    </PanelShell>
+  )
+}
+
+function ProfilePanel({
+  completionPct,
+  readinessScore,
+  email,
+}: {
+  completionPct: number
+  readinessScore: number
+  email: string | null
+}) {
+  return (
+    <PanelShell
+      title="Profile"
+      description="Your athlete profile drives every recommendation, matching engine, and brand pitch. Higher completion → better matches."
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SmallStat value={`${completionPct}%`} label="Profile complete" />
+        <SmallStat value={`${readinessScore}/100`} label="NIL readiness" />
+        <SmallStat value={email ? email.split('@')[0]! : '—'} label="Display name" />
+      </div>
+      <Link href="/dashboard/profile" className="mt-4 inline-block">
+        <Button>Edit profile →</Button>
+      </Link>
+    </PanelShell>
+  )
+}
+
+function GoalsPanel() {
+  const examples = [
+    'Sign 3 NIL deals this season',
+    'Grow Instagram to 25k followers',
+    'Publish 12 brand-aligned content pieces',
+    'Land a podcast guest spot',
+  ]
+  return (
+    <PanelShell
+      title="Goals"
+      description="Set the targets that matter — we'll surface the services, opportunities, and roadmap milestones that get you there."
+    >
+      <ul className="grid gap-2 text-sm sm:grid-cols-2">
+        {examples.map((g) => (
+          <li
+            key={g}
+            className="rounded-[var(--radius-sm)] border border-dashed border-border bg-background px-3 py-2 text-muted-foreground"
+          >
+            • {g}
+          </li>
+        ))}
+      </ul>
+      <Link href="/dashboard/profile?tab=goals" className="mt-4 inline-block">
+        <Button>Set my goals →</Button>
+      </Link>
+    </PanelShell>
+  )
+}
+
+function PointsPanel({ points }: { points: number }) {
+  return (
+    <PanelShell
+      title="Points"
+      description="Earn points for every action that grows your NIL footprint — finished profile sections, purchases, fan submissions, completed roadmap milestones."
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SmallStat value={points.toLocaleString('en-US')} label="Lifetime points" />
+        <SmallStat value="—" label="This month" />
+        <SmallStat value="—" label="Rank" />
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Coming soon: redeem points for discounts on services, premium roadmap unlocks, and
+        spotlight features.
+      </p>
+    </PanelShell>
+  )
+}
+
+function ForYouPanel() {
+  return (
+    <PanelShell
+      title="For You"
+      description="Personalized opportunities, brand matches, and content prompts based on your profile + activity."
+    >
+      <div className="flex flex-wrap gap-3">
+        <Link href="/opportunities">
+          <Button>Browse opportunities →</Button>
+        </Link>
+        <Link href="/dashboard/nilfluence-calculator">
+          <Button variant="outline">Run NILfluence calculator</Button>
+        </Link>
+      </div>
+    </PanelShell>
+  )
+}
+
+function AccountPanel({ email, userType }: { email: string | null; userType: string }) {
+  return (
+    <PanelShell
+      title="Account"
+      description="Sign-in details, role, and security. Manage how you log in and what notifications you get."
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SmallStat value={email ?? '—'} label="Email" />
+        <SmallStat value={userType.toUpperCase()} label="Role" />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link href="/dashboard/profile">
+          <Button>Account settings →</Button>
+        </Link>
+        <form action="/api/auth/signout" method="post">
+          <Button type="submit" variant="outline">
+            Sign out
+          </Button>
+        </form>
+      </div>
+    </PanelShell>
+  )
+}
+
+function SupportPanel() {
+  return (
+    <PanelShell
+      title="Support"
+      description="Hit a snag? Open a ticket and our team responds within 1-2 business days. Urgent NIL deal issues are prioritized."
+    >
+      <Link href="/dashboard/support">
+        <Button>Open support →</Button>
+      </Link>
+    </PanelShell>
+  )
+}
+
+function InsightsPanel() {
+  return (
+    <PanelShell
+      title="Insights"
+      description="Profile views, site traffic, opportunity match rate, and content performance — all rolled up so you know what's moving your brand."
+    >
+      <Link href="/dashboard/insights">
+        <Button>View my insights →</Button>
+      </Link>
+    </PanelShell>
+  )
+}
+
+function SmallStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-[var(--radius-sm)] border border-border bg-panel-elevated p-3">
+      <p className="text-display truncate text-lg font-black text-primary" title={value}>
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+        {label}
+      </p>
     </div>
   )
 }
