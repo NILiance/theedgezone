@@ -396,9 +396,12 @@ async function handleBrandDesignRevision(
 }
 
 /**
- * Promote a non-selected concept into a paid additional final on the
- * same brand. Idempotent on the Stripe session — we stash the session
- * ID on the concept's metadata jsonb.
+ * Promote a non-selected concept into a paid additional final by cloning
+ * the parent brand_designs into a new row with that concept as the
+ * final logo, then auto-assembling that new brand's kit. Each final
+ * ends up with its own brand row + its own kit — same model the legacy
+ * "YOUR LOGOS:" switcher uses. Idempotent via stripe_session_id on the
+ * new brand row.
  */
 async function handleBrandDesignAdditionalFinal(
   supabase: NonNullable<ReturnType<typeof createServiceClient>>,
@@ -406,33 +409,26 @@ async function handleBrandDesignAdditionalFinal(
 ) {
   const metadata = session.metadata ?? {}
   const userId = metadata.user_id
-  const brandId = metadata.brand_id
+  const parentBrandId = metadata.brand_id
   const conceptId = metadata.concept_id
-  if (!userId || !brandId || !conceptId) return
+  if (!userId || !parentBrandId || !conceptId) return
 
-  const { data: concept } = await supabase
-    .from('logo_concepts')
-    .select('id, is_selected, metadata')
-    .eq('id', conceptId)
+  // Idempotency — if the clone already exists, do nothing.
+  const { data: existing } = await supabase
+    .from('brand_designs')
+    .select('id')
+    .eq('stripe_session_id', session.id)
     .maybeSingle()
-  if (!concept) return
-  if (concept.is_selected) return
+  if (existing) return
 
-  const meta = (concept.metadata ?? {}) as Record<string, unknown>
-  if (meta.purchase_session_id === session.id) return
-
-  await supabase
-    .from('logo_concepts')
-    .update({
-      is_selected: true,
-      metadata: {
-        ...meta,
-        purchased_as_final: true,
-        purchase_session_id: session.id,
-        purchase_amount_cents: session.amount_total ?? 0,
-      },
-    })
-    .eq('id', conceptId)
+  const { cloneBrandForAdditionalFinal } = await import('@/lib/checkout-fulfillment')
+  await cloneBrandForAdditionalFinal({
+    supabase,
+    userId,
+    parentBrandId,
+    conceptId,
+    sessionId: session.id,
+  })
 }
 
 /**

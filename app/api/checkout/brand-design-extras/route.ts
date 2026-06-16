@@ -151,7 +151,10 @@ export async function POST(request: Request) {
         ],
         customer_email: user.email,
         allow_promotion_codes: true,
-        return_url: `${origin}/dashboard/brand-design/${brand.id}?final=success&session_id={CHECKOUT_SESSION_ID}`,
+        // Land on the brand-design list so its sync fulfillment can clone
+        // the parent brand into a new brand_designs row + build its kit
+        // before the talent sees anything.
+        return_url: `${origin}/dashboard/brand-design?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
         metadata: {
           user_id: user.id,
           kind: 'bd_additional_final',

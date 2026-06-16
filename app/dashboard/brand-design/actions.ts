@@ -448,8 +448,11 @@ export async function selectFinalConcept(formData: FormData) {
 
 /**
  * Build + upload the brand kit ZIP for a brand_designs row. Pulled out of
- * assembleBrandKit so selectFinalConcept can call it inline.
+ * assembleBrandKit so selectFinalConcept can call it inline. Also
+ * exported (as assembleKitForBrandId) so checkout-fulfillment can build
+ * the kit after cloning a brand for an additional-final-logo purchase.
  */
+export { assembleKitForBrand as assembleKitForBrandId }
 async function assembleKitForBrand(brandId: string, userId: string): Promise<string | null> {
   const supabase = await createClient()
   const { data: brand } = await supabase

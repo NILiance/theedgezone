@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,11 @@ import { AdditionalBrandButton } from './additional-brand-button'
 
 export const metadata = { title: 'Brand Design' }
 
+// fulfillCheckoutSession may clone a brand + assemble a kit (sharp +
+// uploads) during a bd_additional_final purchase return — that can run
+// 30-60 seconds. Default Vercel Hobby limit is 10s; pin to Pro's 60s.
+export const maxDuration = 60
+
 interface PageProps {
   searchParams: Promise<{ checkout?: string; session_id?: string }>
 }
@@ -19,12 +25,15 @@ export default async function BrandDesignIndexPage({ searchParams }: PageProps) 
   const sp = await searchParams
   const user = await requireUser()
 
-  // Synchronous fallback for the Stripe webhook when a bd_additional
-  // purchase redirects here. Webhook is async; without this the new
-  // brand_designs row hasn't landed yet and the talent sees a stale
-  // list (the original brand only).
+  // Synchronous fallback for the Stripe webhook. Two flows redirect
+  // here: bd_additional (new brand) and bd_additional_final (clone of
+  // parent brand with a chosen concept as the new final). In both
+  // cases the helper returns the brandId so we jump straight to it.
   if (sp.checkout === 'success' && sp.session_id) {
-    await fulfillCheckoutSession(sp.session_id, user.id)
+    const result = await fulfillCheckoutSession(sp.session_id, user.id)
+    if (result.ok && result.brandId) {
+      redirect(`/dashboard/brand-design/${result.brandId}`)
+    }
   }
 
   const supabase = await createClient()
