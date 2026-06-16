@@ -34,6 +34,14 @@ export default async function PricingAdminPage() {
         typeof extras.additional_brand_price_cents === 'number'
           ? extras.additional_brand_price_cents
           : null,
+      additional_concepts_price_cents:
+        typeof extras.additional_concepts_price_cents === 'number'
+          ? extras.additional_concepts_price_cents
+          : null,
+      max_free_concepts:
+        typeof extras.max_free_concepts === 'number' && extras.max_free_concepts > 0
+          ? extras.max_free_concepts
+          : 20,
     }
   })
 

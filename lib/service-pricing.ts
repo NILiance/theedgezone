@@ -20,11 +20,18 @@ export interface ServicePriceRow {
 /**
  * Brand-design-specific extras stored under service_pricing.extras for the
  * `personal-brand-design` row. Read via getBrandDesignExtras().
+ *
+ * additional_concepts_price_cents + max_free_concepts drive the talent's
+ * concept-pack gating: after max_free_concepts have been generated across
+ * all rounds, "+10 more" charges additional_concepts_price_cents per pack
+ * (10 concepts).
  */
 export interface BrandDesignExtras {
   revision_price_cents: number | null
   first_revision_free: boolean
   additional_brand_price_cents: number | null
+  additional_concepts_price_cents: number | null
+  max_free_concepts: number
 }
 
 export const getAllServicePricing = cache(async (): Promise<Map<string, ServicePriceRow>> => {
@@ -60,6 +67,14 @@ export async function getBrandDesignExtras(): Promise<BrandDesignExtras> {
       typeof e.additional_brand_price_cents === 'number'
         ? e.additional_brand_price_cents
         : null,
+    additional_concepts_price_cents:
+      typeof e.additional_concepts_price_cents === 'number'
+        ? e.additional_concepts_price_cents
+        : null,
+    max_free_concepts:
+      typeof e.max_free_concepts === 'number' && e.max_free_concepts > 0
+        ? e.max_free_concepts
+        : 20,
   }
 }
 

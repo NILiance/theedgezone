@@ -20,6 +20,8 @@ interface Row {
   revision_price_cents: number | null
   first_revision_free: boolean
   additional_brand_price_cents: number | null
+  additional_concepts_price_cents: number | null
+  max_free_concepts: number
 }
 
 interface Props {
@@ -121,6 +123,12 @@ function PriceRow({
   const [additionalPrice, setAdditionalPrice] = useState<string>(
     centsToDollars(initial.additional_brand_price_cents)
   )
+  const [additionalConceptsPrice, setAdditionalConceptsPrice] = useState<string>(
+    centsToDollars(initial.additional_concepts_price_cents)
+  )
+  const [maxFreeConcepts, setMaxFreeConcepts] = useState<string>(
+    String(initial.max_free_concepts)
+  )
   const [extrasOpen, setExtrasOpen] = useState<boolean>(false)
   const [status, setStatus] = useState<'idle' | 'saved' | string>('idle')
   const [isPending, startTransition] = useTransition()
@@ -146,6 +154,13 @@ function PriceRow({
         'additional_brand_price_cents',
         additionalPrice === '' ? '' : String(Math.round(Number(additionalPrice) * 100))
       )
+      fd.set(
+        'additional_concepts_price_cents',
+        additionalConceptsPrice === ''
+          ? ''
+          : String(Math.round(Number(additionalConceptsPrice) * 100))
+      )
+      fd.set('max_free_concepts', maxFreeConcepts === '' ? '' : maxFreeConcepts)
     }
     startTransition(async () => {
       const res = await upsertServicePricing(fd)
@@ -281,6 +296,40 @@ function PriceRow({
                 <span className="mt-1 block text-[10px] text-muted-foreground">
                   Price for &lsquo;+ NEW LOGO&rsquo; — second, third, etc. brand designs by the
                   same talent.
+                </span>
+              </label>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Free concepts included
+                </span>
+                <Input
+                  inputMode="numeric"
+                  value={maxFreeConcepts}
+                  onChange={(e) => setMaxFreeConcepts(e.target.value)}
+                  placeholder="20"
+                  className="mt-1 h-9 w-full text-sm"
+                />
+                <span className="mt-1 block text-[10px] text-muted-foreground">
+                  How many concepts ship in the base purchase. After this, the talent pays
+                  per pack. Default 20.
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Concept pack price — per 10 ($)
+                </span>
+                <Input
+                  inputMode="decimal"
+                  value={additionalConceptsPrice}
+                  onChange={(e) => setAdditionalConceptsPrice(e.target.value)}
+                  placeholder="e.g. 25"
+                  className="mt-1 h-9 w-full text-sm"
+                />
+                <span className="mt-1 block text-[10px] text-muted-foreground">
+                  Charge per 10 additional concepts once the talent burns their free
+                  allowance. Leave blank to keep generation unlimited.
                 </span>
               </label>
             </div>

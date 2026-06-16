@@ -21,6 +21,15 @@ const upsertSchema = z.object({
   revision_price_cents: centsField(10_000_000).optional(),
   first_revision_free: z.coerce.boolean().optional(),
   additional_brand_price_cents: centsField(10_000_000).optional(),
+  // Concept-pack pricing: every brand design ships with N free concepts
+  // (across all rounds). Once the talent burns those, "+10 more" triggers
+  // a Stripe checkout for additional_concepts_price_cents per 10-concept
+  // pack. max_free_concepts controls where the gate kicks in.
+  additional_concepts_price_cents: centsField(10_000_000).optional(),
+  max_free_concepts: z
+    .union([z.literal(''), z.coerce.number().int().min(1).max(500)])
+    .optional()
+    .transform((v) => (v === '' || v === undefined ? null : (v as number))),
 })
 
 export async function upsertServicePricing(
@@ -37,6 +46,8 @@ export async function upsertServicePricing(
     revision_price_cents: formData.get('revision_price_cents') ?? '',
     first_revision_free: formData.get('first_revision_free') === 'on',
     additional_brand_price_cents: formData.get('additional_brand_price_cents') ?? '',
+    additional_concepts_price_cents: formData.get('additional_concepts_price_cents') ?? '',
+    max_free_concepts: formData.get('max_free_concepts') ?? '',
   })
   if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
 
@@ -48,6 +59,9 @@ export async function upsertServicePricing(
     extras.first_revision_free = parsed.data.first_revision_free ?? true
     extras.additional_brand_price_cents =
       parsed.data.additional_brand_price_cents ?? null
+    extras.additional_concepts_price_cents =
+      parsed.data.additional_concepts_price_cents ?? null
+    extras.max_free_concepts = parsed.data.max_free_concepts ?? 20
   }
 
   const supabase = await createClient()
