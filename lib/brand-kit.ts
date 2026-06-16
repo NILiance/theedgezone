@@ -160,12 +160,20 @@ async function makeTypographySpecimen(input: BrandKitInput): Promise<Buffer> {
   return sharp(Buffer.from(svg)).png().toBuffer()
 }
 
-async function makeBrandGuidePdf(input: BrandKitInput, logoJpgBuffer: Buffer): Promise<Buffer> {
+async function makeBrandGuidePdf(
+  input: BrandKitInput,
+  logoTransparentPngBuffer: Buffer
+): Promise<Buffer> {
   // 8-page brand guide matching the legacy WP plugin's layout. Pages
   // alternate dark/light so primary-color section headers pop on both.
   // pdf-lib uses standard Type1 fonts (Helvetica family) — no font
   // embedding needed, which keeps the doc under ~150KB even with the
   // logo embedded.
+  //
+  // We accept the TRANSPARENT PNG so the logo composites onto whatever
+  // page background it lands on. Dark Cover keeps a light tile so the
+  // logo's dark elements still read; light Primary Logo page drops the
+  // tile and lets the transparent logo sit directly on the page.
   const doc = await PDFDocument.create()
   doc.setTitle(`${input.brand_name} — Brand Guidelines`)
   doc.setAuthor('The Edge Zone')
@@ -174,7 +182,7 @@ async function makeBrandGuidePdf(input: BrandKitInput, logoJpgBuffer: Buffer): P
   const fontRegular = await doc.embedFont(StandardFonts.Helvetica)
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold)
   const fontItalic = await doc.embedFont(StandardFonts.HelveticaOblique)
-  const logoImage = await doc.embedJpg(new Uint8Array(logoJpgBuffer))
+  const logoImage = await doc.embedPng(new Uint8Array(logoTransparentPngBuffer))
 
   const W = 612 // Letter portrait width (in PDF points)
   const H = 792 // Letter portrait height
@@ -469,26 +477,20 @@ async function makeBrandGuidePdf(input: BrandKitInput, logoJpgBuffer: Buffer): P
       lineHeight: 17,
     })
 
-    // Big centered logo tile
-    const tile = 280
-    const tileX = (W - tile) / 2
-    const tileY = y - 40 - tile
-    page.drawRectangle({
-      x: tileX,
-      y: tileY,
-      width: tile,
-      height: tile,
-      color: rgb(0.92, 0.92, 0.94),
-    })
-    const scale = Math.min((tile - 40) / logoImage.width, (tile - 40) / logoImage.height)
+    // Big centered logo — sits directly on the white page background
+    // (transparent PNG means no harsh white box around the mark).
+    const area = 280
+    const areaX = (W - area) / 2
+    const areaY = y - 40 - area
+    const scale = Math.min(area / logoImage.width, area / logoImage.height)
     page.drawImage(logoImage, {
-      x: tileX + (tile - logoImage.width * scale) / 2,
-      y: tileY + (tile - logoImage.height * scale) / 2,
+      x: areaX + (area - logoImage.width * scale) / 2,
+      y: areaY + (area - logoImage.height * scale) / 2,
       width: logoImage.width * scale,
       height: logoImage.height * scale,
     })
 
-    y = tileY - 36
+    y = areaY - 36
     page.drawText('CLEAR SPACE', {
       x: margin,
       y,
@@ -1180,8 +1182,11 @@ export async function assembleBrandKit(
   }
   zip.file('brand.json', JSON.stringify(brandJson, null, 2))
 
-  // 10. Brand guide PDF — 8 pages matching the legacy WP plugin
-  const pdfBuf = await makeBrandGuidePdf(input, jpgBuffer)
+  // 10. Brand guide PDF — 8 pages matching the legacy WP plugin.
+  // Use the TRANSPARENT PNG so dark pages don't get a white box and
+  // light pages let the page color show through the logo's negative
+  // space.
+  const pdfBuf = await makeBrandGuidePdf(input, transparentBuf)
   addFile({
     name: 'brand-guide.pdf',
     label: 'Brand Guidelines (PDF)',
