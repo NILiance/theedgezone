@@ -26,6 +26,7 @@ import { PreferencesForm } from './preferences-form'
 import { GenerateConceptsButton } from './generate-form'
 import { ConceptsGrid } from './concepts-grid'
 import { RequestRevisionButton } from './revision-button'
+import { LogoCanvas } from '@/components/brand-design/logo-canvas'
 
 // The brand-kit auto-assemble (sharp + JSZip + Drive/Storage uploads)
 // can take 30-60s end-to-end. Default Vercel limit on Hobby is 10s,
@@ -362,7 +363,7 @@ function StudioView({
         />
       )}
       {tab === 'modify' && (
-        <ModifyLogoTab brandId={brand.id} hasFinal={hasFinal} />
+        <ModifyLogoTab brand={brand} hasFinal={hasFinal} />
       )}
       {tab === 'guide' && <BrandGuideTab brand={brand} hasFinal={hasFinal} />}
       {tab === 'info' && (
@@ -605,37 +606,42 @@ function FinalLogoTab({
   )
 }
 
-function ModifyLogoTab({ brandId, hasFinal }: { brandId: string; hasFinal: boolean }) {
-  if (!hasFinal) {
+function ModifyLogoTab({ brand, hasFinal }: { brand: any; hasFinal: boolean }) {
+  if (!hasFinal || !brand.final_logo_url) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Locked until final logo</CardTitle>
           <CardDescription>
-            Once you select a final logo, you can open the canvas editor to add text, color
-            variants, taglines, or alternate compositions.
+            Once you select a final logo, the canvas editor opens here with the Erase, Text,
+            Paint Bucket, and Color Swap tools matching the legacy editor.
           </CardDescription>
         </CardHeader>
       </Card>
     )
   }
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Canvas editor</CardTitle>
-        <CardDescription>
-          Add text, swap colors, position the logo, and export a new version.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Link
-          href={`/dashboard/brand-design/${brandId}/canvas`}
-          className="text-display inline-block rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
-        >
-          Open canvas editor →
-        </Link>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <div>
+        <p className="text-eyebrow text-primary">Canvas editor</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Erase, add text, paint-bucket fill, color-swap. Save to your brand or download a PNG.
+        </p>
+      </div>
+      <LogoCanvas
+        brandId={brand.id}
+        logoUrl={brand.final_logo_url}
+        defaults={{
+          brand_name: brand.brand_name,
+          sport: brand.sport,
+          athletic_position: brand.athletic_position,
+          school: brand.school,
+          jersey_number: brand.jersey_number,
+          primary_color: brand.primary_color ?? '#000000',
+          secondary_color: brand.secondary_color ?? '#666666',
+        }}
+      />
+    </div>
   )
 }
 
