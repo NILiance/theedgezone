@@ -43,7 +43,7 @@ export async function generateConcepts(formData: FormData) {
   const { data: brand } = await supabase
     .from('brand_designs')
     .select(
-      'id, brand_name, sport, athletic_position, jersey_number, primary_color, secondary_color, style_seed, user_id'
+      'id, brand_name, sport, athletic_position, jersey_number, primary_color, secondary_color, style_seed, user_id, paid_concepts_total'
     )
     .eq('id', parsed.data.brand_id)
     .single()
@@ -64,6 +64,31 @@ export async function generateConcepts(formData: FormData) {
     .maybeSingle()
 
   const prefs = buildPrefsFromBrandAndProfile(brand, profile)
+
+  // ── Concept-pack gate ────────────────────────────────────────────
+  // Refuse to spawn another Gemini run once the talent has burned every
+  // free concept + every paid concept-pack they own on this brand.
+  // Without this gate "+10 more" runs forever and costs real money.
+  const { getBrandDesignExtras } = await import('@/lib/service-pricing')
+  const extras = await getBrandDesignExtras()
+  const allowance =
+    (extras.max_free_concepts ?? 20) + ((brand as { paid_concepts_total?: number }).paid_concepts_total ?? 0)
+  const { count: totalSoFar } = await supabase
+    .from('logo_concepts')
+    .select('id', { count: 'exact', head: true })
+    .eq('brand_design_id', parsed.data.brand_id)
+  const burned = totalSoFar ?? 0
+  if (burned + parsed.data.count > allowance) {
+    const remaining = Math.max(0, allowance - burned)
+    if (remaining === 0) {
+      throw new Error(
+        `You've used all ${allowance} concepts on this brand. Purchase a concept pack to keep generating.`
+      )
+    }
+    throw new Error(
+      `Only ${remaining} concept${remaining === 1 ? '' : 's'} remain on this brand. Adjust the count or purchase another concept pack.`
+    )
+  }
 
   // Cycle concept index from the count of existing concepts so the style
   // mod rotation continues across "+10 more" batches.

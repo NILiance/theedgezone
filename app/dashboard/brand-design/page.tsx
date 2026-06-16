@@ -37,6 +37,30 @@ export default async function BrandDesignIndexPage({ searchParams }: PageProps) 
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
+  // Fallback thumbnail when no final yet — pick the selected concept,
+  // then the first concept. Keeps the card non-empty during design.
+  const brandsNeedingFallback = (brands ?? [])
+    .filter((b) => !b.final_logo_url)
+    .map((b) => b.id)
+  const fallbackById = new Map<string, string>()
+  if (brandsNeedingFallback.length > 0) {
+    const { data: concepts } = await supabase
+      .from('logo_concepts')
+      .select(
+        'brand_design_id, image_url, thumbnail_url, is_selected, is_shortlisted, created_at'
+      )
+      .in('brand_design_id', brandsNeedingFallback)
+      .order('is_selected', { ascending: false })
+      .order('is_shortlisted', { ascending: false })
+      .order('created_at', { ascending: true })
+    for (const c of concepts ?? []) {
+      const bid = c.brand_design_id as string
+      if (fallbackById.has(bid)) continue
+      const url = (c.thumbnail_url ?? c.image_url) as string | null
+      if (url) fallbackById.set(bid, url)
+    }
+  }
+
   const hasBrand = (brands?.length ?? 0) > 0
   const extras = await getBrandDesignExtras()
   const additionalPriceLabel = extras.additional_brand_price_cents
@@ -114,21 +138,27 @@ export default async function BrandDesignIndexPage({ searchParams }: PageProps) 
               <CardContent>
                 {/* Final logo preview — shows the chosen logo on a white
                     tile so it reads against any color. Falls back to a
-                    placeholder until the talent picks one. */}
-                <div className="mb-3 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-border bg-white">
-                  {brand.final_logo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={brand.final_logo_url}
-                      alt={`${brand.brand_name ?? 'Brand'} final logo`}
-                      className="max-h-full max-w-full object-contain p-4"
-                    />
-                  ) : (
-                    <span className="text-display text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      No final logo yet
-                    </span>
-                  )}
-                </div>
+                    concept thumbnail during the design phase, then to a
+                    placeholder if nothing exists yet. */}
+                {(() => {
+                  const thumbUrl = brand.final_logo_url ?? fallbackById.get(brand.id) ?? null
+                  return (
+                    <div className="mb-3 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-[var(--radius-sm)] border border-border bg-white">
+                      {thumbUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={thumbUrl}
+                          alt={`${brand.brand_name ?? 'Brand'} preview`}
+                          className="max-h-full max-w-full object-contain p-4"
+                        />
+                      ) : (
+                        <span className="text-display text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          No concepts yet
+                        </span>
+                      )}
+                    </div>
+                  )
+                })()}
                 <p className="text-xs text-muted-foreground">
                   Asset credits: {brand.asset_credits_used} / {brand.asset_credits_total}
                 </p>

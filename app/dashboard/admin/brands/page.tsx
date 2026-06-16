@@ -20,6 +20,29 @@ export default async function BrandsAdminPage() {
     .select('id, brand_name, sport, school, status, user_id, created_at, finalized_at, final_logo_url, brand_kit_url')
     .order('created_at', { ascending: false })
     .limit(500)
+
+  // Fallback thumbnail for brands without a final yet — pick the
+  // selected concept (if any), then the first generated concept. This
+  // keeps the Logo column non-empty during the design phase.
+  const brandsNeedingFallback = (brands ?? [])
+    .filter((b) => !b.final_logo_url)
+    .map((b) => b.id)
+  const fallbackById = new Map<string, string>()
+  if (brandsNeedingFallback.length > 0) {
+    const { data: concepts } = await supabase
+      .from('logo_concepts')
+      .select('brand_design_id, image_url, thumbnail_url, is_selected, is_shortlisted, created_at')
+      .in('brand_design_id', brandsNeedingFallback)
+      .order('is_selected', { ascending: false })
+      .order('is_shortlisted', { ascending: false })
+      .order('created_at', { ascending: true })
+    for (const c of concepts ?? []) {
+      const bid = c.brand_design_id as string
+      if (fallbackById.has(bid)) continue
+      const url = (c.thumbnail_url ?? c.image_url) as string | null
+      if (url) fallbackById.set(bid, url)
+    }
+  }
   const userIds = Array.from(new Set((brands ?? []).map((b) => b.user_id).filter(Boolean) as string[]))
   const profilesById = new Map<string, { display_name: string | null; email: string | null }>()
   if (userIds.length > 0) {
@@ -65,20 +88,25 @@ export default async function BrandsAdminPage() {
               return (
                 <tr key={b.id} className="border-t border-border">
                   <td className="px-3 py-2">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded border border-border bg-white">
-                      {b.final_logo_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={b.final_logo_url}
-                          alt=""
-                          className="max-h-full max-w-full object-contain p-1"
-                        />
-                      ) : (
-                        <span className="text-display text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                          —
-                        </span>
-                      )}
-                    </div>
+                    {(() => {
+                      const thumbUrl = b.final_logo_url ?? fallbackById.get(b.id) ?? null
+                      return (
+                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded border border-border bg-white">
+                          {thumbUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={thumbUrl}
+                              alt=""
+                              className="max-h-full max-w-full object-contain p-1"
+                            />
+                          ) : (
+                            <span className="text-display text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                              —
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td className="px-3 py-2">
                     <p className="text-display font-bold">{b.brand_name ?? 'Unnamed'}</p>

@@ -78,7 +78,9 @@ export const getDashboardData = cache(async (userId: string) => {
 
   const existsByTable = new Map<'brand_designs' | 'sites', Set<string>>()
   // Per-entity thumbnail map so product cards can show the final logo /
-  // site cover next to "READY" status.
+  // site cover next to "READY" status. For brand_designs we cascade:
+  // final_logo_url → selected concept → first concept → null. This
+  // means the card shows SOMETHING even before the talent finalizes.
   const thumbByEntityId = new Map<string, string>()
   await Promise.all(
     Array.from(idsByTable.entries()).map(async ([table, ids]) => {
@@ -88,9 +90,35 @@ export const getDashboardData = cache(async (userId: string) => {
           .select('id, final_logo_url')
           .in('id', ids)
         existsByTable.set(table, new Set((data ?? []).map((r) => r.id as string)))
+        const missing: string[] = []
         for (const r of data ?? []) {
-          if ((r as { final_logo_url?: string | null }).final_logo_url) {
-            thumbByEntityId.set(r.id as string, (r as { final_logo_url: string }).final_logo_url)
+          const final = (r as { final_logo_url?: string | null }).final_logo_url
+          if (final) {
+            thumbByEntityId.set(r.id as string, final)
+          } else {
+            missing.push(r.id as string)
+          }
+        }
+        // For brands without a final yet, fall back to the chosen
+        // shortlist or the first generated concept so the card isn't
+        // empty during the design phase.
+        if (missing.length > 0) {
+          const { data: concepts } = await supabase
+            .from('logo_concepts')
+            .select('brand_design_id, image_url, thumbnail_url, is_selected, is_shortlisted, created_at')
+            .in('brand_design_id', missing)
+            .order('is_selected', { ascending: false })
+            .order('is_shortlisted', { ascending: false })
+            .order('created_at', { ascending: true })
+          const seen = new Set<string>()
+          for (const c of concepts ?? []) {
+            const bid = c.brand_design_id as string
+            if (seen.has(bid)) continue
+            const url = (c.thumbnail_url ?? c.image_url) as string | null
+            if (url) {
+              thumbByEntityId.set(bid, url)
+              seen.add(bid)
+            }
           }
         }
       } else if (table === 'sites') {
