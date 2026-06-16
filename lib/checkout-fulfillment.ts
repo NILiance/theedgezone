@@ -21,10 +21,10 @@
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { createServiceClient } from '@/lib/supabase/server'
-import { provisionOrder } from '@/lib/provisioning'
+import { provisionOrder, provisionBrandDesign } from '@/lib/provisioning'
 
 export type FulfillResult =
-  | { ok: true; alreadyExisted: boolean; orderId?: string }
+  | { ok: true; alreadyExisted: boolean; orderId?: string; brandId?: string }
   | { ok: false; reason: string }
 
 export async function fulfillCheckoutSession(
@@ -64,8 +64,6 @@ export async function fulfillCheckoutSession(
 
   const md = session.metadata ?? {}
   const userId = md.user_id
-  const productSlug = md.product_slug
-  const productTitle = md.product_title
 
   // Validate the session actually belongs to the dashboard's current user.
   // Without this anyone could trigger fulfilment for another user's
@@ -73,6 +71,35 @@ export async function fulfillCheckoutSession(
   if (!userId || userId !== expectedUserId) {
     return { ok: false, reason: 'Session does not belong to this user.' }
   }
+
+  // Brand-design "additional brand" purchase — bypasses orders and
+  // provisions a new brand_designs row directly. Same logic as the
+  // webhook's handleBrandDesignAdditional. Idempotent on stripe_session_id.
+  if (md.kind === 'bd_additional') {
+    const { data: existing } = await supabase
+      .from('brand_designs')
+      .select('id')
+      .eq('stripe_session_id', session.id)
+      .maybeSingle()
+    if (existing) {
+      return { ok: true, alreadyExisted: true, brandId: existing.id as string }
+    }
+    const result = await provisionBrandDesign(supabase, userId, undefined, {
+      fromProfile: true,
+    })
+    if (result.entity_id) {
+      await supabase
+        .from('brand_designs')
+        .update({ stripe_session_id: session.id })
+        .eq('id', result.entity_id)
+      return { ok: true, alreadyExisted: false, brandId: result.entity_id }
+    }
+    return { ok: false, reason: 'Provisioning returned no entity.' }
+  }
+
+  const productSlug = md.product_slug
+  const productTitle = md.product_title
+
   if (!productSlug || !productTitle) {
     // Anonymous / site_ / store_ / bd_extras flows. Webhook handles them.
     return { ok: false, reason: 'Non-catalog session — webhook will handle.' }

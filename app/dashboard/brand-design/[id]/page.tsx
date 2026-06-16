@@ -27,6 +27,7 @@ import { GenerateConceptsButton } from './generate-form'
 import { ConceptsGrid } from './concepts-grid'
 import { RequestRevisionButton } from './revision-button'
 import { LogoCanvas } from '@/components/brand-design/logo-canvas'
+import { BrandSwitcher } from './brand-switcher'
 
 // The brand-kit auto-assemble (sharp + JSZip + Drive/Storage uploads)
 // can take 30-60s end-to-end. Default Vercel limit on Hobby is 10s,
@@ -78,6 +79,14 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
     .maybeSingle()
 
   if (!brand || brand.user_id !== user.id) return <MissingBrandState />
+
+  // Sibling brands the user owns — drives the "Your logos" switcher row
+  // up top so they can hop between brands without backing out to the list.
+  const { data: siblingBrands } = await supabase
+    .from('brand_designs')
+    .select('id, brand_name, final_logo_url, status, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
 
   const { data: concepts } = await supabase
     .from('logo_concepts')
@@ -196,6 +205,22 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           </div>
         </div>
       </div>
+
+      {/* Multi-brand switcher — appears whenever the talent owns ≥1 brands
+          so they can toggle between studios without backing out to the
+          list. Active brand is ringed gold + checkmarked. */}
+      {siblingBrands && siblingBrands.length > 0 && (
+        <BrandSwitcher
+          brands={siblingBrands.map((b) => ({
+            id: b.id,
+            brand_name: b.brand_name,
+            final_logo_url: b.final_logo_url,
+            status: b.status,
+          }))}
+          activeId={brand.id}
+          priceLabel={additionalPriceLabel}
+        />
+      )}
 
       {/* Top-level tabs */}
       <nav className="grid grid-cols-3 gap-2 rounded-[var(--radius)] border border-border bg-panel/40 p-2">

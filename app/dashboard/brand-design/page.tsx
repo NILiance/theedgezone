@@ -6,12 +6,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createBrandDesign } from '@/app/dashboard/brand-design/actions'
 import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 import { getBrandDesignExtras } from '@/lib/service-pricing'
+import { fulfillCheckoutSession } from '@/lib/checkout-fulfillment'
 import { AdditionalBrandButton } from './additional-brand-button'
 
 export const metadata = { title: 'Brand Design' }
 
-export default async function BrandDesignIndexPage() {
+interface PageProps {
+  searchParams: Promise<{ checkout?: string; session_id?: string }>
+}
+
+export default async function BrandDesignIndexPage({ searchParams }: PageProps) {
+  const sp = await searchParams
   const user = await requireUser()
+
+  // Synchronous fallback for the Stripe webhook when a bd_additional
+  // purchase redirects here. Webhook is async; without this the new
+  // brand_designs row hasn't landed yet and the talent sees a stale
+  // list (the original brand only).
+  if (sp.checkout === 'success' && sp.session_id) {
+    await fulfillCheckoutSession(sp.session_id, user.id)
+  }
+
   const supabase = await createClient()
 
   const { data: brands } = await supabase
