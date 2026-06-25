@@ -67,26 +67,35 @@ export default async function MigrationsAdminPage() {
   if (!supabase) {
     rpcError = 'Service role key missing — set SUPABASE_SERVICE_ROLE_KEY.'
   } else {
-    // The fn isn't in the generated DB types yet (it's added by the
-    // migration this page documents), so call through a narrowed cast.
-    const callRpc = supabase.rpc as unknown as (
-      fn: string
-    ) => Promise<{
-      data: Array<{ version: string }> | null
-      error: { message: string; code?: string } | null
-    }>
-    const { data, error } = await callRpc('list_applied_migrations')
-    if (error) {
-      rpcError = error.message
-      // 42883 = undefined_function, PGRST202 = function not found in schema cache
-      trackingInstalled = !(
-        error.code === '42883' ||
-        error.code === 'PGRST202' ||
-        /list_applied_migrations/.test(error.message)
-      )
-    } else {
-      trackingInstalled = true
-      appliedVersions = ((data ?? []) as Array<{ version: string }>).map((r) => r.version)
+    try {
+      // The fn isn't in the generated DB types yet (it's added by the
+      // migration this page documents), so call through a narrowed cast.
+      // Use .bind so the rpc method keeps its `this` (a detached
+      // supabase.rpc reference throws inside supabase-js).
+      const callRpc = supabase.rpc.bind(supabase) as unknown as (
+        fn: string
+      ) => Promise<{
+        data: Array<{ version: string }> | null
+        error: { message: string; code?: string } | null
+      }>
+      const { data, error } = await callRpc('list_applied_migrations')
+      if (error) {
+        rpcError = error.message
+        // 42883 = undefined_function, PGRST202 = function not in schema cache
+        trackingInstalled = !(
+          error.code === '42883' ||
+          error.code === 'PGRST202' ||
+          /list_applied_migrations/.test(error.message)
+        )
+      } else {
+        trackingInstalled = true
+        appliedVersions = ((data ?? []) as Array<{ version: string }>).map((r) => r.version)
+      }
+    } catch (e) {
+      // Never let this diagnostic page trip the admin error boundary —
+      // surface the message inline instead.
+      rpcError = e instanceof Error ? e.message : 'RPC call failed'
+      trackingInstalled = false
     }
   }
 
