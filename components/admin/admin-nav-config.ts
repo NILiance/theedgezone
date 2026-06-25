@@ -64,4 +64,8 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: 'Tickets', href: '/dashboard/admin/tickets' },
     ],
   },
+  {
+    title: 'System',
+    items: [{ label: 'Migrations', href: '/dashboard/admin/migrations' }],
+  },
 ]

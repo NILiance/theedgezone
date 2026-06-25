@@ -17,6 +17,12 @@ const nextConfig = {
   // optionalDependencies in package.json — Vercel's nft picks them up
   // naturally from node_modules without needing outputFileTracingIncludes.
   serverExternalPackages: ['sharp'],
+  // Ship the migration .sql files to the admin Migrations dashboard's
+  // serverless function so it can list them at runtime. Scoped to that
+  // single route — these are tiny text files, no bundle-size concern.
+  outputFileTracingIncludes: {
+    '/dashboard/admin/migrations': ['./supabase/migrations/**/*.sql'],
+  },
   experimental: {
     serverActions: { bodySizeLimit: '10mb' },
   },
