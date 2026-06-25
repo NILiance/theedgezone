@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { CopySql } from './copy-sql'
 
 export const metadata = { title: 'Migrations' }
 // fs read + RPC are dynamic — never cache this page.
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 // The SQL that powers this dashboard. Shown verbatim in the bootstrap
 // banner so an admin can paste it into the Supabase SQL editor if the
-// migration hasn't been pushed yet (chicken-and-egg).
+// tracking function hasn't been applied yet (chicken-and-egg).
 const BOOTSTRAP_SQL = `create or replace function public.list_applied_migrations()
 returns table (version text)
 language sql
@@ -40,10 +41,11 @@ function parseLocalMigration(file: string): LocalMigration {
   return { file, version, label }
 }
 
+const MIGRATIONS_DIR = () => path.join(process.cwd(), 'supabase', 'migrations')
+
 async function readLocalMigrations(): Promise<LocalMigration[]> {
-  const dir = path.join(process.cwd(), 'supabase', 'migrations')
   try {
-    const files = await fs.readdir(dir)
+    const files = await fs.readdir(MIGRATIONS_DIR())
     return files
       .filter((f) => f.endsWith('.sql'))
       .sort()
@@ -53,10 +55,46 @@ async function readLocalMigrations(): Promise<LocalMigration[]> {
   }
 }
 
+/**
+ * Build a paste-ready SQL block for a pending migration: the file's SQL
+ * plus a bookkeeping insert that records the version in
+ * supabase_migrations.schema_migrations so THIS dashboard flips it to
+ * "applied" afterward. The insert is wrapped in a DO block that swallows
+ * errors so it can never roll back the migration itself (schema_migrations
+ * column variance across Supabase versions).
+ */
+async function buildRunnableSql(m: LocalMigration): Promise<string> {
+  let sql = ''
+  try {
+    sql = await fs.readFile(path.join(MIGRATIONS_DIR(), m.file), 'utf8')
+  } catch {
+    sql = `-- (could not read ${m.file})`
+  }
+  return `${sql.trimEnd()}
+
+-- Record this migration so Admin -> System -> Migrations shows it as applied.
+do $$
+begin
+  insert into supabase_migrations.schema_migrations (version)
+  values ('${m.version}') on conflict do nothing;
+exception when others then null;
+end $$;
+`
+}
+
 export default async function MigrationsAdminPage() {
   await requireAdmin()
 
   const local = await readLocalMigrations()
+
+  // Direct link to this project's Supabase SQL editor (new query).
+  let sqlEditorUrl: string | null = null
+  try {
+    const ref = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').hostname.split('.')[0]
+    if (ref) sqlEditorUrl = `https://supabase.com/dashboard/project/${ref}/sql/new`
+  } catch {
+    /* leave null */
+  }
 
   // Query applied versions via the RPC wrapper. trackingInstalled stays
   // false if the function itself hasn't been applied yet.
@@ -68,8 +106,6 @@ export default async function MigrationsAdminPage() {
     rpcError = 'Service role key missing — set SUPABASE_SERVICE_ROLE_KEY.'
   } else {
     try {
-      // The fn isn't in the generated DB types yet (it's added by the
-      // migration this page documents), so call through a narrowed cast.
       // Use .bind so the rpc method keeps its `this` (a detached
       // supabase.rpc reference throws inside supabase-js).
       const callRpc = supabase.rpc.bind(supabase) as unknown as (
@@ -92,8 +128,6 @@ export default async function MigrationsAdminPage() {
         appliedVersions = ((data ?? []) as Array<{ version: string }>).map((r) => r.version)
       }
     } catch (e) {
-      // Never let this diagnostic page trip the admin error boundary —
-      // surface the message inline instead.
       rpcError = e instanceof Error ? e.message : 'RPC call failed'
       trackingInstalled = false
     }
@@ -102,15 +136,20 @@ export default async function MigrationsAdminPage() {
   const appliedSet = new Set(appliedVersions)
   const localVersionSet = new Set(local.map((m) => m.version))
 
-  const rows = local.map((m) => ({
-    ...m,
-    applied: appliedSet.has(m.version),
-  }))
+  const rows = local.map((m) => ({ ...m, applied: appliedSet.has(m.version) }))
   const appliedCount = rows.filter((r) => r.applied).length
-  const pendingCount = rows.length - appliedCount
+  const pendingMigrations = rows.filter((r) => !r.applied)
+  const pendingCount = pendingMigrations.length
 
-  // Applied versions with no local file (Supabase internal seeds, or
-  // anything applied out-of-band). Informational only.
+  // Read SQL for the pending set (small — only the unapplied ones). Skip
+  // when tracking isn't installed, since then "everything" reads pending
+  // and the bootstrap banner is the right first step instead.
+  const pendingSql = trackingInstalled
+    ? await Promise.all(
+        pendingMigrations.map(async (m) => ({ ...m, sql: await buildRunnableSql(m) }))
+      )
+    : []
+
   const orphans = appliedVersions.filter((v) => !localVersionSet.has(v))
 
   return (
@@ -120,8 +159,19 @@ export default async function MigrationsAdminPage() {
         <h2 className="text-display mt-1 text-2xl font-black tracking-tight">Migrations</h2>
         <p className="mt-2 max-w-prose text-sm text-muted-foreground">
           Every <code>supabase/migrations</code> file and whether it&rsquo;s been applied to the
-          connected database. Pending migrations need a <code>pnpm db:push</code>.
+          database. To apply a pending one, copy its SQL below and run it in the{' '}
+          <strong>Supabase SQL editor</strong>.
         </p>
+        {sqlEditorUrl && (
+          <a
+            href={sqlEditorUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-display mt-3 inline-block rounded-[var(--radius-sm)] border border-primary bg-primary/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/20"
+          >
+            Open Supabase SQL editor →
+          </a>
+        )}
       </div>
 
       {!trackingInstalled && (
@@ -130,14 +180,13 @@ export default async function MigrationsAdminPage() {
             ⚠ Migration tracking isn&rsquo;t installed yet
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            The <code>list_applied_migrations()</code> function this page relies on lives in a
-            migration that hasn&rsquo;t been pushed. Run <code>pnpm db:push</code> to apply it (and
-            everything else), or paste this into the Supabase SQL editor to enable the dashboard
-            immediately:
+            The <code>list_applied_migrations()</code> function this page relies on hasn&rsquo;t
+            been applied. Paste this into the Supabase SQL editor to enable the dashboard, then
+            reload:
           </p>
-          <pre className="mt-3 overflow-x-auto rounded-[var(--radius-sm)] border border-border bg-background p-3 text-[11px] leading-relaxed text-muted-foreground">
-            {BOOTSTRAP_SQL}
-          </pre>
+          <div className="mt-3">
+            <CopySql sql={BOOTSTRAP_SQL} label="Enable tracking" />
+          </div>
           {rpcError && (
             <p className="mt-2 text-[10px] text-muted-foreground">DB said: {rpcError}</p>
           )}
@@ -155,12 +204,27 @@ export default async function MigrationsAdminPage() {
         />
       </div>
 
-      {trackingInstalled && pendingCount > 0 && (
-        <div className="rounded-[var(--radius-sm)] border border-accent/40 bg-accent/5 px-4 py-3 text-sm">
-          <span className="text-display font-bold text-accent">{pendingCount} pending.</span>{' '}
-          <span className="text-muted-foreground">
-            Run <code>pnpm db:push</code> from the project root to apply them.
-          </span>
+      {/* Pending migrations — paste-and-run SQL */}
+      {trackingInstalled && pendingSql.length > 0 && (
+        <div className="space-y-4 rounded-[var(--radius)] border border-accent/40 bg-accent/5 p-4">
+          <div>
+            <p className="text-display text-sm font-bold text-accent">
+              {pendingSql.length} migration{pendingSql.length === 1 ? '' : 's'} to apply
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Copy each block, paste it into the Supabase SQL editor, and Run. The trailing
+              bookkeeping line marks it applied so this dashboard updates when you reload.
+            </p>
+          </div>
+          {pendingSql.map((m) => (
+            <div key={m.file}>
+              <p className="text-display mb-1 text-xs font-bold">
+                {m.label}{' '}
+                <span className="font-mono font-normal text-muted-foreground">({m.version})</span>
+              </p>
+              <CopySql sql={m.sql} label={m.file} />
+            </div>
+          ))}
         </div>
       )}
 
@@ -178,8 +242,7 @@ export default async function MigrationsAdminPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                  Couldn&rsquo;t read the migration files. (On Vercel this needs the scoped
-                  outputFileTracingIncludes — verify the deploy included them.)
+                  Couldn&rsquo;t read the migration files in this deploy.
                 </td>
               </tr>
             )}
