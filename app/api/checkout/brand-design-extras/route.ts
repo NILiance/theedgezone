@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   }
 
   let body: {
-    kind?: 'additional' | 'revision' | 'additional_final'
+    kind?: 'additional' | 'revision' | 'additional_final' | 'concept_pack'
     brand_id?: string
     notes?: string
     concept_id?: string
@@ -43,7 +43,8 @@ export async function POST(request: Request) {
   if (
     body.kind !== 'additional' &&
     body.kind !== 'revision' &&
-    body.kind !== 'additional_final'
+    body.kind !== 'additional_final' &&
+    body.kind !== 'concept_pack'
   ) {
     return NextResponse.json({ error: 'Unknown kind.' }, { status: 400 })
   }
@@ -160,6 +161,66 @@ export async function POST(request: Request) {
           kind: 'bd_additional_final',
           brand_id: brand.id,
           concept_id: concept.id,
+        },
+      })
+      return NextResponse.json({ client_secret: session.client_secret })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Stripe error'
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+  }
+
+  if (body.kind === 'concept_pack') {
+    // Buy 10 more concepts for a brand once the free + previously-purchased
+    // allowance is used up. The webhook / sync fulfillment bumps
+    // brand_designs.paid_concepts_total by the pack size on completion.
+    if (!body.brand_id) {
+      return NextResponse.json({ error: 'Missing brand_id.' }, { status: 400 })
+    }
+    const { data: brand } = await supabase
+      .from('brand_designs')
+      .select('id, user_id, brand_name')
+      .eq('id', body.brand_id)
+      .maybeSingle()
+    if (!brand || brand.user_id !== user.id) {
+      return NextResponse.json({ error: 'Brand design not found.' }, { status: 404 })
+    }
+    const amount = extras.additional_concepts_price_cents
+    if (!amount || amount < 50) {
+      return NextResponse.json(
+        {
+          error:
+            'Concept pack price is not configured yet — admin needs to set it under Pricing.',
+        },
+        { status: 400 }
+      )
+    }
+    const PACK_SIZE = 10
+    try {
+      const session = await stripe.checkout.sessions.create({
+        ui_mode: 'embedded_page',
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `${PACK_SIZE} more logo concepts`,
+                description: `Adds ${PACK_SIZE} concept generations to "${brand.brand_name ?? 'your brand'}".`,
+              },
+              unit_amount: amount,
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: user.email,
+        allow_promotion_codes: true,
+        return_url: `${origin}/dashboard/brand-design/${brand.id}?view=studio&tab=concepts&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        metadata: {
+          user_id: user.id,
+          kind: 'bd_concept_pack',
+          brand_id: brand.id,
+          pack_size: String(PACK_SIZE),
         },
       })
       return NextResponse.json({ client_secret: session.client_secret })

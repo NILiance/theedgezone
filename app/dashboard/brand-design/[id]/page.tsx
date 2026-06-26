@@ -28,6 +28,7 @@ import { ConceptsGrid } from './concepts-grid'
 import { RequestRevisionButton } from './revision-button'
 import { LogoCanvas } from '@/components/brand-design/logo-canvas'
 import { BrandSwitcher } from './brand-switcher'
+import { ConceptPackButton } from './concept-pack-button'
 
 // The brand-kit auto-assemble (sharp + JSZip + Drive/Storage uploads)
 // can take 30-60s end-to-end. Default Vercel limit on Hobby is 10s,
@@ -39,7 +40,13 @@ export const maxDuration = 60
 
 interface PageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ view?: string; tab?: string; arsenalsubtab?: string }>
+  searchParams: Promise<{
+    view?: string
+    tab?: string
+    arsenalsubtab?: string
+    checkout?: string
+    session_id?: string
+  }>
 }
 
 type TopView = 'studio' | 'arsenal' | 'print'
@@ -70,6 +77,15 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
   const arsenalSubtab: ArsenalSubtab =
     (sp.arsenalsubtab as ArsenalSubtab) || 'create'
   const user = await requireUser()
+
+  // A concept-pack purchase redirects back here with ?checkout=success.
+  // Run fulfillment BEFORE reading the brand so paid_concepts_total is
+  // fresh for the allowance indicator. Idempotent (webhook may also fire).
+  if (sp.checkout === 'success' && sp.session_id) {
+    const { fulfillCheckoutSession } = await import('@/lib/checkout-fulfillment')
+    await fulfillCheckoutSession(sp.session_id, user.id)
+  }
+
   const supabase = await createClient()
 
   const { data: brand } = await supabase
@@ -163,6 +179,17 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
   // so the talent can buy a 2nd / 3rd final from the same concept pool.
   const additionalPriceLabel = bdExtras.additional_brand_price_cents
     ? `$${(bdExtras.additional_brand_price_cents / 100).toFixed(0)}`
+    : ''
+
+  // Concept allowance: free quota + any purchased packs. Drives the
+  // "X of Y concepts used" indicator and the Buy-10 button gate.
+  const conceptAllowance =
+    (bdExtras.max_free_concepts ?? 20) +
+    ((brand as { paid_concepts_total?: number | null }).paid_concepts_total ?? 0)
+  const conceptsUsed = concepts?.length ?? 0
+  const conceptsRemaining = Math.max(0, conceptAllowance - conceptsUsed)
+  const conceptPackPriceLabel = bdExtras.additional_concepts_price_cents
+    ? `$${(bdExtras.additional_concepts_price_cents / 100).toFixed(0)}`
     : ''
 
   const prefsInitial = {
@@ -291,6 +318,10 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           revisionPaidLabel={revisionPaidLabel}
           firstRevisionIsFree={firstRevisionIsFree}
           additionalPriceLabel={additionalPriceLabel}
+          conceptAllowance={conceptAllowance}
+          conceptsUsed={conceptsUsed}
+          conceptsRemaining={conceptsRemaining}
+          conceptPackPriceLabel={conceptPackPriceLabel}
         />
       )}
 
@@ -330,6 +361,10 @@ function StudioView({
   revisionPaidLabel,
   firstRevisionIsFree,
   additionalPriceLabel,
+  conceptAllowance,
+  conceptsUsed,
+  conceptsRemaining,
+  conceptPackPriceLabel,
 }: {
   brand: any
   tab: StudioTab
@@ -344,6 +379,10 @@ function StudioView({
   revisionPaidLabel: string
   firstRevisionIsFree: boolean
   additionalPriceLabel: string
+  conceptAllowance: number
+  conceptsUsed: number
+  conceptsRemaining: number
+  conceptPackPriceLabel: string
 }) {
   return (
     <div className="space-y-6">
@@ -376,6 +415,10 @@ function StudioView({
           prefsInitial={prefsInitial}
           hasFinal={hasFinal}
           additionalPriceLabel={additionalPriceLabel}
+          conceptAllowance={conceptAllowance}
+          conceptsUsed={conceptsUsed}
+          conceptsRemaining={conceptsRemaining}
+          conceptPackPriceLabel={conceptPackPriceLabel}
         />
       )}
       {tab === 'final' && (
@@ -410,6 +453,10 @@ function ConceptsTab({
   prefsInitial,
   hasFinal,
   additionalPriceLabel,
+  conceptAllowance,
+  conceptsUsed,
+  conceptsRemaining,
+  conceptPackPriceLabel,
 }: {
   brandId: string
   concepts: any[]
@@ -419,6 +466,10 @@ function ConceptsTab({
   prefsInitial: any
   hasFinal: boolean
   additionalPriceLabel: string
+  conceptAllowance: number
+  conceptsUsed: number
+  conceptsRemaining: number
+  conceptPackPriceLabel: string
 }) {
   return (
     <div className="space-y-6">
@@ -436,6 +487,18 @@ function ConceptsTab({
             {concepts.length === 0
               ? 'Edit your preferences above, then click "Save & Generate" — your latest preferences are used every time.'
               : 'Tap ♡ to shortlist favorites, then refine for the next round.'}
+          </p>
+          {/* Concept allowance meter */}
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            <span className="text-display font-bold text-foreground">
+              {conceptsUsed} / {conceptAllowance}
+            </span>{' '}
+            concepts used
+            {conceptsRemaining > 0 ? (
+              <span> · {conceptsRemaining} remaining</span>
+            ) : (
+              <span className="text-accent"> · none left — buy a pack to keep going</span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -464,6 +527,13 @@ function ConceptsTab({
                 </form>
               )}
             </>
+          )}
+          {conceptPackPriceLabel && (
+            <ConceptPackButton
+              brandId={brandId}
+              priceLabel={conceptPackPriceLabel}
+              outOfConcepts={conceptsRemaining === 0}
+            />
           )}
         </div>
       </div>

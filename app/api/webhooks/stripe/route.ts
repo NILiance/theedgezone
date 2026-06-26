@@ -235,6 +235,22 @@ async function handleCheckoutCompleted(
     await handleBrandDesignAdditionalFinal(supabase, session)
     return
   }
+  if (metadata.kind === 'bd_concept_pack') {
+    const userId = metadata.user_id
+    const brandId = metadata.brand_id
+    if (userId && brandId) {
+      const { applyConceptPackPurchase } = await import('@/lib/checkout-fulfillment')
+      await applyConceptPackPurchase({
+        supabase,
+        userId,
+        brandId,
+        sessionId: session.id,
+        packSize: parseInt(metadata.pack_size ?? '10', 10) || 10,
+        amountCents: session.amount_total ?? null,
+      })
+    }
+    return
+  }
 
   const userId = metadata.user_id
   const productSlug = metadata.product_slug

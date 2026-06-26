@@ -131,6 +131,24 @@ export async function fulfillCheckoutSession(
     return { ok: true, alreadyExisted: false, brandId: newBrandId }
   }
 
+  // Concept-pack purchase — bumps brand_designs.paid_concepts_total so
+  // the talent can keep generating past their free allowance. No new
+  // brand; the dedup table keeps the bump idempotent.
+  if (md.kind === 'bd_concept_pack') {
+    const brandId = md.brand_id
+    if (!brandId) return { ok: false, reason: 'Missing brand_id on session.' }
+    const applied = await applyConceptPackPurchase({
+      supabase,
+      userId,
+      brandId,
+      sessionId: session.id,
+      packSize: parseInt(md.pack_size ?? '10', 10) || 10,
+      amountCents: session.amount_total ?? null,
+    })
+    if (!applied.ok) return { ok: false, reason: applied.reason }
+    return { ok: true, alreadyExisted: applied.alreadyApplied, brandId }
+  }
+
   const productSlug = md.product_slug
   const productTitle = md.product_title
 
@@ -289,5 +307,89 @@ export async function cloneBrandForAdditionalFinal(args: {
   }
 
   return newBrand.id as string
+}
+
+/**
+ * Applies a concept-pack purchase: records the Stripe session in
+ * brand_concept_pack_purchases (unique on session id) and, only if that
+ * insert actually happened, bumps brand_designs.paid_concepts_total by
+ * the pack size. The unique constraint makes this safe to call from both
+ * the sync fulfillment and the async webhook — exactly one wins.
+ */
+export async function applyConceptPackPurchase(args: {
+  supabase: Supabase
+  userId: string
+  brandId: string
+  sessionId: string
+  packSize: number
+  amountCents: number | null
+}): Promise<
+  | { ok: true; alreadyApplied: boolean }
+  | { ok: false; reason: string }
+> {
+  const { supabase, userId, brandId, sessionId, packSize, amountCents } = args
+  // paid_concepts_total + brand_concept_pack_purchases aren't in the
+  // generated DB types yet (pending migrations), so go through a loose
+  // view for those operations.
+  const db = supabase as unknown as {
+    from: (table: string) => {
+      select: (cols: string) => {
+        eq: (col: string, val: string) => {
+          maybeSingle: () => Promise<{
+            data: { user_id: string; paid_concepts_total: number | null } | null
+            error: { message: string; code?: string } | null
+          }>
+        }
+      }
+      insert: (values: Record<string, unknown>) => {
+        select: (cols: string) => {
+          maybeSingle: () => Promise<{
+            data: { id: string } | null
+            error: { message: string; code?: string } | null
+          }>
+        }
+      }
+      update: (values: Record<string, unknown>) => {
+        eq: (col: string, val: string) => Promise<{ error: { message: string } | null }>
+      }
+    }
+  }
+
+  // Ownership guard — the session metadata is user-scoped, but double-check.
+  const { data: brand } = await db
+    .from('brand_designs')
+    .select('id, user_id, paid_concepts_total')
+    .eq('id', brandId)
+    .maybeSingle()
+  if (!brand || brand.user_id !== userId) {
+    return { ok: false, reason: 'Brand not found or not owned by user.' }
+  }
+
+  const { data: inserted, error: insErr } = await db
+    .from('brand_concept_pack_purchases')
+    .insert({
+      brand_design_id: brandId,
+      user_id: userId,
+      stripe_session_id: sessionId,
+      pack_size: packSize,
+      amount_cents: amountCents,
+    })
+    .select('id')
+    .maybeSingle()
+
+  if (insErr) {
+    // 23505 = unique_violation → the other path already applied this pack.
+    if (insErr.code === '23505') return { ok: true, alreadyApplied: true }
+    return { ok: false, reason: insErr.message }
+  }
+  if (!inserted) {
+    // No row + no error shouldn't happen, but treat as already-applied.
+    return { ok: true, alreadyApplied: true }
+  }
+
+  const newTotal = (brand.paid_concepts_total ?? 0) + packSize
+  await db.from('brand_designs').update({ paid_concepts_total: newTotal }).eq('id', brandId)
+
+  return { ok: true, alreadyApplied: false }
 }
 
