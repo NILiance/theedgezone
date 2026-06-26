@@ -6,6 +6,11 @@ import {
   generateTradingCardAction,
   type TradingCardActionState,
 } from './arsenal-tab-actions'
+import {
+  TradingCardOrderPanel,
+  type OrderTier,
+  type OrderableCard,
+} from './trading-card-order'
 
 const STYLES = [
   { value: 'modern', name: 'Modern' },
@@ -14,7 +19,19 @@ const STYLES = [
   { value: 'premium_gold', name: 'Premium Gold' },
 ]
 
-export function TradingCardTab({ brandId, hasFinal }: { brandId: string; hasFinal: boolean }) {
+export function TradingCardTab({
+  brandId,
+  hasFinal,
+  tiers,
+  cards,
+  orderSuccess,
+}: {
+  brandId: string
+  hasFinal: boolean
+  tiers: OrderTier[]
+  cards: OrderableCard[]
+  orderSuccess?: boolean
+}) {
   const [state, action, pending] = useActionState<TradingCardActionState, FormData>(
     generateTradingCardAction,
     {}
@@ -105,6 +122,13 @@ export function TradingCardTab({ brandId, hasFinal }: { brandId: string; hasFina
         </div>
       )}
       {state.error && <p className="mt-4 text-center text-xs text-destructive">{state.error}</p>}
+
+      <TradingCardOrderPanel
+        brandId={brandId}
+        tiers={tiers}
+        cards={cards}
+        orderSuccess={orderSuccess}
+      />
     </div>
   )
 }

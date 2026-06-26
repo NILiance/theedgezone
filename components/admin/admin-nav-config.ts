@@ -48,6 +48,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: 'Apps', href: '/dashboard/admin/apps' },
       { label: 'Podcasts', href: '/dashboard/admin/podcasts' },
       { label: 'Stores', href: '/dashboard/admin/stores' },
+      { label: 'Trading Cards', href: '/dashboard/admin/trading-cards' },
     ],
   },
   {

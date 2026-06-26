@@ -29,6 +29,7 @@ import { RequestRevisionButton } from './revision-button'
 import { LogoCanvas } from '@/components/brand-design/logo-canvas'
 import { BrandSwitcher } from './brand-switcher'
 import { ConceptPackButton } from './concept-pack-button'
+import { getTradingCardTiers } from '@/lib/trading-cards'
 
 // The brand-kit auto-assemble (sharp + JSZip + Drive/Storage uploads)
 // can take 30-60s end-to-end. Default Vercel limit on Hobby is 10s,
@@ -46,6 +47,7 @@ interface PageProps {
     arsenalsubtab?: string
     checkout?: string
     session_id?: string
+    tc_order?: string
   }>
 }
 
@@ -141,6 +143,18 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
     metadata: (a.metadata as Record<string, unknown>) ?? {},
     created_at: a.created_at,
   }))
+
+  // Trading-card physical-order data: pricing tiers + the talent's
+  // generated cards (only ones with a viewable image are orderable).
+  const tradingCardTiers = await getTradingCardTiers(supabase)
+  const orderableCards = creations
+    .filter((c) => c.kind === 'trading_card' && c.url && /\.(png|jpe?g|webp)$/i.test(c.url.split('?')[0]!))
+    .map((c) => ({
+      id: c.id,
+      url: c.url as string,
+      style: typeof c.metadata.style === 'string' ? (c.metadata.style as string) : null,
+    }))
+  const tcOrderSuccess = sp.tc_order === 'success'
 
   const { data: toolkitData } = await supabase
     .from('brand_toolkit_entries')
@@ -337,6 +351,9 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
           subtab={arsenalSubtab}
           brandPrimary={brand.primary_color}
           brandSecondary={brand.secondary_color}
+          tradingCardTiers={tradingCardTiers}
+          orderableCards={orderableCards}
+          tcOrderSuccess={tcOrderSuccess}
         />
       )}
 
@@ -990,6 +1007,9 @@ function ArsenalView({
   subtab,
   brandPrimary,
   brandSecondary,
+  tradingCardTiers,
+  orderableCards,
+  tcOrderSuccess,
 }: {
   brandId: string
   hasFinal: boolean
@@ -1001,6 +1021,9 @@ function ArsenalView({
   subtab: ArsenalSubtab
   brandPrimary: string | null
   brandSecondary: string | null
+  tradingCardTiers: Array<{ qty: number; price_cents: number; label: string }>
+  orderableCards: Array<{ id: string; url: string; style?: string | null }>
+  tcOrderSuccess: boolean
 }) {
   const remaining = Math.max(0, assetsTotal - assetsUsed)
   const pct = assetsTotal > 0 ? Math.min(100, Math.round((assetsUsed / assetsTotal) * 100)) : 0
@@ -1069,7 +1092,13 @@ function ArsenalView({
 
       {subtab === 'trading_card' && (
         <>
-          <TradingCardTab brandId={brandId} hasFinal={hasFinal} />
+          <TradingCardTab
+            brandId={brandId}
+            hasFinal={hasFinal}
+            tiers={tradingCardTiers}
+            cards={orderableCards}
+            orderSuccess={tcOrderSuccess}
+          />
           <YourCreations
             brandId={brandId}
             creations={creations.filter((c) => c.kind === 'trading_card')}

@@ -231,6 +231,13 @@ async function handleCheckoutCompleted(
     return
   }
 
+  // Printed trading-card order — mark paid, store the shipping address,
+  // email the proof-before-printing confirmation.
+  if (metadata.kind === 'trading_card') {
+    await handleTradingCardOrder(supabase, session)
+    return
+  }
+
   // Brand-design extras — additional brand purchase or paid revision.
   if (metadata.kind === 'bd_additional') {
     await handleBrandDesignAdditional(supabase, session)
@@ -580,6 +587,109 @@ async function handlePodcastSubscription(
 <p>Keep it to yourself — it's unique to you.</p>`,
       metadata: { podcast_id: podcastId },
     })
+  }
+}
+
+/**
+ * Printed trading-card order completed. Flips the pre-inserted
+ * trading_card_orders row to paid, stores the Stripe-collected shipping
+ * address, and emails both the platform ops inbox and the talent (we send
+ * a proof before printing). Idempotent on the order's current status.
+ */
+async function handleTradingCardOrder(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const metadata = session.metadata ?? {}
+  const orderId = typeof metadata.order_id === 'string' ? metadata.order_id : ''
+  if (!orderId) return
+
+  const { data: existing } = await supabase
+    .from('trading_card_orders')
+    .select('id, order_number, user_id, quantity, amount_cents, card_url, status')
+    .eq('id', orderId)
+    .maybeSingle()
+  if (!existing || (existing.status !== 'pending' && existing.status !== 'cancelled')) return
+
+  const paymentIntent =
+    typeof session.payment_intent === 'string' ? session.payment_intent : null
+  // Checkout Sessions expose the collected shipping address on
+  // shipping_details (same field the store webhook reads).
+  const shipping =
+    (session as unknown as { shipping_details?: { name?: string; address?: unknown } })
+      .shipping_details ?? null
+
+  await supabase
+    .from('trading_card_orders')
+    .update({
+      status: 'paid',
+      stripe_payment_intent: paymentIntent,
+      paid_at: new Date().toISOString(),
+      shipping_address: (shipping?.address as Record<string, unknown> | undefined) ?? null,
+      ship_name: shipping?.name ?? session.customer_details?.name ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+
+  // Notifications — best-effort, never block the webhook 200.
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', existing.user_id)
+      .maybeSingle()
+    const { data: userRes } = await supabase.auth.admin.getUserById(existing.user_id)
+    const talentEmail = userRes?.user?.email ?? session.customer_details?.email ?? null
+    const talentName = profile?.display_name ?? 'there'
+    const qty = existing.quantity
+    const orderNo = existing.order_number
+    const addr = shipping?.address as
+      | { line1?: string; line2?: string; city?: string; state?: string; postal_code?: string; country?: string }
+      | undefined
+    const addrText = addr
+      ? [
+          shipping?.name,
+          addr.line1,
+          addr.line2,
+          [addr.city, addr.state, addr.postal_code].filter(Boolean).join(', '),
+          addr.country,
+        ]
+          .filter(Boolean)
+          .join('<br>')
+      : '(address on file with Stripe)'
+
+    // Talent confirmation.
+    if (talentEmail) {
+      void sendEmail({
+        to: talentEmail,
+        subject: `Order confirmed — ${orderNo}`,
+        templateKey: 'trading_card_order',
+        html: `<h2 style="color:#C8A84E;">Trading card order confirmed</h2>
+<p>Thanks ${talentName}! Your order for <strong>${qty} printed trading cards</strong> has been received.
+We'll email you a proof before anything goes to print.</p>
+<p><strong>Order:</strong> ${orderNo}<br><strong>Ships to:</strong><br>${addrText}</p>
+${existing.card_url ? `<p><a href="${existing.card_url}">View your card design</a></p>` : ''}`,
+        metadata: { user_id: existing.user_id, order_id: orderId },
+      })
+    }
+
+    // Platform ops notification.
+    const opsEmail = process.env.ORDERS_NOTIFY_EMAIL ?? 'info@theedgezone.com'
+    void sendEmail({
+      to: opsEmail,
+      subject: `Trading Card Order ${orderNo} — ${qty} cards`,
+      templateKey: 'trading_card_order_ops',
+      html: `<h2 style="color:#C8A84E;">Trading Card Order — ${orderNo}</h2>
+<p><strong>Talent:</strong> ${talentName} (${talentEmail ?? 'unknown email'})<br>
+<strong>Quantity:</strong> ${qty} cards<br>
+<strong>Total:</strong> $${((existing.amount_cents ?? 0) / 100).toFixed(2)}<br>
+<strong>Ship to:</strong><br>${addrText}</p>
+${existing.card_url ? `<p><strong>Card design:</strong> <a href="${existing.card_url}">View / download</a></p>` : ''}
+<p>Send a proof, then mark in production in Admin → Trading Cards.</p>`,
+      metadata: { user_id: existing.user_id, order_id: orderId },
+    })
+  } catch (err) {
+    console.error('[stripe-webhook] trading-card emails failed', err)
   }
 }
 
