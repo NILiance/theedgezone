@@ -5,8 +5,85 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
+import { remixConcept } from '@/lib/ideogram'
 
 export type LogoModState = { ok?: boolean; error?: string; checkoutUrl?: string }
+
+/** Self-serve: remix the uploaded logo against the change prompt; re-host the
+ *  variations (the generator's URLs are temporary). */
+export async function generateLogoMods(input: {
+  logo_url: string
+  prompt: string
+}): Promise<{ ok: boolean; variations?: string[]; message?: string }> {
+  const user = await requireUser()
+  if (!input.logo_url) return { ok: false, message: 'Upload your logo first.' }
+  if ((input.prompt ?? '').trim().length < 5) {
+    return { ok: false, message: 'Describe the changes you want.' }
+  }
+  let concepts
+  try {
+    concepts = await remixConcept({
+      source_url: input.logo_url,
+      prompt: input.prompt.trim(),
+      count: 4,
+      strength: 0.6,
+    })
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Generation failed' }
+  }
+  if (!concepts.length) {
+    return { ok: false, message: 'The designer is not configured (missing key) or returned nothing.' }
+  }
+
+  const supabase = await createClient()
+  const urls: string[] = []
+  for (let i = 0; i < concepts.length; i++) {
+    const src = concepts[i]!.url
+    try {
+      const res = await fetch(src)
+      if (!res.ok) {
+        urls.push(src)
+        continue
+      }
+      const buf = Buffer.from(await res.arrayBuffer())
+      const path = `${user.id}/logo-mods/${Date.now()}-${i}.png`
+      const { error } = await supabase.storage
+        .from('site-assets')
+        .upload(path, buf, { contentType: 'image/png', upsert: true })
+      urls.push(
+        error ? src : supabase.storage.from('site-assets').getPublicUrl(path).data.publicUrl
+      )
+    } catch {
+      urls.push(src)
+    }
+  }
+  return { ok: true, variations: urls }
+}
+
+/** Save a chosen variation as an instantly-delivered self-serve logo mod. */
+export async function saveLogoMod(input: {
+  logo_url: string
+  chosen_url: string
+  prompt: string
+}): Promise<{ ok: boolean; message?: string }> {
+  const user = await requireUser()
+  if (!input.chosen_url) return { ok: false, message: 'Pick a variation first.' }
+  const supabase = await createClient()
+  const { error } = await supabase.from('logo_mod_requests').insert({
+    user_id: user.id,
+    original_logo_url: input.logo_url || null,
+    requested_changes: input.prompt.slice(0, 500) || 'Self-serve logo mod',
+    tier: 'quick',
+    amount_cents: 0,
+    status: 'delivered',
+    delivered_logo_urls: [input.chosen_url],
+    delivered_at: new Date().toISOString(),
+    designer_notes: 'Created instantly with the in-house designer (self-serve).',
+  })
+  if (error) return { ok: false, message: error.message }
+  revalidatePath('/dashboard/logo-mod')
+  return { ok: true }
+}
 
 const TIER_PRICES = {
   quick: 4900,

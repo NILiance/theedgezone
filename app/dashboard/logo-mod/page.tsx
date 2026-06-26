@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { LogoModForm } from './form'
+import { InstantRemix } from './instant-remix'
 
 export const metadata = { title: 'Logo Mod' }
 
@@ -39,11 +40,17 @@ export default async function LogoModPage() {
           Tweak your existing logo
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Already have a logo? Drop it in below and tell us what you want changed — recolor,
-          word swap, vector cleanup, file format add-ons. Real human designer turnaround.
+          Already have a logo? Remix it instantly below — recolor, simplify, sharpen — pick a
+          variation and it&apos;s yours. Prefer a human designer instead? That option&apos;s here too.
         </p>
       </div>
-      <LogoModForm />
+
+      <InstantRemix />
+
+      <section>
+        <p className="text-eyebrow mb-3 text-muted-foreground">Prefer a human designer?</p>
+        <LogoModForm />
+      </section>
 
       {(requests ?? []).length > 0 && (
         <section>
