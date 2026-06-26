@@ -30,6 +30,7 @@ export interface RssEpisode {
   season_number: number | null
   explicit: boolean | null
   image_url: string | null
+  chapters?: unknown[] | null
 }
 
 function esc(s: string): string {
@@ -90,6 +91,10 @@ export function buildPodcastRss(
       const epNum = e.episode_number != null ? `<itunes:episode>${e.episode_number}</itunes:episode>` : ''
       const seasonNum = e.season_number != null ? `<itunes:season>${e.season_number}</itunes:season>` : ''
       const epImage = e.image_url ? `<itunes:image href="${esc(e.image_url)}"/>` : ''
+      const chaptersTag =
+        Array.isArray(e.chapters) && e.chapters.length > 0
+          ? `<podcast:chapters url="${esc(`${opts.siteUrl}/podcasts/${opts.slug}/e/${e.id}/chapters.json`)}" type="application/json+chapters"/>`
+          : ''
       const desc = e.description || ''
       return `    <item>
       <title>${esc(e.title)}</title>
@@ -104,12 +109,13 @@ export function buildPodcastRss(
       ${seasonNum}
       <itunes:explicit>${epExplicit}</itunes:explicit>
       ${epImage}
+      ${chaptersTag}
     </item>`
     })
     .join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:podcast="https://podcastindex.org/namespace/1.0">
   <channel>
     <title>${esc(podcast.title)}</title>
     <link>${esc(link)}</link>

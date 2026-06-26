@@ -55,6 +55,21 @@ function numOrNull(form: FormData, key: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** Parse a "M:SS Title" (or "H:MM:SS Title") per-line block into chapters. */
+function parseChapters(text: string): { start: string; title: string }[] {
+  return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(\d{1,2}(?::\d{2}){1,2})\s+(.*)$/)
+      return m
+        ? { start: m[1]!, title: m[2]!.trim() }
+        : { start: '0:00', title: line }
+    })
+    .filter((c) => c.title)
+}
+
 export async function upsertEpisode(_prev: EpisodeState, form: FormData): Promise<EpisodeState> {
   const user = await requireUser()
   const supabase = await createClient()
@@ -91,6 +106,7 @@ export async function upsertEpisode(_prev: EpisodeState, form: FormData): Promis
     explicit: form.get('explicit') === 'on' || form.get('explicit') === 'true',
     image_url: String(form.get('image_url') ?? '').trim() || null,
     transcript: String(form.get('transcript') ?? '').trim() || null,
+    chapters: parseChapters(String(form.get('chapters_text') ?? '')),
     published_at: publishedAt,
   }
 

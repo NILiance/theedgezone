@@ -28,7 +28,7 @@ export async function GET(
   const { data: episodes } = await supabase
     .from('podcast_episodes')
     .select(
-      'id, title, description, audio_url, audio_bytes, audio_mime, duration_seconds, published_at, guid, episode_number, season_number, explicit, image_url'
+      'id, title, description, audio_url, audio_bytes, audio_mime, duration_seconds, published_at, guid, episode_number, season_number, explicit, image_url, chapters'
     )
     .eq('podcast_id', podcast.id)
     .not('published_at', 'is', null)

@@ -19,6 +19,7 @@ export interface Episode {
   explicit: boolean | null
   image_url: string | null
   transcript: string | null
+  chapters: { start?: string; title?: string }[] | null
   play_count: number | null
   download_count: number | null
 }
@@ -269,6 +270,20 @@ function EpisodeForm({
             defaultValue={episode?.transcript ?? ''}
             placeholder="Paste the episode transcript…"
             className={inputCls}
+          />
+        </label>
+        <label className="block text-sm sm:col-span-2">
+          <span className="block text-xs text-muted-foreground">
+            Chapters (optional — one per line as “M:SS Title”)
+          </span>
+          <textarea
+            name="chapters_text"
+            rows={4}
+            defaultValue={(episode?.chapters ?? [])
+              .map((c) => `${c.start ?? '0:00'} ${c.title ?? ''}`.trim())
+              .join('\n')}
+            placeholder={'0:00 Intro\n3:30 First topic\n12:05 Guest interview'}
+            className={`${inputCls} font-mono text-xs`}
           />
         </label>
         <label className="block text-sm">
