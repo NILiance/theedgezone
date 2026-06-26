@@ -305,7 +305,7 @@ export async function resolveNilianceUserId(email: string): Promise<string | nul
 export async function pullProfileFromNiliance(params: {
   userId: string
   stUserId?: string | null
-}): Promise<{ ok: boolean; fields?: number; error?: string }> {
+}): Promise<{ ok: boolean; fields?: number; error?: string; availableKeys?: string[] }> {
   if (!sharetribeEnabled) return { ok: false, error: 'NILiance is not configured.' }
   const supabase = createServiceClient()
   if (!supabase) return { ok: false, error: 'Service role key missing.' }
@@ -327,49 +327,126 @@ export async function pullProfileFromNiliance(params: {
   }
   if (!stUserId) return { ok: false, error: 'Could not find a matching NILiance account.' }
 
+  // Persist the resolved id so the link is real (fixes the "—" UUID) and
+  // future syncs skip the email lookup.
+  if (stUserId !== params.stUserId) {
+    await supabase.from('profiles').update({ niliance_user_id: stUserId }).eq('id', params.userId)
+  }
+
   try {
     const sdk = await getIntegrationSdk()
     if (!sdk) return { ok: false, error: 'Integration SDK unavailable.' }
-    const res = await sdk.users.show({ id: stUserId })
-    const profileObj = (res?.data?.data?.attributes?.profile ?? {}) as {
-      bio?: unknown
-      publicData?: Record<string, unknown>
+
+    // Read the USER. Handle both response shapes (data.attributes and
+    // data.data.attributes) like the legacy bridge does.
+    const userRes = await sdk.users.show({ id: stUserId })
+    const userBody = userRes?.data ?? {}
+    const userAttrs = (userBody?.data?.attributes ?? userBody?.attributes ?? {}) as {
+      profile?: { bio?: unknown; displayName?: unknown; publicData?: Record<string, unknown> }
     }
-    const pub = (profileObj.publicData ?? {}) as Record<string, unknown>
+    const userProfile = userAttrs.profile ?? {}
+    const userPub = (userProfile.publicData ?? {}) as Record<string, unknown>
+
+    // Athlete fields (the pub_* set) usually live on the talent's LISTING, not
+    // the user profile — that's the Sharetribe convention. Pull the first
+    // listing's publicData too and merge it (listing wins for athlete fields).
+    let listingPub: Record<string, unknown> = {}
+    let listingDescription: string | null = null
+    try {
+      const lq = await sdk.listings.query({ authorId: stUserId })
+      const listings = Array.isArray(lq?.data?.data) ? lq.data.data : []
+      const first = listings[0]
+      const lAttrs = (first?.attributes ?? {}) as {
+        description?: unknown
+        publicData?: Record<string, unknown>
+      }
+      listingPub = (lAttrs.publicData ?? {}) as Record<string, unknown>
+      listingDescription = typeof lAttrs.description === 'string' ? lAttrs.description : null
+    } catch {
+      // Listing fetch is best-effort.
+    }
+
+    const merged: Record<string, unknown> = { ...userPub, ...listingPub }
+    const availableKeys = Object.keys(merged)
 
     const str = (v: unknown): string | null =>
-      typeof v === 'string' && v.trim() ? v.trim() : null
+      typeof v === 'string' && v.trim() ? v.trim() : typeof v === 'number' ? String(v) : null
     const firstOf = (v: unknown): string | null =>
       Array.isArray(v) && v.length ? str(v[0]) : str(v)
-
-    const update: Record<string, unknown> = {}
-    const setIf = (k: string, v: unknown) => {
-      if (v != null && v !== '') update[k] = v
+    const pick = (keys: string[]): unknown => {
+      for (const k of keys) {
+        const v = merged[k]
+        if (v != null && v !== '' && !(Array.isArray(v) && v.length === 0)) return v
+      }
+      return null
     }
 
-    setIf('bio', str(profileObj.bio))
-    setIf('sport', firstOf(pub.pub_sports) ?? str(pub.sport))
-    setIf('school', str(pub.schoolDisplayName) ?? str(pub.school) ?? str(pub.university))
-    setIf('conference', str(pub.conference))
-    setIf('jersey_number', str(pub.pub_jersey_number))
-    setIf('hometown', str(pub.pub_hometown))
-    setIf('city', str(pub.pub_current_town) ?? str(pub.pub_hometown_city))
-    setIf('us_state', str(pub.pub_state) ?? str(pub.pub_hometown_state))
-    const h = parseHeightToInches(pub.pub_height)
-    if (h) update.height_inches = h
-    const wRaw = typeof pub.pub_weight === 'number' ? pub.pub_weight : parseInt(str(pub.pub_weight) ?? '', 10)
-    if (Number.isFinite(wRaw) && wRaw > 0) update.weight_lbs = wRaw
-    // Position lives under a sport-specific key (e.g. position-mens-basketball).
-    const posKey = Object.keys(pub).find((k) => k.toLowerCase().startsWith('position'))
-    if (posKey) setIf('athletic_position', firstOf(pub[posKey]))
+    const update: Record<string, unknown> = {}
+    const setIf = (col: string, v: unknown) => {
+      if (v != null && v !== '') update[col] = v
+    }
 
-    const fieldCount = Object.keys(update).length
+    setIf('bio', str(userProfile.bio) ?? str(pick(['bio'])) ?? listingDescription)
+    setIf('sport', firstOf(pick(['pub_sports', 'sports', 'sport'])))
+    // Position lives under a sport-specific key (e.g. position-mens-basketball).
+    const posKey = availableKeys.find((k) => k.toLowerCase().startsWith('position'))
+    setIf(
+      'athletic_position',
+      firstOf(pick([...(posKey ? [posKey] : []), 'position', 'athletic_position', 'pub_position']))
+    )
+    setIf(
+      'school',
+      str(
+        pick([
+          'schoolDisplayName',
+          'school',
+          'college_name',
+          'collegeName',
+          'university',
+          'pub_school_or_group_name',
+        ])
+      )
+    )
+    setIf('conference', str(pick(['conference', 'pub_conference'])))
+    setIf('jersey_number', str(pick(['pub_jersey_number', 'jersey_number', 'jerseyNumber'])))
+    setIf('hometown', str(pick(['pub_hometown', 'hometown'])))
+    setIf('city', str(pick(['pub_current_town', 'city', 'currentCity', 'pub_hometown_city'])))
+    setIf('us_state', str(pick(['pub_state', 'state', 'pub_hometown_state'])))
+    const h = parseHeightToInches(pick(['pub_height', 'height']))
+    if (h) update.height_inches = h
+    const wPick = pick(['pub_weight', 'weight'])
+    const wRaw = typeof wPick === 'number' ? wPick : parseInt(str(wPick) ?? '', 10)
+    if (Number.isFinite(wRaw) && wRaw > 0) update.weight_lbs = wRaw
+    // Socials: an object map { instagram, tiktok, … }.
+    const socialsObj = pick(['socials'])
+    if (socialsObj && typeof socialsObj === 'object' && !Array.isArray(socialsObj)) {
+      const cleaned: Record<string, string> = {}
+      for (const [k, v] of Object.entries(socialsObj as Record<string, unknown>)) {
+        const s = str(v)
+        if (s) cleaned[k.toLowerCase()] = s
+      }
+      if (Object.keys(cleaned).length) update.socials = cleaned
+    }
+
+    const fieldKeys = Object.keys(update)
+    const fieldCount = fieldKeys.length
+
     if (fieldCount === 0) {
       await supabase
         .from('profiles')
         .update({ niliance_synced_at: new Date().toISOString() })
         .eq('id', params.userId)
-      return { ok: true, fields: 0 }
+      // Log the keys we DID receive so the mapping can be extended exactly.
+      await logEvent({
+        user_id: params.userId,
+        level: 'warn',
+        direction: 'inbound',
+        message: availableKeys.length
+          ? `NILiance returned ${availableKeys.length} field(s) but none mapped. Keys: ${availableKeys.slice(0, 40).join(', ')}`
+          : 'NILiance returned no publicData on the user or their listing.',
+        metadata: { availableKeys },
+      })
+      return { ok: true, fields: 0, availableKeys }
     }
 
     update.niliance_synced_at = new Date().toISOString()
@@ -380,10 +457,10 @@ export async function pullProfileFromNiliance(params: {
       user_id: params.userId,
       level: 'info',
       direction: 'inbound',
-      message: `Pulled ${fieldCount} field(s) from NILiance`,
-      metadata: { fields: Object.keys(update).filter((k) => k !== 'niliance_synced_at') },
+      message: `Pulled ${fieldCount} field(s) from NILiance: ${fieldKeys.join(', ')}`,
+      metadata: { fields: fieldKeys, availableKeys },
     })
-    return { ok: true, fields: fieldCount }
+    return { ok: true, fields: fieldCount, availableKeys }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'NILiance pull failed.' }
   }

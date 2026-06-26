@@ -69,7 +69,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
         }
       } else if (res.ok) {
         nilianceDiag =
-          'Connected to NILiance, but no profile fields were found to import — your NILiance profile may be empty, or its field names differ from what we expect. Check Admin → NILiance → Recent events.'
+          res.availableKeys && res.availableKeys.length
+            ? `Connected to NILiance, but none of its fields matched our mapping yet. Fields found on your account/listing: ${res.availableKeys.slice(0, 30).join(', ')}.`
+            : 'Connected to NILiance, but no profile data was found on your account or your talent listing.'
       } else {
         nilianceDiag = res.error ?? 'NILiance sync did not run.'
       }
