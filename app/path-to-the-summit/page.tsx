@@ -20,6 +20,17 @@ export default async function PathToTheSummitPage() {
     .eq('published', true)
     .order('position', { ascending: true })
 
+  // Show the reel CTA only when a published reel with at least one clip exists.
+  const { data: reel } = await supabase
+    .from('climb_reel')
+    .select('milestone_ids, published')
+    .eq('singleton', true)
+    .maybeSingle()
+  const reelLive =
+    Boolean(reel?.published) &&
+    Array.isArray(reel?.milestone_ids) &&
+    (reel!.milestone_ids as unknown[]).length > 0
+
   return (
     <>
       <MarketingNav />
@@ -36,13 +47,20 @@ export default async function PathToTheSummitPage() {
             A guided climb from new account to NIL-ready operator. Each stop is a short
             walk-through you can knock out in 10–20 minutes. Free.
           </p>
-          {!user && (
-            <div className="mt-8">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            {!user && (
               <Link href="/sign-up">
                 <Button size="lg">Sign up to start the climb →</Button>
               </Link>
-            </div>
-          )}
+            )}
+            {reelLive && (
+              <Link href="/path-to-the-summit/reel">
+                <Button size="lg" variant={user ? 'default' : 'outline'}>
+                  ▶ Watch the reel
+                </Button>
+              </Link>
+            )}
+          </div>
         </section>
 
         <section className="mx-auto max-w-3xl px-6 pb-20">

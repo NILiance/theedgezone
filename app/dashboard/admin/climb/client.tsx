@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, useTransition } from 'react'
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,8 +8,13 @@ import { upsertMilestone, deleteMilestone } from './actions'
 import {
   startMilestoneVideo,
   pollMilestoneVideo,
+  loadHeyGenOptions,
+  draftMilestoneScript,
   type HeyGenState,
+  type HeyGenOptions,
+  type ScriptState,
 } from './heygen-actions'
+import type { HeyGenAvatar, HeyGenVoice } from '@/lib/heygen'
 
 interface Milestone {
   id: string
@@ -31,6 +36,8 @@ interface Milestone {
   heygen_error?: string | null
   heygen_started_at?: string | null
   heygen_completed_at?: string | null
+  heygen_avatar_id?: string | null
+  heygen_voice_id?: string | null
 }
 
 export function ClimbAdminClient({ milestones }: { milestones: Milestone[] }) {
@@ -259,6 +266,34 @@ function HeyGenPanel({ milestone }: { milestone: Milestone }) {
     pollMilestoneVideo,
     {}
   )
+  const [scriptState, scriptAction, scriptPending] = useActionState<ScriptState, FormData>(
+    draftMilestoneScript,
+    {}
+  )
+
+  // Controlled fields so "Draft script" + the pickers can write into them.
+  const [prompt, setPrompt] = useState(milestone.heygen_prompt ?? milestone.summary ?? '')
+  const [avatarId, setAvatarId] = useState(milestone.heygen_avatar_id ?? '')
+  const [voiceId, setVoiceId] = useState(milestone.heygen_voice_id ?? '')
+
+  // Avatar/voice catalog (loaded on demand).
+  const [options, setOptions] = useState<HeyGenOptions | null>(null)
+  const [optsPending, startOpts] = useTransition()
+  const loadOptions = () =>
+    startOpts(async () => {
+      setOptions(await loadHeyGenOptions())
+    })
+
+  // When a fresh draft comes back, drop it into the prompt box — once per
+  // draft (tracked via ref) so it never fights the admin's manual edits.
+  const lastScriptRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (scriptState.ok && scriptState.script && scriptState.script !== lastScriptRef.current) {
+      lastScriptRef.current = scriptState.script
+      setPrompt(scriptState.script)
+    }
+  }, [scriptState])
+
   const status = startState.status ?? pollState.status ?? milestone.heygen_status ?? null
   const inFlight = status === 'pending' || status === 'processing' || status === 'waiting'
 
@@ -268,8 +303,9 @@ function HeyGenPanel({ milestone }: { milestone: Milestone }) {
         <div>
           <p className="text-eyebrow text-primary">Generate narrator video (HeyGen)</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Spin up an AI avatar reading the script below. Status writes back to{' '}
-            <code className="font-mono">video_url</code> once complete.
+            Pick an avatar + voice, draft or paste the script, and spin up the video. Status
+            writes back to <code className="font-mono">video_url</code> once complete (the poll
+            cron also updates it automatically).
           </p>
         </div>
         {status && (
@@ -286,32 +322,77 @@ function HeyGenPanel({ milestone }: { milestone: Milestone }) {
           </span>
         )}
       </div>
-      <form action={startAction} className="mt-3 space-y-3">
-        <input type="hidden" name="milestone_id" value={milestone.id} />
+
+      {/* Script box + drafting */}
+      <div className="mt-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <Label htmlFor={`prompt-${milestone.id}`}>Narration script</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={scriptPending}
+            onClick={() => {
+              const fd = new FormData()
+              fd.set('milestone_id', milestone.id)
+              scriptAction(fd)
+            }}
+          >
+            {scriptPending ? 'Drafting…' : '✨ Draft script'}
+          </Button>
+        </div>
         <textarea
-          name="prompt"
+          id={`prompt-${milestone.id}`}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
           rows={4}
-          defaultValue={milestone.heygen_prompt ?? milestone.summary ?? ''}
           placeholder="Welcome to the Climb. Today's milestone is…"
-          required
-          minLength={30}
           className="w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm"
         />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            name="avatar_id"
-            placeholder="Avatar ID (optional)"
-            className="rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs font-mono"
-          />
-          <input
-            name="voice_id"
-            placeholder="Voice ID (optional)"
-            className="rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs font-mono"
-          />
-        </div>
+        {scriptState.error && <p className="text-xs text-destructive">{scriptState.error}</p>}
+      </div>
+
+      {/* Avatar + voice picker */}
+      <div className="mt-4">
+        {!options ? (
+          <Button type="button" size="sm" variant="outline" onClick={loadOptions} disabled={optsPending}>
+            {optsPending ? 'Loading avatars & voices…' : 'Load avatars & voices'}
+          </Button>
+        ) : options.ok ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <AvatarPicker avatars={options.avatars ?? []} value={avatarId} onChange={setAvatarId} />
+            <VoicePicker voices={options.voices ?? []} value={voiceId} onChange={setVoiceId} />
+          </div>
+        ) : (
+          <p className="text-xs text-destructive">{options.error}</p>
+        )}
+        {(avatarId || voiceId) && (
+          <p className="mt-2 text-[10px] font-mono text-muted-foreground">
+            avatar: {avatarId || '(default)'} · voice: {voiceId || '(default)'}
+          </p>
+        )}
+      </div>
+
+      {/* Generate / re-generate */}
+      <form
+        action={(fd) => {
+          fd.set('prompt', prompt)
+          fd.set('avatar_id', avatarId)
+          fd.set('voice_id', voiceId)
+          startAction(fd)
+        }}
+        className="mt-4"
+      >
+        <input type="hidden" name="milestone_id" value={milestone.id} />
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" size="sm" disabled={startPending || inFlight}>
-            {startPending ? 'Starting…' : inFlight ? 'In flight…' : milestone.heygen_job_id ? 'Re-generate' : 'Generate video'}
+          <Button type="submit" size="sm" disabled={startPending || inFlight || prompt.trim().length < 30}>
+            {startPending
+              ? 'Starting…'
+              : inFlight
+              ? 'In flight…'
+              : milestone.heygen_job_id
+              ? 'Re-generate'
+              : 'Generate video'}
           </Button>
           {milestone.heygen_job_id && (
             <Button
@@ -328,14 +409,17 @@ function HeyGenPanel({ milestone }: { milestone: Milestone }) {
               {pollPending ? 'Checking…' : 'Refresh status'}
             </Button>
           )}
+          {prompt.trim().length < 30 && (
+            <span className="self-center text-[10px] text-muted-foreground">
+              Script needs ≥ 30 characters
+            </span>
+          )}
         </div>
       </form>
       {startState.error && <p className="mt-2 text-xs text-destructive">{startState.error}</p>}
       {pollState.error && <p className="mt-2 text-xs text-destructive">{pollState.error}</p>}
       {milestone.heygen_error && (
-        <p className="mt-2 text-xs text-destructive">
-          HeyGen error: {milestone.heygen_error}
-        </p>
+        <p className="mt-2 text-xs text-destructive">HeyGen error: {milestone.heygen_error}</p>
       )}
       {milestone.heygen_started_at && (
         <p className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -345,5 +429,103 @@ function HeyGenPanel({ milestone }: { milestone: Milestone }) {
         </p>
       )}
     </section>
+  )
+}
+
+function AvatarPicker({
+  avatars,
+  value,
+  onChange,
+}: {
+  avatars: HeyGenAvatar[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [filter, setFilter] = useState('')
+  const shown = filter
+    ? avatars.filter((a) => a.name.toLowerCase().includes(filter.toLowerCase()))
+    : avatars
+  const selected = avatars.find((a) => a.id === value) ?? null
+  return (
+    <div>
+      <Label>Avatar ({avatars.length})</Label>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter avatars…"
+        className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs"
+      />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 h-10 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 text-sm"
+      >
+        <option value="">Default avatar</option>
+        {shown.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+            {a.gender ? ` · ${a.gender}` : ''}
+          </option>
+        ))}
+      </select>
+      {selected?.previewImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={selected.previewImageUrl}
+          alt={selected.name}
+          className="mt-2 h-20 w-20 rounded-md border border-border object-cover"
+        />
+      )}
+    </div>
+  )
+}
+
+function VoicePicker({
+  voices,
+  value,
+  onChange,
+}: {
+  voices: HeyGenVoice[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [filter, setFilter] = useState('')
+  const shown = filter
+    ? voices.filter(
+        (v) =>
+          v.name.toLowerCase().includes(filter.toLowerCase()) ||
+          (v.language ?? '').toLowerCase().includes(filter.toLowerCase())
+      )
+    : voices
+  const selected = voices.find((v) => v.id === value) ?? null
+  return (
+    <div>
+      <Label>Voice ({voices.length})</Label>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter voices…"
+        className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs"
+      />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 h-10 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 text-sm"
+      >
+        <option value="">Default voice</option>
+        {shown.map((v) => (
+          <option key={v.id} value={v.id}>
+            {v.name}
+            {v.language ? ` · ${v.language}` : ''}
+            {v.gender ? ` · ${v.gender}` : ''}
+          </option>
+        ))}
+      </select>
+      {selected?.previewAudioUrl && (
+        <audio controls src={selected.previewAudioUrl} className="mt-2 h-8 w-full">
+          <track kind="captions" />
+        </audio>
+      )}
+    </div>
   )
 }

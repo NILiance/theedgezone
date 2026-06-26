@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { ClimbAdminClient } from './client'
+import { ClimbReelBuilder, type ReelData, type VideoMilestone } from './reel-builder'
 
 export const metadata = { title: 'Climb Studio' }
 
@@ -17,9 +18,27 @@ export default async function ClimbAdminPage() {
   const { data: milestones } = await supabase
     .from('climb_milestones')
     .select(
-      'id, slug, title, summary, position, hero_image_url, video_url, slides, cta_label, cta_url, duration_min, audience, published, heygen_job_id, heygen_status, heygen_prompt, heygen_error, heygen_started_at, heygen_completed_at'
+      'id, slug, title, summary, position, hero_image_url, video_url, slides, cta_label, cta_url, duration_min, audience, published, heygen_job_id, heygen_status, heygen_prompt, heygen_error, heygen_started_at, heygen_completed_at, heygen_avatar_id, heygen_voice_id'
     )
     .order('position', { ascending: true })
+
+  // Platform Reel: the singleton config + the milestones that have a video.
+  const { data: reelRow } = await supabase
+    .from('climb_reel')
+    .select('title, subtitle, milestone_ids, published')
+    .eq('singleton', true)
+    .maybeSingle()
+  const reel: ReelData = {
+    title: (reelRow?.title as string) ?? 'Path to the Summit',
+    subtitle: (reelRow?.subtitle as string | null) ?? null,
+    milestone_ids: Array.isArray(reelRow?.milestone_ids)
+      ? (reelRow!.milestone_ids as string[])
+      : [],
+    published: Boolean(reelRow?.published),
+  }
+  const videoMilestones: VideoMilestone[] = (milestones ?? [])
+    .filter((m) => Boolean(m.video_url))
+    .map((m) => ({ id: m.id, title: m.title, video_url: m.video_url as string }))
 
   return (
     <div className="space-y-6">
@@ -33,6 +52,8 @@ export default async function ClimbAdminPage() {
           narrator video, optional CTA back into the dashboard.
         </p>
       </div>
+
+      <ClimbReelBuilder reel={reel} videoMilestones={videoMilestones} />
       <ClimbAdminClient
         milestones={(milestones ?? []) as Array<{
           id: string
@@ -54,6 +75,8 @@ export default async function ClimbAdminPage() {
           heygen_error?: string | null
           heygen_started_at?: string | null
           heygen_completed_at?: string | null
+          heygen_avatar_id?: string | null
+          heygen_voice_id?: string | null
         }>}
       />
     </div>

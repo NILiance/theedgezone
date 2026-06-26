@@ -85,6 +85,96 @@ export interface HeyGenStatus {
   error?: string | null
 }
 
+export interface HeyGenAvatar {
+  id: string
+  name: string
+  gender: string | null
+  previewImageUrl: string | null
+}
+
+export interface HeyGenVoice {
+  id: string
+  name: string
+  language: string | null
+  gender: string | null
+  previewAudioUrl: string | null
+}
+
+/**
+ * List available avatars. HeyGen returns hundreds, so we trim to the
+ * fields the picker needs and let the caller cap/filter.
+ */
+export async function listHeyGenAvatars(): Promise<
+  { ok: true; avatars: HeyGenAvatar[] } | { ok: false; error: string }
+> {
+  if (!heygenConfigured()) return { ok: false, error: 'HEYGEN_API_KEY not configured' }
+  try {
+    const res = await fetch(`${BASE}/v2/avatars`, { method: 'GET', headers: authHeaders() })
+    if (!res.ok) {
+      const text = await res.text()
+      return { ok: false, error: `HeyGen avatars HTTP ${res.status}: ${text.slice(0, 200)}` }
+    }
+    const json = (await res.json()) as {
+      data?: {
+        avatars?: Array<{
+          avatar_id?: string
+          avatar_name?: string
+          gender?: string
+          preview_image_url?: string
+        }>
+      }
+    }
+    const avatars: HeyGenAvatar[] = (json.data?.avatars ?? [])
+      .filter((a) => a.avatar_id)
+      .map((a) => ({
+        id: a.avatar_id as string,
+        name: a.avatar_name ?? (a.avatar_id as string),
+        gender: a.gender ?? null,
+        previewImageUrl: a.preview_image_url ?? null,
+      }))
+    return { ok: true, avatars }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'HeyGen network error' }
+  }
+}
+
+/** List available voices (text-to-speech). */
+export async function listHeyGenVoices(): Promise<
+  { ok: true; voices: HeyGenVoice[] } | { ok: false; error: string }
+> {
+  if (!heygenConfigured()) return { ok: false, error: 'HEYGEN_API_KEY not configured' }
+  try {
+    const res = await fetch(`${BASE}/v2/voices`, { method: 'GET', headers: authHeaders() })
+    if (!res.ok) {
+      const text = await res.text()
+      return { ok: false, error: `HeyGen voices HTTP ${res.status}: ${text.slice(0, 200)}` }
+    }
+    const json = (await res.json()) as {
+      data?: {
+        voices?: Array<{
+          voice_id?: string
+          name?: string
+          language?: string
+          gender?: string
+          preview_audio?: string
+        }>
+      }
+    }
+    const voices: HeyGenVoice[] = (json.data?.voices ?? [])
+      .filter((v) => v.voice_id)
+      .map((v) => ({
+        id: v.voice_id as string,
+        name: v.name ?? (v.voice_id as string),
+        language: v.language ?? null,
+        gender: v.gender ?? null,
+        previewAudioUrl: v.preview_audio ?? null,
+      }))
+    return { ok: true, voices }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'HeyGen network error' }
+  }
+}
+
 export async function getHeyGenStatus(
   videoId: string
 ): Promise<{ ok: true; status: HeyGenStatus } | { ok: false; error: string }> {
