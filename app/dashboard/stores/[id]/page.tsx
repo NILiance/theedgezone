@@ -28,7 +28,7 @@ export default async function StoreManagerPage({ params }: PageProps) {
       supabase
         .from('store_orders')
         .select(
-          'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at, quantity, variant_label, fulfillment_status, supplier_order_id, fulfillment_error'
+          'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at, quantity, variant_label, fulfillment_status, supplier_order_id, fulfillment_error, cost_cents, platform_fee_cents'
         )
         .eq('store_id', id)
         .order('created_at', { ascending: false })
@@ -93,6 +93,7 @@ export default async function StoreManagerPage({ params }: PageProps) {
 
       <StoreManagerClient
         brandLogoUrl={brandLogoUrl}
+        commissionBps={store.commission_bps ?? 1500}
         store={{
           id: store.id,
           name: store.name,
@@ -147,6 +148,9 @@ export default async function StoreManagerPage({ params }: PageProps) {
             (o as { supplier_order_id?: string | null }).supplier_order_id ?? null,
           fulfillment_error:
             (o as { fulfillment_error?: string | null }).fulfillment_error ?? null,
+          cost_cents: (o as { cost_cents?: number | null }).cost_cents ?? null,
+          platform_fee_cents:
+            (o as { platform_fee_cents?: number | null }).platform_fee_cents ?? null,
         })) as Array<{
           id: string
           product_id: string | null
@@ -164,6 +168,8 @@ export default async function StoreManagerPage({ params }: PageProps) {
           fulfillment_status: string
           supplier_order_id: string | null
           fulfillment_error: string | null
+          cost_cents: number | null
+          platform_fee_cents: number | null
         }>}
       />
     </div>

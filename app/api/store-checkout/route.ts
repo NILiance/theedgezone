@@ -118,6 +118,11 @@ export async function POST(request: NextRequest) {
     destinationAccount = ownerProfile.stripe_connect_account_id
   }
 
+  // Platform fee — taken via Connect application_fee when the owner is
+  // connected; snapshot it on the order for the earnings report.
+  const feeBps = store.commission_bps ?? 1500
+  const platformFeeCents = destinationAccount ? platformFee(amount, feeBps) : 0
+
   // Pre-insert the order row so the webhook has a target.
   const { data: order } = await supabase
     .from('store_orders')
@@ -129,6 +134,7 @@ export async function POST(request: NextRequest) {
       amount_cents: amount,
       unit_price_cents: unitPrice,
       cost_cents: unitCost,
+      platform_fee_cents: platformFeeCents,
       quantity: qty,
       variant_sku: variant?.sku ?? null,
       variant_label: variantText,
@@ -144,8 +150,7 @@ export async function POST(request: NextRequest) {
 
   const paymentIntentData: Record<string, unknown> = {}
   if (destinationAccount) {
-    const feeBps = store.commission_bps ?? 1500
-    paymentIntentData.application_fee_amount = platformFee(amount, feeBps)
+    paymentIntentData.application_fee_amount = platformFeeCents
     paymentIntentData.transfer_data = { destination: destinationAccount }
   }
 

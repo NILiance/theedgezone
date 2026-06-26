@@ -73,6 +73,8 @@ interface Order {
   fulfillment_status: string
   supplier_order_id: string | null
   fulfillment_error: string | null
+  cost_cents: number | null
+  platform_fee_cents: number | null
 }
 
 interface Props {
@@ -80,10 +82,19 @@ interface Props {
   products: Product[]
   orders: Order[]
   brandLogoUrl: string
+  commissionBps: number
 }
 
-export function StoreManagerClient({ store, products, orders, brandLogoUrl }: Props) {
-  const [section, setSection] = useState<'products' | 'settings' | 'orders'>('products')
+export function StoreManagerClient({
+  store,
+  products,
+  orders,
+  brandLogoUrl,
+  commissionBps,
+}: Props) {
+  const [section, setSection] = useState<'products' | 'settings' | 'orders' | 'earnings'>(
+    'products'
+  )
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap gap-1 rounded-[var(--radius-sm)] bg-panel-elevated/50 p-1">
@@ -92,6 +103,7 @@ export function StoreManagerClient({ store, products, orders, brandLogoUrl }: Pr
             ['products', `Products (${products.length})`],
             ['settings', 'Settings'],
             ['orders', `Orders (${orders.length})`],
+            ['earnings', 'Earnings'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -114,6 +126,9 @@ export function StoreManagerClient({ store, products, orders, brandLogoUrl }: Pr
       )}
       {section === 'settings' && <SettingsTab store={store} />}
       {section === 'orders' && <OrdersTab orders={orders} products={products} />}
+      {section === 'earnings' && (
+        <EarningsTab orders={orders} products={products} commissionBps={commissionBps} />
+      )}
     </div>
   )
 }
@@ -835,5 +850,95 @@ function OrderRow({ order, product }: { order: Order; product: Product | null })
         </tr>
       )}
     </>
+  )
+}
+
+// Orders that count toward earnings (money actually captured).
+const EARNING_STATUSES = ['paid', 'fulfilled', 'shipped', 'delivered']
+
+function EarningsTab({
+  orders,
+  products,
+  commissionBps,
+}: {
+  orders: Order[]
+  products: Product[]
+  commissionBps: number
+}) {
+  const productsById = new Map(products.map((p) => [p.id, p]))
+  const earning = orders.filter((o) => EARNING_STATUSES.includes(o.status))
+
+  const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`
+  const rows = earning.map((o) => {
+    const gross = o.amount_cents
+    const fee = o.platform_fee_cents ?? Math.round((gross * commissionBps) / 10000)
+    const cost = (o.cost_cents ?? 0) * (o.quantity || 1)
+    const net = gross - fee - cost
+    return { o, gross, fee, cost, net }
+  })
+  const sum = (k: 'gross' | 'fee' | 'cost' | 'net') => rows.reduce((a, r) => a + r[k], 0)
+
+  const cards: { label: string; value: number; tone?: string }[] = [
+    { label: 'Gross sales', value: sum('gross') },
+    { label: 'Platform fee', value: sum('fee') },
+    { label: 'Product cost', value: sum('cost') },
+    { label: 'Net earnings', value: sum('net'), tone: 'text-primary' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-4">
+        {cards.map((c) => (
+          <div
+            key={c.label}
+            className="rounded-[var(--radius)] border border-border bg-panel/40 p-3"
+          >
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{c.label}</p>
+            <p className={`text-display mt-1 text-2xl font-black ${c.tone ?? ''}`}>{usd(c.value)}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Based on {rows.length} captured order{rows.length === 1 ? '' : 's'}. The platform fee
+        ({(commissionBps / 100).toFixed(0)}%) is deducted automatically via Stripe — your connected
+        account receives gross minus fee. Product cost is what you owe your supplier; net earnings is
+        what you keep after both.
+      </p>
+      {rows.length === 0 ? (
+        <p className="rounded-[var(--radius-sm)] border border-border bg-panel/40 px-4 py-10 text-center text-sm text-muted-foreground">
+          No captured orders yet.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-[var(--radius)] border border-border bg-panel/40">
+          <table className="w-full text-sm">
+            <thead className="bg-panel-elevated/50 text-[10px] uppercase tracking-widest text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left">Date</th>
+                <th className="px-3 py-2 text-left">Product</th>
+                <th className="px-3 py-2 text-right">Gross</th>
+                <th className="px-3 py-2 text-right">Fee</th>
+                <th className="px-3 py-2 text-right">Cost</th>
+                <th className="px-3 py-2 text-right">Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ o, gross, fee, cost, net }) => (
+                <tr key={o.id} className="border-t border-border">
+                  <td className="px-3 py-2 text-xs">{new Date(o.created_at).toLocaleDateString()}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {(o.product_id ? productsById.get(o.product_id)?.name : null) ?? '—'}
+                    {o.quantity > 1 ? ` ×${o.quantity}` : ''}
+                  </td>
+                  <td className="px-3 py-2 text-right text-xs">{usd(gross)}</td>
+                  <td className="px-3 py-2 text-right text-xs text-muted-foreground">−{usd(fee)}</td>
+                  <td className="px-3 py-2 text-right text-xs text-muted-foreground">−{usd(cost)}</td>
+                  <td className="px-3 py-2 text-right text-xs font-bold text-primary">{usd(net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   )
 }
