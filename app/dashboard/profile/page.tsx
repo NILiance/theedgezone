@@ -34,13 +34,43 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
   const user = await requireUser()
   const supabase = await createClient()
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
-  const p = profile ?? ({} as Record<string, unknown>)
+  let p = profile ?? ({} as Record<string, unknown>)
+
+  // NILiance link state. "Linked" covers the 409 case where the account
+  // exists but no UUID was stored — the pull resolves the id by email.
+  const nilStatus = String(p.niliance_link_status ?? '')
+  const isNilianceLinked =
+    Boolean(p.niliance_user_id) || ['linked', 'pending', 'error'].includes(nilStatus)
+
+  // Auto-pull from NILiance: if linked but the profile is still empty, fill it
+  // in on load (one round-trip; stops once there's data). The cron also does
+  // this in the background.
+  const profileIsSparse = !p.sport && !p.school && !p.bio
+  if (isNilianceLinked && profileIsSparse) {
+    try {
+      const { pullProfileFromNiliance } = await import('@/lib/niliance')
+      const res = await pullProfileFromNiliance({ userId: user.id })
+      if (res.ok && res.fields) {
+        const refetched = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (refetched.data) {
+          profile = refetched.data
+          p = refetched.data
+        }
+      }
+    } catch {
+      // Best-effort — fall through with whatever we have.
+    }
+  }
   const socials = (p.socials as Record<string, string>) ?? {}
   const selected_goals = (p.selected_goals as string[]) ?? []
 
@@ -162,11 +192,11 @@ export default async function ProfilePage({ searchParams }: PageProps) {
         <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
           <p className="text-eyebrow text-primary">NILiance</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            {p.niliance_user_id
-              ? 'Connected. Pull your latest NILiance profile data in with one click.'
+            {isNilianceLinked
+              ? 'Connected. Your NILiance profile data is pulled in automatically — or sync it now.'
               : "Connect to manage opportunities, get paid through NILiance, and have your profile data sync automatically. Don't have an account? We'll auto-create one when you save your profile."}
           </p>
-          {p.niliance_user_id ? <NilianceSyncButton /> : <NilianceConnectButton />}
+          {isNilianceLinked ? <NilianceSyncButton /> : <NilianceConnectButton />}
         </div>
 
         <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { env } from '@/lib/env'
 import { createServiceClient } from '@/lib/supabase/server'
 import { listSharetribeOpportunities } from '@/lib/opportunities'
+import { pullProfileFromNiliance } from '@/lib/niliance'
 
 /**
  * NILiance inbound poll — Vercel cron target.
@@ -93,11 +94,32 @@ export async function GET(request: NextRequest) {
     .eq('id', 1)
 
   // ── Job 2: user profile inbound sync ────────────────────────────────
-  // Process up to 25 linked users per cron tick to stay within Vercel's
-  // serverless time budget. Cursor wraps when exhausted.
-  // (Stubbed for now — full Sharetribe users.show + field mapping is in
-  //  lib/niliance.ts and ports incrementally. The schema + cursor are
-  //  in place so we can fill it in without another migration.)
+  // Pull NILiance data into the profiles of linked users that are still
+  // sparse (no sport yet). Bounded to 25 per tick; a profile drops out of
+  // the query once it has data, so this self-limits.
+  try {
+    const { data: linked } = await supabase
+      .from('profiles')
+      .select('id, niliance_user_id')
+      .or('niliance_user_id.not.is.null,niliance_link_status.eq.linked')
+      .is('sport', null)
+      .limit(25)
+
+    for (const u of linked ?? []) {
+      try {
+        const res = await pullProfileFromNiliance({
+          userId: u.id,
+          stUserId: (u as { niliance_user_id?: string | null }).niliance_user_id ?? null,
+        })
+        if (res.ok) result.user_sync.processed += 1
+        else result.user_sync.errors += 1
+      } catch {
+        result.user_sync.errors += 1
+      }
+    }
+  } catch {
+    // Non-fatal — opportunity sync above is the primary job.
+  }
 
   await supabase
     .from('niliance_poll_state')
