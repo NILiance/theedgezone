@@ -72,6 +72,9 @@ export default async function PublicEpkPage({ params, searchParams }: PageProps)
       : {
           primary: typeof theme.primary === 'string' ? theme.primary : '#C8A84E',
           secondary: typeof theme.secondary === 'string' ? theme.secondary : '#000000',
+          mode: theme.mode === 'light' ? 'light' : 'dark',
+          font_heading: typeof theme.font_heading === 'string' ? theme.font_heading : undefined,
+          font_body: typeof theme.font_body === 'string' ? theme.font_body : undefined,
         }
   const social = (epk.social ?? {}) as Record<string, string>
   const siteData: SiteData = { siteId: epk.id }

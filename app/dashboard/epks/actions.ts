@@ -23,6 +23,8 @@ const settingsSchema = z.object({
   tagline: z.string().max(240).optional(),
   primary: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  mode: z.enum(['dark', 'light']).optional(),
+  font_heading: z.string().max(80).optional(),
 })
 
 export async function updateEpkSettings(formData: FormData) {
@@ -33,15 +35,24 @@ export async function updateEpkSettings(formData: FormData) {
     tagline: formData.get('tagline') || undefined,
     primary: formData.get('primary'),
     secondary: formData.get('secondary'),
+    mode: formData.get('mode') || undefined,
+    font_heading: formData.get('font_heading') || undefined,
   })
   if (!parsed.success) throw new Error(parsed.error.errors[0]!.message)
+  const fontHeading = parsed.data.font_heading || 'Inter'
   const supabase = await createClient()
   const { error } = await supabase
     .from('epks')
     .update({
       display_name: parsed.data.display_name ?? null,
       tagline: parsed.data.tagline ?? null,
-      theme: { primary: parsed.data.primary, secondary: parsed.data.secondary },
+      theme: {
+        primary: parsed.data.primary,
+        secondary: parsed.data.secondary,
+        mode: parsed.data.mode ?? 'dark',
+        font_heading: fontHeading,
+        font_body: fontHeading,
+      },
     })
     .eq('id', parsed.data.epk_id)
     .eq('user_id', user.id)

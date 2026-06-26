@@ -29,6 +29,14 @@ export interface SiteData {
   guestbookEntries?: Array<{ id: string; display_name: string; message: string; created_at: string; block_id: string | null }>
 }
 
+interface SimpleTheme {
+  primary: string
+  secondary: string
+  mode?: 'dark' | 'light'
+  font_heading?: string
+  font_body?: string
+}
+
 interface BlockRendererProps {
   block: SiteBlock
   theme: { primary: string; secondary: string } | ThemeTokens
@@ -43,23 +51,27 @@ function isFullTokens(t: BlockRendererProps['theme']): t is ThemeTokens {
 
 function asTokens(t: BlockRendererProps['theme']): ThemeTokens {
   if (isFullTokens(t)) return t
-  // Promote the (primary, secondary) pair to a minimal ThemeTokens shape so
-  // downstream blocks don't need to branch.
+  // Promote the (primary, secondary[, mode, font]) shape to a full ThemeTokens
+  // so downstream blocks don't need to branch. Honors light/dark + font choice.
+  const s = t as SimpleTheme
+  const light = s.mode === 'light'
+  const fontHeading = s.font_heading || 'Inter'
+  const fontBody = s.font_body || fontHeading
   return {
-    mode: 'dark',
+    mode: light ? 'light' : 'dark',
     primary: t.primary,
     secondary: t.secondary,
     accent: t.primary,
-    bg_color: t.secondary,
-    card_bg: '#171717',
-    border_color: '#262626',
-    text_color: '#ffffff',
-    heading_color: '#ffffff',
-    muted_color: '#a3a3a3',
+    bg_color: light ? '#ffffff' : t.secondary,
+    card_bg: light ? '#f5f5f5' : '#171717',
+    border_color: light ? '#e5e5e5' : '#262626',
+    text_color: light ? '#0a0a0a' : '#ffffff',
+    heading_color: light ? '#0a0a0a' : '#ffffff',
+    muted_color: light ? '#525252' : '#a3a3a3',
     nav_bg: t.secondary,
-    nav_text: '#ffffff',
-    font_heading: 'Inter',
-    font_body: 'Inter',
+    nav_text: light ? '#0a0a0a' : '#ffffff',
+    font_heading: fontHeading,
+    font_body: fontBody,
     heading_weight: 900,
     body_weight: 400,
     base_font_size: 16,

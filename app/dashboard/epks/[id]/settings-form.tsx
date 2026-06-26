@@ -12,9 +12,27 @@ interface Props {
   tagline: string | null
   primary: string
   secondary: string
+  mode?: string
+  fontHeading?: string
 }
 
-export function EpkSettingsForm({ epkId, displayName, tagline, primary, secondary }: Props) {
+const FONT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'Inter', label: 'Inter (default)' },
+  { value: 'system-ui', label: 'System' },
+  { value: 'Georgia, serif', label: 'Serif' },
+  { value: 'ui-monospace, monospace', label: 'Monospace' },
+  { value: '"Arial Narrow", system-ui, sans-serif', label: 'Condensed' },
+]
+
+export function EpkSettingsForm({
+  epkId,
+  displayName,
+  tagline,
+  primary,
+  secondary,
+  mode,
+  fontHeading,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +81,33 @@ export function EpkSettingsForm({ epkId, displayName, tagline, primary, secondar
             <div>
               <Label htmlFor="secondary">Secondary color</Label>
               <Input id="secondary" name="secondary" type="color" defaultValue={secondary} className="h-10 w-16 p-1" />
+            </div>
+            <div>
+              <Label htmlFor="mode">Appearance</Label>
+              <select
+                id="mode"
+                name="mode"
+                defaultValue={mode === 'light' ? 'light' : 'dark'}
+                className="mt-1 flex h-10 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 text-sm"
+              >
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="font_heading">Font</Label>
+              <select
+                id="font_heading"
+                name="font_heading"
+                defaultValue={fontHeading || 'Inter'}
+                className="mt-1 flex h-10 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 text-sm"
+              >
+                {FONT_OPTIONS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}

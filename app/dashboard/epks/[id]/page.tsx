@@ -36,7 +36,24 @@ export default async function EpkEditorPage({ params }: PageProps) {
     props: (b.props ?? {}) as Record<string, unknown>,
   }))
 
-  const tokens: ThemeTokens = { ...defaultTokens(), ...(epk.theme as object) } as ThemeTokens
+  const themeObj = (epk.theme ?? {}) as Record<string, unknown>
+  const lightMode = themeObj.mode === 'light'
+  const tokens: ThemeTokens = {
+    ...defaultTokens(),
+    ...(epk.theme as object),
+    // The saved EPK theme only stores primary/secondary/mode/font — derive the
+    // light-mode surface colors so the editor preview matches the public page.
+    ...(lightMode
+      ? {
+          bg_color: '#ffffff',
+          card_bg: '#f5f5f5',
+          border_color: '#e5e5e5',
+          text_color: '#0a0a0a',
+          heading_color: '#0a0a0a',
+          muted_color: '#525252',
+        }
+      : {}),
+  } as ThemeTokens
   const social = (epk.social ?? {}) as Record<string, string>
 
   const { data: shareLinks } = await supabase
@@ -102,6 +119,8 @@ export default async function EpkEditorPage({ params }: PageProps) {
         tagline={epk.tagline ?? null}
         primary={tokens.primary}
         secondary={tokens.secondary}
+        mode={tokens.mode}
+        fontHeading={tokens.font_heading}
       />
 
       <SharePanel epkId={epk.id} publicUrl={publicUrl} shareLinks={shareLinks ?? []} />
