@@ -117,6 +117,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <ScoreRing score={nilfluenceScore} size={88} thickness={8} label="NILfluence" />
             </Link>
           )}
+          <Link href="/dashboard/assets">
+            <Button size="sm" variant="outline">
+              ↓ My Assets
+            </Button>
+          </Link>
           <Link href="/dashboard/profile">
             <Button size="sm" variant="outline">
               My Profile
