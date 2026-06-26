@@ -14,26 +14,42 @@ export default async function StoreManagerPage({ params }: PageProps) {
   const user = await requireUser()
   const { id } = await params
   const supabase = await createClient()
-  const [{ data: store }, { data: products }, { data: orders }] = await Promise.all([
-    supabase.from('stores').select('*').eq('id', id).single(),
-    supabase
-      .from('store_products')
-      .select(
-        'id, slug, name, description, price_cents, currency, inventory, primary_image_url, tags, active, position, compare_at_cents, cost_cents, variants'
-      )
-      .eq('store_id', id)
-      .order('position', { ascending: true })
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('store_orders')
-      .select(
-        'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at, quantity, variant_label'
-      )
-      .eq('store_id', id)
-      .order('created_at', { ascending: false })
-      .limit(50),
-  ])
+  const [{ data: store }, { data: products }, { data: orders }, { data: brand }] =
+    await Promise.all([
+      supabase.from('stores').select('*').eq('id', id).single(),
+      supabase
+        .from('store_products')
+        .select(
+          'id, slug, name, description, price_cents, currency, inventory, primary_image_url, tags, active, position, compare_at_cents, cost_cents, variants'
+        )
+        .eq('store_id', id)
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('store_orders')
+        .select(
+          'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at, quantity, variant_label'
+        )
+        .eq('store_id', id)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      // Latest finalized brand logo — the default source for POD mockups.
+      supabase
+        .from('brand_designs')
+        .select('final_logo_url, admin_final_logo_url')
+        .eq('user_id', user.id)
+        .not('final_logo_url', 'is', null)
+        .order('finalized_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
   if (!store || store.user_id !== user.id) return <MissingStoreState />
+
+  const brandLogoUrl =
+    (brand as { admin_final_logo_url?: string | null; final_logo_url?: string | null } | null)
+      ?.admin_final_logo_url ??
+    (brand as { final_logo_url?: string | null } | null)?.final_logo_url ??
+    ''
 
   return (
     <div className="space-y-6">
@@ -76,6 +92,7 @@ export default async function StoreManagerPage({ params }: PageProps) {
       </div>
 
       <StoreManagerClient
+        brandLogoUrl={brandLogoUrl}
         store={{
           id: store.id,
           name: store.name,

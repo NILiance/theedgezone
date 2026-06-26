@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { provisionStore } from '@/lib/provisioning'
+import { composeMockup } from '@/lib/store-mockup'
 
 function slugify(s: string): string {
   return s
@@ -213,4 +214,78 @@ export async function deleteStoreProduct(
   revalidatePath(`/dashboard/stores/${prod.store_id}`)
   revalidatePath(`/store/${prod.store_id}`)
   return { ok: true }
+}
+
+// ── POD mockup compositor ────────────────────────────────────────────────────
+const mockupSchema = z.object({
+  store_id: z.string().uuid(),
+  blank_url: z.string().url().max(1000),
+  logo_url: z.string().url().max(1000),
+  placement: z.enum(['front_chest', 'front_center', 'back']),
+  size_pct: z.coerce.number().int().min(10).max(70).default(30),
+  knockout_white: z.boolean().default(true),
+})
+
+/**
+ * Composite the brand logo onto a product blank and return the uploaded PNG
+ * URL. The client then uses it as the product image. Logo + blank are fetched
+ * server-side (http/https only) and rendered with Sharp.
+ */
+export async function generateProductMockup(input: {
+  store_id: string
+  blank_url: string
+  logo_url: string
+  placement: string
+  size_pct: number
+  knockout_white: boolean
+}): Promise<{ ok: boolean; url?: string; message?: string }> {
+  const user = await requireUser()
+  const parsed = mockupSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
+
+  const supabase = await createClient()
+  const { data: store } = await supabase
+    .from('stores')
+    .select('id, user_id')
+    .eq('id', parsed.data.store_id)
+    .single()
+  if (!store || store.user_id !== user.id) return { ok: false, message: 'Store not found' }
+
+  const fetchImage = async (url: string): Promise<Buffer | null> => {
+    if (!/^https?:\/\//i.test(url)) return null
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return null
+      return Buffer.from(await res.arrayBuffer())
+    } catch {
+      return null
+    }
+  }
+  const [blankBuffer, logoBuffer] = await Promise.all([
+    fetchImage(parsed.data.blank_url),
+    fetchImage(parsed.data.logo_url),
+  ])
+  if (!blankBuffer) return { ok: false, message: 'Could not load the product blank image.' }
+  if (!logoBuffer) return { ok: false, message: 'Could not load the logo image.' }
+
+  let png: Buffer
+  try {
+    png = await composeMockup({
+      blankBuffer,
+      logoBuffer,
+      placement: parsed.data.placement,
+      sizePct: parsed.data.size_pct,
+      knockoutWhite: parsed.data.knockout_white,
+    })
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Mockup render failed' }
+  }
+
+  const path = `${user.id}/store-mockups/${store.id}/mockup-${Date.now()}.png`
+  const { error: upErr } = await supabase.storage
+    .from('site-assets')
+    .upload(path, png, { contentType: 'image/png', upsert: true })
+  if (upErr) return { ok: false, message: upErr.message }
+  const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
+  return { ok: true, url: pub.publicUrl }
 }

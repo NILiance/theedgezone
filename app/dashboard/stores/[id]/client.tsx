@@ -9,7 +9,14 @@ import {
   updateStoreSettings,
   upsertStoreProduct,
   deleteStoreProduct,
+  generateProductMockup,
 } from '../actions'
+
+const MOCKUP_PLACEMENTS = [
+  { id: 'front_chest', label: 'Left chest (small)' },
+  { id: 'front_center', label: 'Center (large)' },
+  { id: 'back', label: 'Back (centered)' },
+] as const
 
 interface Store {
   id: string
@@ -67,9 +74,10 @@ interface Props {
   store: Store
   products: Product[]
   orders: Order[]
+  brandLogoUrl: string
 }
 
-export function StoreManagerClient({ store, products, orders }: Props) {
+export function StoreManagerClient({ store, products, orders, brandLogoUrl }: Props) {
   const [section, setSection] = useState<'products' | 'settings' | 'orders'>('products')
   return (
     <div className="space-y-5">
@@ -96,14 +104,24 @@ export function StoreManagerClient({ store, products, orders }: Props) {
         ))}
       </div>
 
-      {section === 'products' && <ProductsTab storeId={store.id} products={products} />}
+      {section === 'products' && (
+        <ProductsTab storeId={store.id} products={products} brandLogoUrl={brandLogoUrl} />
+      )}
       {section === 'settings' && <SettingsTab store={store} />}
       {section === 'orders' && <OrdersTab orders={orders} products={products} />}
     </div>
   )
 }
 
-function ProductsTab({ storeId, products }: { storeId: string; products: Product[] }) {
+function ProductsTab({
+  storeId,
+  products,
+  brandLogoUrl,
+}: {
+  storeId: string
+  products: Product[]
+  brandLogoUrl: string
+}) {
   const [editing, setEditing] = useState<Product | 'new' | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -112,6 +130,7 @@ function ProductsTab({ storeId, products }: { storeId: string; products: Product
       <ProductEditor
         storeId={storeId}
         product={editing === 'new' ? null : editing}
+        brandLogoUrl={brandLogoUrl}
         onClose={() => setEditing(null)}
       />
     )
@@ -195,16 +214,57 @@ function ProductsTab({ storeId, products }: { storeId: string; products: Product
 function ProductEditor({
   storeId,
   product,
+  brandLogoUrl,
   onClose,
 }: {
   storeId: string
   product: Product | null
+  brandLogoUrl: string
   onClose: () => void
 }) {
   const [imageUrl, setImageUrl] = useState(product?.primary_image_url ?? '')
   const [variants, setVariants] = useState<Variant[]>(product?.variants ?? [])
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+
+  // POD mockup state
+  const [logoUrl, setLogoUrl] = useState(brandLogoUrl)
+  const [placement, setPlacement] = useState<string>('front_chest')
+  const [sizePct, setSizePct] = useState(30)
+  const [knockoutWhite, setKnockoutWhite] = useState(true)
+  const [mockupBusy, setMockupBusy] = useState(false)
+  const [mockupError, setMockupError] = useState<string | null>(null)
+  const [mockupPreview, setMockupPreview] = useState<string | null>(null)
+
+  const runMockup = async () => {
+    setMockupError(null)
+    setMockupPreview(null)
+    if (!imageUrl) {
+      setMockupError('Set a product image (the blank) first.')
+      return
+    }
+    if (!logoUrl) {
+      setMockupError('Add a logo image to place.')
+      return
+    }
+    setMockupBusy(true)
+    try {
+      const res = await generateProductMockup({
+        store_id: storeId,
+        blank_url: imageUrl,
+        logo_url: logoUrl,
+        placement,
+        size_pct: sizePct,
+        knockout_white: knockoutWhite,
+      })
+      if (res.ok && res.url) setMockupPreview(res.url)
+      else setMockupError(res.message ?? 'Mockup failed')
+    } catch (err) {
+      setMockupError(err instanceof Error ? err.message : 'Mockup failed')
+    } finally {
+      setMockupBusy(false)
+    }
+  }
 
   const addVariant = () =>
     setVariants((v) => [...v, { size: '', color: '', sku: '', price_cents: null, inventory: null }])
@@ -315,6 +375,96 @@ function ProductEditor({
         <div className="sm:col-span-2">
           <Label>Product image</Label>
           <AssetPicker value={imageUrl} onChange={setImageUrl} accept="image/*" />
+        </div>
+
+        {/* POD mockup compositor */}
+        <div className="sm:col-span-2 rounded-[var(--radius)] border border-border bg-panel/30 p-3">
+          <p className="text-display text-xs font-bold uppercase tracking-widest text-accent">
+            Logo mockup
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Drop your brand logo onto the product image above to make a print-on-demand mockup,
+            then use it as the product photo.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-[11px]">Logo to place</Label>
+              <AssetPicker value={logoUrl} onChange={setLogoUrl} accept="image/*" />
+              {!logoUrl && (
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  No brand logo found — pick or upload one.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <div>
+                <Label htmlFor="mk_placement" className="text-[11px]">
+                  Placement
+                </Label>
+                <select
+                  id="mk_placement"
+                  value={placement}
+                  onChange={(e) => setPlacement(e.target.value)}
+                  className="flex h-9 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 text-xs"
+                >
+                  {MOCKUP_PLACEMENTS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="mk_size" className="text-[11px]">
+                  Logo size — {sizePct}% of width
+                </Label>
+                <input
+                  id="mk_size"
+                  type="range"
+                  min={10}
+                  max={70}
+                  value={sizePct}
+                  onChange={(e) => setSizePct(Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-[11px]">
+                <input
+                  type="checkbox"
+                  checked={knockoutWhite}
+                  onChange={(e) => setKnockoutWhite(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                Remove white background from the logo
+              </label>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={runMockup} disabled={mockupBusy}>
+              {mockupBusy ? 'Rendering…' : 'Generate mockup'}
+            </Button>
+            {mockupError && <span className="text-[11px] text-destructive">{mockupError}</span>}
+          </div>
+          {mockupPreview && (
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mockupPreview}
+                alt="Mockup preview"
+                className="h-40 w-40 rounded-[var(--radius-sm)] border border-border object-contain"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setImageUrl(mockupPreview)
+                  setMockupPreview(null)
+                }}
+              >
+                Use as product image
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Variants (size / color) */}
