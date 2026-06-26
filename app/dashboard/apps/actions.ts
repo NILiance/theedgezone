@@ -117,3 +117,29 @@ export async function updateAppScreens(formData: FormData): Promise<{
   revalidatePath(`/dashboard/apps/${parsed.data.app_id}`)
   return { ok: true }
 }
+
+export async function updateAppStoreListing(
+  formData: FormData
+): Promise<{ ok: boolean; message?: string }> {
+  const user = await requireUser()
+  const appId = String(formData.get('app_id') ?? '')
+  if (!appId) return { ok: false, message: 'Missing app id' }
+  let listing: Record<string, unknown> = {}
+  try {
+    const parsed = JSON.parse(String(formData.get('store_listing') ?? '{}'))
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      listing = parsed as Record<string, unknown>
+    }
+  } catch {
+    return { ok: false, message: 'Listing must be a JSON object.' }
+  }
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('talent_apps')
+    .update({ store_listing: listing })
+    .eq('id', appId)
+    .eq('user_id', user.id)
+  if (error) return { ok: false, message: error.message }
+  revalidatePath(`/dashboard/apps/${appId}`)
+  return { ok: true }
+}

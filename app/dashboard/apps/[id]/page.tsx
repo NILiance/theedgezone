@@ -87,6 +87,11 @@ export default async function AppConfigPage({ params }: PageProps) {
                 content?: Record<string, unknown>
               }>)
             : [],
+          store_listing:
+            ((app as { store_listing?: Record<string, unknown> }).store_listing as Record<
+              string,
+              unknown
+            >) ?? {},
         }}
       />
     </div>
