@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireUser, requireAdmin } from '@/lib/auth'
 import { generateLogoConcepts } from '@/lib/gemini-image'
 import { REFINEMENT_SEEDS, type BrandPrefs } from '@/lib/brand-prompts'
 import { provisionBrandDesign, slugify } from '@/lib/provisioning'
@@ -14,9 +14,13 @@ import { uploadZipToDrive, gdriveConfigured } from '@/lib/gdrive'
 /**
  * Create a new brand design row + redirect to the studio.
  * Prefills brand_name / sport / colors from the user's profile.
+ *
+ * Admin-only: talent get a Brand Design by PURCHASING it (Stripe checkout →
+ * webhook → provisionBrandDesign). This direct, unpaid path exists only so
+ * admins can spin up test brands.
  */
 export async function createBrandDesign(formData?: FormData) {
-  const user = await requireUser()
+  const user = await requireAdmin()
   const supabase = await createClient()
   const fromProfile = formData ? formData.get('from_profile') !== 'no' : true
   const result = await provisionBrandDesign(supabase, user.id, undefined, { fromProfile })

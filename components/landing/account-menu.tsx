@@ -10,11 +10,12 @@ interface AccountMenuProps {
   isAdmin: boolean
 }
 
+// Purchased services (Brand Design, Sites, …) are reached from the dashboard's
+// "My Products" — they intentionally do NOT live in this menu, so nobody can
+// open them without buying first.
 const ITEMS = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Profile', href: '/dashboard/profile' },
-  { label: 'My Sites', href: '/dashboard/sites' },
-  { label: 'Brand Design', href: '/dashboard/brand-design' },
 ]
 
 export function AccountMenu({ displayName, isAdmin }: AccountMenuProps) {

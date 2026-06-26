@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { requireUser } from '@/lib/auth'
+import { requireUser, getUserContext } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,6 +25,7 @@ interface PageProps {
 export default async function BrandDesignIndexPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const user = await requireUser()
+  const { isAdmin } = await getUserContext()
 
   // Synchronous fallback for the Stripe webhook. Two flows redirect
   // here: bd_additional (new brand) and bd_additional_final (clone of
@@ -97,13 +98,17 @@ export default async function BrandDesignIndexPage({ searchParams }: PageProps) 
         </div>
         {hasBrand ? (
           <AdditionalBrandButton priceLabel={additionalPriceLabel} />
-        ) : (
+        ) : isAdmin ? (
           <BuildFromPicker
             action={createBrandDesign}
             what="Brand"
             profileSections={['name', 'sport', 'school', 'jersey number', 'brand colors']}
-            triggerLabel="+ Start your brand"
+            triggerLabel="+ Start your brand (admin)"
           />
+        ) : (
+          <Link href="/services/personal-brand-design">
+            <Button>Purchase Personal Brand Design →</Button>
+          </Link>
         )}
       </div>
 
@@ -113,10 +118,23 @@ export default async function BrandDesignIndexPage({ searchParams }: PageProps) 
             <CardTitle>No brands yet</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Click <span className="text-display font-bold text-foreground">+ Start new brand</span> to
-              generate your first 20 logo concepts. We&apos;ll pre-fill from your profile.
-            </p>
+            {isAdmin ? (
+              <p className="text-sm text-muted-foreground">
+                Click{' '}
+                <span className="text-display font-bold text-foreground">+ Start your brand</span> to
+                generate your first 20 logo concepts. We&apos;ll pre-fill from your profile.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Personal Brand Design is a purchased service. Once you check out, your brand studio
+                  unlocks here — 20 logo concepts pre-filled from your profile, plus the full brand kit.
+                </p>
+                <Link href="/services/personal-brand-design">
+                  <Button>Purchase Personal Brand Design →</Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

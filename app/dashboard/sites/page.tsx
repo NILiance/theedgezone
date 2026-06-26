@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireUser } from '@/lib/auth'
+import { requireUser, getUserContext } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,7 @@ export const metadata = { title: 'Sites' }
 
 export default async function SitesIndexPage() {
   const user = await requireUser()
+  const { isAdmin } = await getUserContext()
   const supabase = await createClient()
   const { data: sites } = await supabase
     .from('sites')
@@ -36,12 +37,18 @@ export default async function SitesIndexPage() {
             <span className="text-display text-foreground">yourname.MyTalentSite.com</span>.
           </p>
         </div>
-        <BuildFromPicker
-          action={createSite}
-          what="Site"
-          profileSections={['display name', 'bio', 'sport', 'brand colors']}
-          triggerLabel="+ New site"
-        />
+        {isAdmin ? (
+          <BuildFromPicker
+            action={createSite}
+            what="Site"
+            profileSections={['display name', 'bio', 'sport', 'brand colors']}
+            triggerLabel="+ New site (admin)"
+          />
+        ) : (
+          <Link href="/services/personal-website">
+            <Button>Purchase Personal Website →</Button>
+          </Link>
+        )}
       </div>
 
       {(!sites || sites.length === 0) && (
@@ -50,10 +57,22 @@ export default async function SitesIndexPage() {
             <CardTitle>No sites yet</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Click <strong>+ New site</strong> to scaffold a draft. Pre-fills colors + bio from
-              your profile.
-            </p>
+            {isAdmin ? (
+              <p className="text-sm text-muted-foreground">
+                Click <strong>+ New site</strong> to scaffold a draft. Pre-fills colors + bio from
+                your profile.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Personal Website is a purchased service. Once you check out, your site builder
+                  unlocks here — pre-filled with your colors and bio.
+                </p>
+                <Link href="/services/personal-website">
+                  <Button>Purchase Personal Website →</Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

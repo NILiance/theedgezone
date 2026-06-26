@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { requireUser } from '@/lib/auth'
+import { requireUser, requireAdmin } from '@/lib/auth'
 import { provisionSite } from '@/lib/provisioning'
 import { defaultPropsFor } from '@/lib/site-builder/block-types'
 import { THEME_PRESETS_BY_ID, type ThemeTokens } from '@/lib/site-builder/theme-presets'
@@ -13,8 +13,10 @@ import { SITE_TEMPLATES_BY_ID, templateTokens } from '@/lib/site-builder/site-te
 import { seedFor } from '@/lib/site-builder/page-templates'
 import { env } from '@/lib/env'
 
+// Admin-only: talent get a Site by PURCHASING it (Stripe checkout → webhook →
+// provisionSite). This direct, unpaid path exists only for admin test sites.
 export async function createSite(formData?: FormData) {
-  const user = await requireUser()
+  const user = await requireAdmin()
   const supabase = await createClient()
   const fromProfile = formData ? formData.get('from_profile') !== 'no' : true
   const result = await provisionSite(supabase, user.id, undefined, { fromProfile })
