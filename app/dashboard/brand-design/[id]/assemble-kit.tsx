@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import { DownloadLink } from '@/components/download-link'
 import { assembleAndUploadKit } from '@/app/dashboard/brand-design/actions'
 
 interface Props {
@@ -62,14 +63,13 @@ export function AssembleKitButton({ brandId, existingKitUrl, autoBuildError }: P
                 : 'Assemble brand kit'}
         </Button>
         {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <DownloadLink
+            url={url}
+            filename="brand-kit.zip"
             className="text-display rounded-[var(--radius-sm)] border border-success bg-success/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-success hover:bg-success/20"
           >
             ⬇ Download brand kit
-          </a>
+          </DownloadLink>
         )}
         {error && <p className="text-xs text-destructive">{error}</p>}
       </div>

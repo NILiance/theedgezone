@@ -396,34 +396,14 @@ export async function selectFinalConcept(formData: FormData) {
     .update({ is_selected: true })
     .eq('id', parsed.data.concept_id)
 
-  // Stamp the brand_design with the chosen URL + final status.
-  // We extract supplementary colors from the chosen logo for accent/neutral
-  // ONLY. We never touch primary/secondary — the talent picked those
-  // deliberately (e.g. black + orange) and auto-extraction muddies clean
-  // palettes into browns. Failure is non-blocking. Lazy import keeps sharp
-  // out of the module init graph so the page doesn't 500 on Vercel when
-  // sharp's native binding is slow to resolve.
-  let extracted: {
-    primary: string | null
-    secondary: string | null
-    accent: string | null
-    neutral: string | null
-  } | null = null
-  try {
-    const { extractPaletteFromUrl } = await import('@/lib/color-extract')
-    extracted = await extractPaletteFromUrl(concept.image_url)
-  } catch (err) {
-    console.error('[brand-design] color extraction failed', err)
-  }
-
+  // The talent's palette IS the two colors they chose (primary + secondary).
+  // We don't extract or derive extra accent/neutral colors — they asked for
+  // their two colors, not four.
   const update: Record<string, unknown> = {
     status: 'selected',
     final_logo_url: concept.image_url,
     finalized_at: new Date().toISOString(),
   }
-  // Only accent + neutral — never primary/secondary (talent's chosen colors).
-  if (extracted?.accent) update.accent_color = extracted.accent
-  if (extracted?.neutral) update.neutral_color = extracted.neutral
 
   await supabase.from('brand_designs').update(update).eq('id', concept.brand_design_id)
 

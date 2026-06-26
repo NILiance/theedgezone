@@ -28,6 +28,7 @@ import { BrandSwitcher } from './brand-switcher'
 import { ConceptPackButton } from './concept-pack-button'
 import { getTradingCardTiers } from '@/lib/trading-cards'
 import { RenderBoundary } from '@/components/render-boundary'
+import { DownloadLink } from '@/components/download-link'
 
 // The brand-kit auto-assemble (sharp + JSZip + Drive/Storage uploads)
 // can take 30-60s end-to-end. Default Vercel limit on Hobby is 10s,
@@ -668,8 +669,6 @@ function FinalLogoTab({
               {[
                 { label: 'Primary', hex: brand.primary_color },
                 { label: 'Secondary', hex: brand.secondary_color },
-                { label: 'Accent', hex: (brand as { accent_color?: string | null }).accent_color },
-                { label: 'Neutral', hex: (brand as { neutral_color?: string | null }).neutral_color },
               ]
                 .filter((c): c is { label: string; hex: string } => Boolean(c.hex))
                 .map((c) => (
@@ -707,13 +706,13 @@ function FinalLogoTab({
               />
             </div>
           </div>
-          <a
-            href={selectedConcept.image_url}
-            download
+          <DownloadLink
+            url={selectedConcept.image_url}
+            filename={`${brand.brand_name ?? 'logo'}-logo.png`}
             className="text-display self-start rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-2 text-xs font-bold uppercase tracking-widest hover:bg-panel"
           >
             ⬇ Download PNG
-          </a>
+          </DownloadLink>
         </div>
       </section>
       <p className="text-xs text-muted-foreground">
@@ -780,8 +779,6 @@ function BrandGuideTab({ brand, hasFinal }: { brand: any; hasFinal: boolean }) {
   const swatches = [
     { label: 'Primary', hex: brand.primary_color },
     { label: 'Secondary', hex: brand.secondary_color },
-    { label: 'Accent', hex: brand.accent_color },
-    { label: 'Neutral', hex: brand.neutral_color },
   ].filter((s) => Boolean(s.hex))
   return (
     <div className="space-y-6">
@@ -838,14 +835,13 @@ function KitFileGrid({ files, kitUrl }: { files: KitFile[]; kitUrl: string | nul
         </CardHeader>
         {kitUrl && (
           <CardContent>
-            <a
-              href={kitUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <DownloadLink
+              url={kitUrl}
+              filename="brand-kit.zip"
               className="text-display inline-block rounded-[var(--radius-sm)] bg-success/20 border border-success/40 px-3 py-2 text-xs font-bold uppercase tracking-widest text-success"
             >
               ⬇ Download brand kit ZIP
-            </a>
+            </DownloadLink>
           </CardContent>
         )}
       </Card>
@@ -862,14 +858,13 @@ function KitFileGrid({ files, kitUrl }: { files: KitFile[]; kitUrl: string | nul
           </p>
         </div>
         {kitUrl && (
-          <a
-            href={kitUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <DownloadLink
+            url={kitUrl}
+            filename="brand-kit.zip"
             className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-success"
           >
             ⬇ Download full ZIP
-          </a>
+          </DownloadLink>
         )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -908,13 +903,13 @@ function KitFileCard({ file }: { file: KitFile }) {
         <p className="mt-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">
           {file.shortMeta}
         </p>
-        <a
-          href={file.url}
-          download={file.name}
+        <DownloadLink
+          url={file.url}
+          filename={file.name}
           className="text-display mt-3 inline-block rounded-[var(--radius-sm)] bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
         >
           ⬇ Download
-        </a>
+        </DownloadLink>
       </div>
     </div>
   )
