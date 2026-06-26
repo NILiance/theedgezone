@@ -3,14 +3,17 @@
  * helpers. Templates are env-configurable (prod vs staging host); defaults match
  * the legacy production templates.
  *
- *   listing/opportunity : https://niliance.com/l/{slug}/{id}
- *   talent profile      : https://niliance.com/l/{slug}/{uuid}
+ *   listing/opportunity : https://niliance.com/l/{slug}/{id}/
+ *   talent profile      : https://niliance.com/l/{slug}/{uuid}/
  *   brand listing edit  : https://niliance.com/l/{slug}/{uuid}/edit/details
+ *
+ * Note the TRAILING SLASH on listing + profile URLs — that's the canonical
+ * Sharetribe form the legacy plugin linked to.
  */
 const LISTING_TPL =
-  process.env.NILIANCE_LISTING_URL_TEMPLATE || 'https://niliance.com/l/{slug}/{id}'
+  process.env.NILIANCE_LISTING_URL_TEMPLATE || 'https://niliance.com/l/{slug}/{id}/'
 const PROFILE_TPL =
-  process.env.NILIANCE_PROFILE_URL_TEMPLATE || 'https://niliance.com/l/{slug}/{uuid}'
+  process.env.NILIANCE_PROFILE_URL_TEMPLATE || 'https://niliance.com/l/{slug}/{uuid}/'
 export const NILIANCE_HOME = process.env.NILIANCE_HOME || 'https://niliance.com'
 
 export function slugify(s: string): string {
