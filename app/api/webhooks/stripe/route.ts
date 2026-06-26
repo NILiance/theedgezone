@@ -465,7 +465,7 @@ async function handleStoreOrderCompleted(
 
   const { data: existing } = await supabase
     .from('store_orders')
-    .select('id, status, product_id')
+    .select('id, status, product_id, quantity, variant_sku')
     .eq('id', orderId)
     .maybeSingle()
   if (!existing || existing.status === 'paid' || existing.status === 'fulfilled') return
@@ -480,18 +480,33 @@ async function handleStoreOrderCompleted(
     })
     .eq('id', orderId)
 
-  // Decrement inventory if tracked
+  // Decrement inventory if tracked — quantity- and variant-aware.
+  const qty = Math.max(1, Number((existing as { quantity?: number }).quantity ?? 1))
+  const variantSku = (existing as { variant_sku?: string | null }).variant_sku ?? null
   if (existing.product_id) {
     const { data: prod } = await supabase
       .from('store_products')
-      .select('inventory')
+      .select('inventory, variants')
       .eq('id', existing.product_id)
       .maybeSingle()
-    if (prod && typeof prod.inventory === 'number') {
-      await supabase
-        .from('store_products')
-        .update({ inventory: Math.max(0, prod.inventory - 1) })
-        .eq('id', existing.product_id)
+    if (prod) {
+      const patch: Record<string, unknown> = {}
+      if (typeof prod.inventory === 'number') {
+        patch.inventory = Math.max(0, prod.inventory - qty)
+      }
+      // Decrement the matching variant's stock inside the jsonb array.
+      if (variantSku && Array.isArray((prod as { variants?: unknown }).variants)) {
+        const variants = (prod as { variants: Array<Record<string, unknown>> }).variants
+        const next = variants.map((v) =>
+          v.sku === variantSku && typeof v.inventory === 'number'
+            ? { ...v, inventory: Math.max(0, (v.inventory as number) - qty) }
+            : v
+        )
+        patch.variants = next
+      }
+      if (Object.keys(patch).length > 0) {
+        await supabase.from('store_products').update(patch).eq('id', existing.product_id)
+      }
     }
   }
 }

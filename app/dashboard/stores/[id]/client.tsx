@@ -24,16 +24,26 @@ interface Store {
   contact_email: string
 }
 
+interface Variant {
+  size?: string
+  color?: string
+  sku?: string
+  price_cents?: number | null
+  inventory?: number | null
+}
+
 interface Product {
   id: string
   name: string
   description: string | null
   price_cents: number
   compare_at_cents: number | null
+  cost_cents: number | null
   currency: string
   inventory: number | null
   primary_image_url: string | null
   tags: string[]
+  variants: Variant[]
   active: boolean
 }
 
@@ -49,6 +59,8 @@ interface Order {
   tracking_number: string | null
   created_at: string
   paid_at: string | null
+  quantity: number
+  variant_label: string | null
 }
 
 interface Props {
@@ -190,11 +202,32 @@ function ProductEditor({
   onClose: () => void
 }) {
   const [imageUrl, setImageUrl] = useState(product?.primary_image_url ?? '')
+  const [variants, setVariants] = useState<Variant[]>(product?.variants ?? [])
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
+  const addVariant = () =>
+    setVariants((v) => [...v, { size: '', color: '', sku: '', price_cents: null, inventory: null }])
+  const updateVariant = (i: number, patch: Partial<Variant>) =>
+    setVariants((v) => v.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
+  const removeVariant = (i: number) => setVariants((v) => v.filter((_, idx) => idx !== i))
+
   const action = (fd: FormData) => {
     fd.set('primary_image_url', imageUrl)
+    // Clean variants: drop empties, auto-fill sku from size/color when blank.
+    const cleaned = variants
+      .filter((v) => (v.size || v.color || v.sku))
+      .map((v) => ({
+        size: v.size?.trim() || undefined,
+        color: v.color?.trim() || undefined,
+        sku:
+          v.sku?.trim() ||
+          [v.size, v.color].filter(Boolean).join('-').toLowerCase().replace(/\s+/g, '-') ||
+          undefined,
+        price_cents: v.price_cents ? Number(v.price_cents) : null,
+        inventory: v.inventory != null && `${v.inventory}` !== '' ? Number(v.inventory) : null,
+      }))
+    fd.set('variants', JSON.stringify(cleaned))
     setError(null)
     startTransition(async () => {
       const res = await upsertStoreProduct(fd)
@@ -257,6 +290,20 @@ function ProductEditor({
           />
         </div>
         <div>
+          <Label htmlFor="cost_cents">Your cost / unit (cents)</Label>
+          <Input
+            id="cost_cents"
+            name="cost_cents"
+            type="number"
+            min={0}
+            defaultValue={product?.cost_cents ?? ''}
+            placeholder="e.g. 1200"
+          />
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Supplier cost — used to compute your payout (sale − cost − fee).
+          </p>
+        </div>
+        <div>
           <Label htmlFor="tags">Tags (comma-sep)</Label>
           <Input
             id="tags"
@@ -268,6 +315,70 @@ function ProductEditor({
         <div className="sm:col-span-2">
           <Label>Product image</Label>
           <AssetPicker value={imageUrl} onChange={setImageUrl} accept="image/*" />
+        </div>
+
+        {/* Variants (size / color) */}
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <Label>Variants (size / color)</Label>
+            <Button type="button" size="sm" variant="outline" onClick={addVariant}>
+              + Add variant
+            </Button>
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Leave empty for a single one-size product. Price override is optional (blank = base
+            price). Inventory blank = unlimited.
+          </p>
+          {variants.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {variants.map((v, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-2 items-end gap-2 rounded-[var(--radius-sm)] border border-border bg-panel/30 p-2 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]"
+                >
+                  <Input
+                    placeholder="Size (M)"
+                    value={v.size ?? ''}
+                    onChange={(e) => updateVariant(i, { size: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="Color (Black)"
+                    value={v.color ?? ''}
+                    onChange={(e) => updateVariant(i, { color: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="Price ¢ (opt)"
+                    type="number"
+                    min={0}
+                    value={v.price_cents ?? ''}
+                    onChange={(e) =>
+                      updateVariant(i, { price_cents: e.target.value ? Number(e.target.value) : null })
+                    }
+                    className="h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="Stock (opt)"
+                    type="number"
+                    min={0}
+                    value={v.inventory ?? ''}
+                    onChange={(e) =>
+                      updateVariant(i, { inventory: e.target.value ? Number(e.target.value) : null })
+                    }
+                    className="h-8 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeVariant(i)}
+                    className="text-display rounded-[var(--radius-sm)] border border-destructive/40 bg-destructive/10 px-2 py-1 text-[10px] font-bold text-destructive"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <label className="flex items-center gap-2 sm:col-span-2">
           <input
@@ -427,7 +538,15 @@ function OrdersTab({ orders, products }: { orders: Order[]; products: Product[] 
                 <td className="px-3 py-2 text-xs">
                   {new Date(o.created_at).toLocaleString()}
                 </td>
-                <td className="px-3 py-2 text-xs">{p?.name ?? '—'}</td>
+                <td className="px-3 py-2 text-xs">
+                  {p?.name ?? '—'}
+                  {(o.variant_label || o.quantity > 1) && (
+                    <span className="text-muted-foreground">
+                      {o.variant_label ? ` · ${o.variant_label}` : ''}
+                      {o.quantity > 1 ? ` · ×${o.quantity}` : ''}
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-xs">
                   {o.buyer_name ?? '—'}
                   {o.buyer_email && (

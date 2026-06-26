@@ -19,7 +19,7 @@ export default async function StoreManagerPage({ params }: PageProps) {
     supabase
       .from('store_products')
       .select(
-        'id, slug, name, description, price_cents, currency, inventory, primary_image_url, tags, active, position, compare_at_cents'
+        'id, slug, name, description, price_cents, currency, inventory, primary_image_url, tags, active, position, compare_at_cents, cost_cents, variants'
       )
       .eq('store_id', id)
       .order('position', { ascending: true })
@@ -27,7 +27,7 @@ export default async function StoreManagerPage({ params }: PageProps) {
     supabase
       .from('store_orders')
       .select(
-        'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at'
+        'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at, quantity, variant_label'
       )
       .eq('store_id', id)
       .order('created_at', { ascending: false })
@@ -88,19 +88,43 @@ export default async function StoreManagerPage({ params }: PageProps) {
           logo_url: store.logo_url ?? '',
           contact_email: store.contact_email ?? '',
         }}
-        products={(products ?? []) as Array<{
+        products={(products ?? []).map((p) => ({
+          ...p,
+          cost_cents: (p as { cost_cents?: number | null }).cost_cents ?? null,
+          variants: Array.isArray((p as { variants?: unknown }).variants)
+            ? ((p as { variants: unknown[] }).variants as Array<{
+                size?: string
+                color?: string
+                sku?: string
+                price_cents?: number | null
+                inventory?: number | null
+              }>)
+            : [],
+        })) as Array<{
           id: string
           name: string
           description: string | null
           price_cents: number
           compare_at_cents: number | null
+          cost_cents: number | null
           currency: string
           inventory: number | null
           primary_image_url: string | null
           tags: string[]
+          variants: Array<{
+            size?: string
+            color?: string
+            sku?: string
+            price_cents?: number | null
+            inventory?: number | null
+          }>
           active: boolean
         }>}
-        orders={(orders ?? []) as Array<{
+        orders={(orders ?? []).map((o) => ({
+          ...o,
+          quantity: (o as { quantity?: number }).quantity ?? 1,
+          variant_label: (o as { variant_label?: string | null }).variant_label ?? null,
+        })) as Array<{
           id: string
           product_id: string | null
           buyer_email: string | null
@@ -112,6 +136,8 @@ export default async function StoreManagerPage({ params }: PageProps) {
           tracking_number: string | null
           created_at: string
           paid_at: string | null
+          quantity: number
+          variant_label: string | null
         }>}
       />
     </div>

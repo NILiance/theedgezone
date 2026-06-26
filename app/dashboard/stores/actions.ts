@@ -89,10 +89,24 @@ const productSchema = z.object({
   inventory: z
     .union([z.literal(''), z.coerce.number().int().min(0).max(10_000_000)])
     .transform((v) => (v === '' ? null : (v as number))),
+  cost_cents: z
+    .union([z.literal(''), z.coerce.number().int().min(0).max(10_000_000)])
+    .transform((v) => (v === '' ? null : (v as number))),
   primary_image_url: z.string().url().max(800).optional(),
   tags: z.string().max(500).optional(),
+  variants: z.string().max(20_000).optional(),
   active: z.coerce.boolean().default(true),
 })
+
+const variantSchema = z.array(
+  z.object({
+    size: z.string().max(60).optional(),
+    color: z.string().max(60).optional(),
+    sku: z.string().max(120).optional(),
+    price_cents: z.number().int().min(0).max(10_000_000).nullable().optional(),
+    inventory: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  })
+)
 
 export async function upsertStoreProduct(
   formData: FormData
@@ -106,11 +120,24 @@ export async function upsertStoreProduct(
     price_cents: formData.get('price_cents'),
     compare_at_cents: formData.get('compare_at_cents') ?? '',
     inventory: formData.get('inventory') ?? '',
+    cost_cents: formData.get('cost_cents') ?? '',
     primary_image_url: formData.get('primary_image_url') || undefined,
     tags: formData.get('tags') || undefined,
+    variants: formData.get('variants') || undefined,
     active: formData.get('active') === 'on' || formData.get('active') === 'true',
   })
   if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
+
+  // Parse + validate the variants JSON the editor serialized.
+  let variants: Array<Record<string, unknown>> = []
+  if (parsed.data.variants) {
+    try {
+      const v = variantSchema.safeParse(JSON.parse(parsed.data.variants))
+      if (v.success) variants = v.data
+    } catch {
+      /* ignore malformed — treat as no variants */
+    }
+  }
 
   const supabase = await createClient()
   // Ownership check
@@ -136,9 +163,11 @@ export async function upsertStoreProduct(
     description: parsed.data.description ?? null,
     price_cents: parsed.data.price_cents,
     compare_at_cents: parsed.data.compare_at_cents,
+    cost_cents: parsed.data.cost_cents,
     inventory: parsed.data.inventory,
     primary_image_url: parsed.data.primary_image_url ?? null,
     tags,
+    variants,
     active: parsed.data.active,
     updated_at: new Date().toISOString(),
   }

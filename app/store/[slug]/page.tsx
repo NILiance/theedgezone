@@ -63,7 +63,7 @@ export default async function PublicStorePage({ params, searchParams }: PageProp
   const { data: products } = await supabase
     .from('store_products')
     .select(
-      'id, slug, name, description, price_cents, compare_at_cents, currency, primary_image_url, inventory'
+      'id, slug, name, description, price_cents, compare_at_cents, currency, primary_image_url, inventory, variants'
     )
     .eq('store_id', store.id)
     .eq('active', true)
@@ -174,6 +174,19 @@ export default async function PublicStorePage({ params, searchParams }: PageProp
                         <StoreCheckoutButton
                           storeId={store.id}
                           productId={p.id}
+                          basePriceCents={p.price_cents}
+                          currency={p.currency}
+                          variants={
+                            Array.isArray((p as { variants?: unknown }).variants)
+                              ? ((p as { variants: unknown[] }).variants as Array<{
+                                  size?: string
+                                  color?: string
+                                  sku?: string
+                                  price_cents?: number | null
+                                  inventory?: number | null
+                                }>)
+                              : []
+                          }
                           buttonColor={store.primary_color}
                           buttonText={store.secondary_color}
                         />

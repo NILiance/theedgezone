@@ -67,6 +67,29 @@ export async function importSupplierProduct(
     .maybeSingle()
   const nextPosition = ((position?.position as number | undefined) ?? -1) + 1
 
+  // Normalize supplier variants into the canonical storefront shape
+  // ({ size, color, sku, price_cents, inventory }) so imported products
+  // drive the same variant picker + checkout as manually-built ones.
+  const rawVariants = Array.isArray(supplier.variants)
+    ? (supplier.variants as Array<Record<string, unknown>>)
+    : []
+  const variants = rawVariants
+    .map((v) => {
+      const price = v.price_cents ?? v.priceCents
+      const inv = v.inventory
+      return {
+        size: typeof v.size === 'string' ? v.size : undefined,
+        color: typeof v.color === 'string' ? v.color : undefined,
+        sku:
+          (typeof v.sku === 'string' && v.sku) ||
+          (typeof v.variantSku === 'string' && v.variantSku) ||
+          undefined,
+        price_cents: typeof price === 'number' ? price : null,
+        inventory: typeof inv === 'number' ? inv : null,
+      }
+    })
+    .filter((v) => v.sku || v.size || v.color)
+
   const { data: row, error } = await supabase
     .from('store_products')
     .insert({
@@ -86,7 +109,7 @@ export async function importSupplierProduct(
       supplier_sync_status: 'fresh',
       primary_image_url: supplier.primary_image_url ?? null,
       image_urls: supplier.image_urls ?? [],
-      variants: supplier.variants ?? [],
+      variants,
       position: nextPosition,
       active: true,
     })
