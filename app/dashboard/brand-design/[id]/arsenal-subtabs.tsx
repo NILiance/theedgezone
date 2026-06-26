@@ -2,33 +2,12 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import type { ArsenalSubtab } from './arsenal-subtab-meta'
 
-export type ArsenalSubtab =
-  | 'create'
-  // Visual Assets
-  | 'logo_animation'
-  | 'trading_card'
-  | 'social_avatars'
-  // Comms
-  | 'brand_voice'
-  | 'qr_code'
-  | 'email_signature'
-  // Print
-  | 'business_card'
-  | 'letterhead'
-  | 'thank_you_card'
-  | 'presentation'
-  | 'media_kit'
-  // Digital
-  | 'social_media'
-  | 'phone_wallpaper'
-  | 'story_highlight'
-  | 'virtual_background'
-  | 'email_signature_image'
-  | 'icon_generator'
-  | 'game_day'
-  // Toolkit
-  | 'brand_toolkit'
+// Re-export the type so existing client importers keep working. The runtime
+// value (FOCUSED_CATEGORY_SUBTABS) intentionally lives in arsenal-subtab-meta
+// so Server Components can call array methods on it — see that file.
+export type { ArsenalSubtab }
 
 type LeafEntry = { kind: 'leaf'; id: ArsenalSubtab; label: string }
 type GroupEntry = {
@@ -233,24 +212,5 @@ function Chevron({ open }: { open: boolean }) {
     </svg>
   )
 }
-
-/**
- * Subtab IDs that map directly to a CategoryDef in arsenal-grid.tsx.
- * Used by page.tsx to render the focused single-category view.
- */
-export const FOCUSED_CATEGORY_SUBTABS: ReadonlyArray<ArsenalSubtab> = [
-  'business_card',
-  'letterhead',
-  'thank_you_card',
-  'presentation',
-  'media_kit',
-  'social_media',
-  'phone_wallpaper',
-  'story_highlight',
-  'virtual_background',
-  'email_signature_image',
-  'icon_generator',
-  'game_day',
-]
 
 export { ALL_LEAVES as ARSENAL_SUBTABS }

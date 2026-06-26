@@ -11,11 +11,8 @@ import { AddonsSection } from './addons-section'
 import { ArsenalGrid } from './arsenal-grid'
 import { YourCreations } from './your-creations'
 import { BrandToolkit } from './brand-toolkit'
-import {
-  ArsenalSubtabs,
-  FOCUSED_CATEGORY_SUBTABS,
-  type ArsenalSubtab,
-} from './arsenal-subtabs'
+import { ArsenalSubtabs } from './arsenal-subtabs'
+import { FOCUSED_CATEGORY_SUBTABS, type ArsenalSubtab } from './arsenal-subtab-meta'
 import { LogoAnimationTab } from './tab-logo-animation'
 import { TradingCardTab } from './tab-trading-card'
 import { BrandVoiceTab } from './tab-brand-voice'
@@ -30,6 +27,7 @@ import { LogoCanvas } from '@/components/brand-design/logo-canvas'
 import { BrandSwitcher } from './brand-switcher'
 import { ConceptPackButton } from './concept-pack-button'
 import { getTradingCardTiers } from '@/lib/trading-cards'
+import { RenderBoundary } from '@/components/render-boundary'
 
 // The brand-kit auto-assemble (sharp + JSZip + Drive/Storage uploads)
 // can take 30-60s end-to-end. Default Vercel limit on Hobby is 10s,
@@ -318,46 +316,54 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
       )}
 
       {view === 'studio' && (
-        <StudioView
-          brand={brand}
-          tab={tab}
-          concepts={concepts ?? []}
-          conceptsByRound={conceptsByRound}
-          currentRound={currentRound}
-          shortlistedCurrentRound={shortlistedCurrentRound}
-          selectedConcept={selectedConcept}
-          hasFinal={hasFinal}
-          prefsInitial={prefsInitial}
-          revisionCount={revisionCount ?? 0}
-          revisionPaidLabel={revisionPaidLabel}
-          firstRevisionIsFree={firstRevisionIsFree}
-          additionalPriceLabel={additionalPriceLabel}
-          conceptAllowance={conceptAllowance}
-          conceptsUsed={conceptsUsed}
-          conceptsRemaining={conceptsRemaining}
-          conceptPackPriceLabel={conceptPackPriceLabel}
-        />
+        <RenderBoundary label="Design Studio">
+          <StudioView
+            brand={brand}
+            tab={tab}
+            concepts={concepts ?? []}
+            conceptsByRound={conceptsByRound}
+            currentRound={currentRound}
+            shortlistedCurrentRound={shortlistedCurrentRound}
+            selectedConcept={selectedConcept}
+            hasFinal={hasFinal}
+            prefsInitial={prefsInitial}
+            revisionCount={revisionCount ?? 0}
+            revisionPaidLabel={revisionPaidLabel}
+            firstRevisionIsFree={firstRevisionIsFree}
+            additionalPriceLabel={additionalPriceLabel}
+            conceptAllowance={conceptAllowance}
+            conceptsUsed={conceptsUsed}
+            conceptsRemaining={conceptsRemaining}
+            conceptPackPriceLabel={conceptPackPriceLabel}
+          />
+        </RenderBoundary>
       )}
 
       {view === 'arsenal' && (
-        <ArsenalView
-          brandId={brand.id}
-          hasFinal={hasFinal}
-          assetsUsed={brand.asset_credits_used ?? 0}
-          assetsTotal={brand.asset_credits_total ?? 10}
-          existingAddons={addons}
-          creations={creations}
-          toolkitEntries={toolkitEntries}
-          subtab={arsenalSubtab}
-          brandPrimary={brand.primary_color}
-          brandSecondary={brand.secondary_color}
-          tradingCardTiers={tradingCardTiers}
-          orderableCards={orderableCards}
-          tcOrderSuccess={tcOrderSuccess}
-        />
+        <RenderBoundary label="Brand Arsenal">
+          <ArsenalView
+            brandId={brand.id}
+            hasFinal={hasFinal}
+            assetsUsed={brand.asset_credits_used ?? 0}
+            assetsTotal={brand.asset_credits_total ?? 10}
+            existingAddons={addons}
+            creations={creations}
+            toolkitEntries={toolkitEntries}
+            subtab={arsenalSubtab}
+            brandPrimary={brand.primary_color}
+            brandSecondary={brand.secondary_color}
+            tradingCardTiers={tradingCardTiers}
+            orderableCards={orderableCards}
+            tcOrderSuccess={tcOrderSuccess}
+          />
+        </RenderBoundary>
       )}
 
-      {view === 'print' && <PrintShopView brandId={brand.id} primary={brand.primary_color} />}
+      {view === 'print' && (
+        <RenderBoundary label="Print Shop">
+          <PrintShopView brandId={brand.id} primary={brand.primary_color} />
+        </RenderBoundary>
+      )}
     </div>
   )
 }
