@@ -21,6 +21,9 @@ alter table public.brand_concept_pack_purchases enable row level security;
 
 -- Talent can read their own purchase history; all writes go through the
 -- service-role client in the webhook / fulfillment path.
+-- drop-then-create so the migration is safe to re-run.
+drop policy if exists "concept_pack_purchases owner read"
+  on public.brand_concept_pack_purchases;
 create policy "concept_pack_purchases owner read"
   on public.brand_concept_pack_purchases for select
   to authenticated
