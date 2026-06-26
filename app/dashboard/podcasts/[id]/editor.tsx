@@ -1,10 +1,13 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
+import { AssetPicker } from '@/components/site/editor/asset-picker'
 import { savePodcast, type PodcastState } from './actions'
+import { EpisodeManager, type Episode } from './episode-manager'
 
 type Podcast = {
   id: string
+  user_id: string
   title: string
   description: string | null
   cover_url: string | null
@@ -12,47 +15,43 @@ type Podcast = {
   apple_connect_email: string | null
   rss_url: string | null
   slug: string
+  author: string | null
+  category: string | null
+  language: string | null
+  explicit: boolean | null
+  primary_color: string | null
+  secondary_color: string | null
 }
 
-type Episode = {
-  id: string
-  episode_number: number | null
-  title: string
-  audio_url: string | null
-  duration_seconds: number | null
-  published_at: string | null
-}
+const inputCls =
+  'mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2'
 
-export function PodcastEditor({
-  podcast,
-  episodes,
-}: {
-  podcast: Podcast
-  episodes: Episode[]
-}) {
+export function PodcastEditor({ podcast, episodes }: { podcast: Podcast; episodes: Episode[] }) {
   const [state, action, pending] = useActionState<PodcastState, FormData>(savePodcast, {})
+  const [cover, setCover] = useState(podcast.cover_url ?? '')
+
+  const feedUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/podcasts/${podcast.slug}/feed.xml` : ''
+  const publicUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/podcasts/${podcast.slug}` : ''
+
   return (
     <div className="space-y-8">
-      <form action={action} className="space-y-4 rounded-[var(--radius)] border border-border bg-panel/40 p-5">
+      <form
+        action={action}
+        className="space-y-4 rounded-[var(--radius)] border border-border bg-panel/40 p-5"
+      >
         <input type="hidden" name="podcast_id" value={podcast.id} />
+        <input type="hidden" name="cover_url" value={cover} />
         <p className="text-eyebrow text-primary">Show details</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             <span className="block text-xs text-muted-foreground">Title</span>
-            <input
-              name="title"
-              required
-              defaultValue={podcast.title}
-              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2"
-            />
+            <input name="title" required defaultValue={podcast.title} className={inputCls} />
           </label>
           <label className="block text-sm">
             <span className="block text-xs text-muted-foreground">Status</span>
-            <select
-              name="status"
-              defaultValue={podcast.status}
-              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2"
-            >
+            <select name="status" defaultValue={podcast.status} className={inputCls}>
               <option value="draft">Draft</option>
               <option value="live">Live</option>
               <option value="archived">Archived</option>
@@ -64,37 +63,70 @@ export function PodcastEditor({
               name="description"
               rows={3}
               defaultValue={podcast.description ?? ''}
-              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2"
+              className={inputCls}
             />
           </label>
+          <div className="block text-sm sm:col-span-2">
+            <span className="block text-xs text-muted-foreground">Cover art (1400–3000px square)</span>
+            <div className="mt-1">
+              <AssetPicker value={cover} onChange={setCover} accept="image/*" />
+            </div>
+          </div>
           <label className="block text-sm">
-            <span className="block text-xs text-muted-foreground">Cover URL</span>
+            <span className="block text-xs text-muted-foreground">Author / host</span>
+            <input name="author" defaultValue={podcast.author ?? ''} className={inputCls} />
+          </label>
+          <label className="block text-sm">
+            <span className="block text-xs text-muted-foreground">Apple category</span>
             <input
-              name="cover_url"
-              defaultValue={podcast.cover_url ?? ''}
-              placeholder="https://…"
-              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 font-mono text-xs"
+              name="category"
+              defaultValue={podcast.category ?? ''}
+              placeholder="e.g. Sports"
+              className={inputCls}
             />
           </label>
           <label className="block text-sm">
-            <span className="block text-xs text-muted-foreground">Apple Connect email</span>
+            <span className="block text-xs text-muted-foreground">Language</span>
+            <input name="language" defaultValue={podcast.language ?? 'en'} className={inputCls} />
+          </label>
+          <label className="block text-sm">
+            <span className="block text-xs text-muted-foreground">Owner email (Apple)</span>
             <input
               type="email"
               name="apple_connect_email"
               defaultValue={podcast.apple_connect_email ?? ''}
-              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2"
+              className={inputCls}
             />
           </label>
-          <label className="block text-sm sm:col-span-2">
-            <span className="block text-xs text-muted-foreground">RSS URL</span>
+          <label className="block text-sm">
+            <span className="block text-xs text-muted-foreground">Player primary color</span>
             <input
-              name="rss_url"
-              defaultValue={podcast.rss_url ?? ''}
-              placeholder="https://…/feed.xml"
-              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 font-mono text-xs"
+              type="color"
+              name="primary_color"
+              defaultValue={podcast.primary_color ?? '#C8A84E'}
+              className="mt-1 h-10 w-20 rounded-[var(--radius-sm)] border border-border bg-background p-1"
             />
+          </label>
+          <label className="block text-sm">
+            <span className="block text-xs text-muted-foreground">Player background color</span>
+            <input
+              type="color"
+              name="secondary_color"
+              defaultValue={podcast.secondary_color ?? '#0a0a0a'}
+              className="mt-1 h-10 w-20 rounded-[var(--radius-sm)] border border-border bg-background p-1"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              name="explicit"
+              defaultChecked={podcast.explicit ?? false}
+              className="h-4 w-4 accent-primary"
+            />
+            Mark show as explicit
           </label>
         </div>
+
         {state.error && <p className="text-xs text-destructive">{state.error}</p>}
         {state.ok && <p className="text-xs text-success">Saved.</p>}
         <button
@@ -102,48 +134,30 @@ export function PodcastEditor({
           disabled={pending}
           className="text-display rounded-[var(--radius-sm)] bg-primary px-5 py-2 text-sm font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
         >
-          {pending ? 'Saving…' : 'Save'}
+          {pending ? 'Saving…' : 'Save show'}
         </button>
       </form>
 
-      <section>
-        <p className="text-eyebrow mb-3 text-primary">Episodes</p>
-        <div className="space-y-2">
-          {episodes.map((e) => (
-            <div
-              key={e.id}
-              className="rounded-[var(--radius)] border border-border bg-panel/40 p-4 text-sm"
-            >
-              <p className="text-display font-bold">
-                {e.episode_number ? `#${e.episode_number} · ` : ''}
-                {e.title}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {e.published_at
-                  ? `Published ${new Date(e.published_at).toLocaleDateString()}`
-                  : 'Unpublished'}
-                {e.duration_seconds &&
-                  ` · ${Math.round(e.duration_seconds / 60)} min`}
-              </p>
-              {e.audio_url && (
-                <a
-                  href={e.audio_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block text-xs font-bold text-primary hover:underline"
-                >
-                  ▶ Listen
-                </a>
-              )}
-            </div>
-          ))}
-          {episodes.length === 0 && (
-            <p className="rounded-[var(--radius)] border border-dashed border-border bg-panel/30 p-6 text-center text-sm text-muted-foreground">
-              No episodes yet. The full episode uploader ships in the next round.
-            </p>
-          )}
+      {/* Publish links */}
+      <div className="grid gap-3 rounded-[var(--radius)] border border-border bg-panel/40 p-4 text-sm sm:grid-cols-2">
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Public page</p>
+          <a href={publicUrl} target="_blank" rel="noreferrer" className="break-all text-xs text-primary hover:underline">
+            {publicUrl || `/podcasts/${podcast.slug}`}
+          </a>
         </div>
-      </section>
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">RSS feed</p>
+          <a href={feedUrl} target="_blank" rel="noreferrer" className="break-all text-xs text-primary hover:underline">
+            {feedUrl || `/podcasts/${podcast.slug}/feed.xml`}
+          </a>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Submit this URL to Apple Podcasts, Spotify, etc. Set the show to “Live” first.
+          </p>
+        </div>
+      </div>
+
+      <EpisodeManager podcastId={podcast.id} userId={podcast.user_id} episodes={episodes} />
     </div>
   )
 }

@@ -23,9 +23,12 @@ export default async function PodcastEditorPage({
 
   const { data: episodes } = await supabase
     .from('podcast_episodes')
-    .select('id, episode_number, title, audio_url, duration_seconds, published_at')
+    .select(
+      'id, episode_number, season_number, title, description, audio_url, audio_bytes, audio_mime, duration_seconds, published_at, explicit, image_url'
+    )
     .eq('podcast_id', id)
-    .order('episode_number', { ascending: false })
+    .order('episode_number', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
 
   return (
     <div className="space-y-6">
