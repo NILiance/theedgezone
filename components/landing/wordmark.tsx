@@ -1,79 +1,41 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { getBrandingSettings } from '@/lib/branding'
 
 /**
- * Edge Zone wordmark.
+ * Edge Zone wordmark — the logo shown in the nav and footer of every page.
  *
- * - If a logo image is present in public/, render that at the size configured
- *   in branding_settings (logo_height_nav for nav, logo_height_footer for footer).
- * - Otherwise fall back to a styled text mark using the same height.
+ * The logo is a committed asset in public/ and is referenced by URL so the
+ * CDN serves it identically on every route. We deliberately do NOT probe the
+ * filesystem (existsSync) to find it: on Vercel's serverless runtime the
+ * public/ folder isn't on the function's filesystem, so that check returned
+ * false on dynamically-rendered pages (the dashboard) and the logo fell back
+ * to a plain "T" — while statically-prerendered marketing pages kept it. That
+ * mismatch is exactly what made the logo "disappear on certain pages."
+ *
+ * Height comes from branding_settings (logo_height_nav / logo_height_footer).
+ * To swap the logo, replace public/TheEdgeZoneLogo-1.png (same intrinsic
+ * aspect ratio) or update LOGO_SRC + the dimensions below.
  */
-function findLogoFile() {
-  const pub = join(process.cwd(), 'public')
-  const candidates = [
-    'edgezone-logo.svg',
-    'edgezone-logo.png',
-    'edgezone-logo.webp',
-    'TheEdgeZoneLogo-1.png',
-    'TheEdgeZoneLogo.png',
-    'TheEdgeZoneLogo.svg',
-  ]
-  return candidates.find((f) => existsSync(join(pub, f))) ?? null
-}
-
+const LOGO_SRC = '/TheEdgeZoneLogo-1.png'
 const LOGO_W = 2062
 const LOGO_H = 684
 
 export async function Wordmark({ variant = 'nav' }: { variant?: 'nav' | 'footer' } = {}) {
   const settings = await getBrandingSettings()
   const height = variant === 'nav' ? settings.logo_height_nav : settings.logo_height_footer
-  const logoFile = findLogoFile()
-
-  if (logoFile) {
-    const w = Math.round((height * LOGO_W) / LOGO_H)
-    return (
-      <Link href="/" className="block">
-        <Image
-          src={`/${logoFile}`}
-          alt="The Edge Zone — Elevate Your Game"
-          width={LOGO_W}
-          height={LOGO_H}
-          priority={variant === 'nav'}
-          style={{ height, width: w, display: 'block' }}
-        />
-      </Link>
-    )
-  }
-
-  const titleSize = Math.round(height * 0.36)
-  const taglineSize = Math.round(height * 0.18)
+  const width = Math.round((height * LOGO_W) / LOGO_H)
 
   return (
-    <Link href="/" className="flex items-center gap-2.5">
-      <span
-        aria-hidden
-        className="text-display flex shrink-0 items-center justify-center font-black text-primary"
-        style={{ width: height, height, fontSize: height * 0.95, lineHeight: 1 }}
-      >
-        T
-      </span>
-      <span className="flex flex-col leading-none">
-        <span
-          className="text-display font-black uppercase tracking-tight text-foreground"
-          style={{ fontSize: titleSize }}
-        >
-          THE EDGE ZONE
-        </span>
-        <span
-          className="mt-0.5 text-display font-medium tracking-[0.05em] text-foreground/80"
-          style={{ fontSize: taglineSize }}
-        >
-          {settings.tagline}
-        </span>
-      </span>
+    <Link href="/" className="block">
+      <Image
+        src={LOGO_SRC}
+        alt="The Edge Zone — Elevate Your Game"
+        width={LOGO_W}
+        height={LOGO_H}
+        priority={variant === 'nav'}
+        style={{ height, width, display: 'block' }}
+      />
     </Link>
   )
 }
