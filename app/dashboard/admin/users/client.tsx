@@ -4,7 +4,13 @@ import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { grantAdminRole, suspendUser, createUser, type CreateUserResult } from './actions'
+import {
+  grantAdminRole,
+  suspendUser,
+  createUser,
+  confirmUser,
+  type CreateUserResult,
+} from './actions'
 
 interface Row {
   id: string
@@ -17,6 +23,7 @@ interface Row {
   created_at: string
   last_sign_in_at: string | null
   banned_until: string | null
+  email_confirmed_at: string | null
   roles: string[]
 }
 
@@ -276,6 +283,16 @@ function UserRow({ user }: { user: Row }) {
   const [isPending, startTransition] = useTransition()
   const isAdmin = user.roles.includes('admin')
   const isSuspended = user.banned_until && new Date(user.banned_until).getTime() > Date.now()
+  const isUnconfirmed = !user.email_confirmed_at
+
+  const confirm_ = () => {
+    if (!confirm(`Manually confirm ${user.email}? They'll be able to sign in immediately.`)) return
+    const fd = new FormData()
+    fd.set('user_id', user.id)
+    startTransition(async () => {
+      await confirmUser(fd)
+    })
+  }
 
   const toggleAdmin = () => {
     const verb = isAdmin ? 'revoke admin from' : 'grant admin to'
@@ -329,6 +346,11 @@ function UserRow({ user }: { user: Row }) {
               suspended
             </span>
           )}
+          {isUnconfirmed && (
+            <span className="text-display rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-accent">
+              unconfirmed
+            </span>
+          )}
         </div>
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground">
@@ -342,6 +364,17 @@ function UserRow({ user }: { user: Row }) {
         >
           👁 View as
         </a>
+        {isUnconfirmed && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={confirm_}
+            disabled={isPending}
+            className="text-xs text-success"
+          >
+            Confirm
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"

@@ -44,6 +44,36 @@ export function SignUpForm() {
       <form action={formAction}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label>I&rsquo;m signing up as</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="relative flex cursor-pointer flex-col rounded-[var(--radius-sm)] border border-border bg-background p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                <input
+                  type="radio"
+                  name="user_type"
+                  value="talent"
+                  defaultChecked
+                  className="absolute right-2 top-2 accent-primary"
+                />
+                <span className="text-display font-bold">Talent</span>
+                <span className="mt-0.5 text-xs text-muted-foreground">
+                  Athlete, creator, or performer
+                </span>
+              </label>
+              <label className="relative flex cursor-pointer flex-col rounded-[var(--radius-sm)] border border-border bg-background p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                <input
+                  type="radio"
+                  name="user_type"
+                  value="brand"
+                  className="absolute right-2 top-2 accent-primary"
+                />
+                <span className="text-display font-bold">Brand</span>
+                <span className="mt-0.5 text-xs text-muted-foreground">
+                  Business or sponsor
+                </span>
+              </label>
+            </div>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="display_name">Display name</Label>
             <Input
               id="display_name"

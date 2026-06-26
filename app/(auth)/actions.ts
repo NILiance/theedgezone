@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { sendEmail } from '@/lib/resend'
 import { welcomeEmail } from '@/lib/emails/welcome'
@@ -35,6 +35,7 @@ const signUpSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   display_name: z.string().min(1, 'Display name required').max(80),
+  user_type: z.enum(['talent', 'brand']).default('talent'),
 })
 
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -42,6 +43,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     email: formData.get('email'),
     password: formData.get('password'),
     display_name: formData.get('display_name'),
+    user_type: formData.get('user_type') ?? 'talent',
   })
   if (!parsed.success) return { error: parsed.error.errors[0].message }
 
@@ -50,7 +52,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { display_name: parsed.data.display_name },
+      data: { display_name: parsed.data.display_name, user_type: parsed.data.user_type },
       emailRedirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     },
   })
@@ -58,6 +60,17 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
 
   // Fire welcome email + NILiance create (best-effort, non-blocking).
   if (data.user) {
+    // Stamp the role type on the profile. The handle_new_user trigger creates
+    // the row synchronously, so a service-role update lands it immediately
+    // (the auth client has no session yet under email-confirmation).
+    const svc = createServiceClient()
+    if (svc) {
+      void svc
+        .from('profiles')
+        .update({ user_type: parsed.data.user_type })
+        .eq('id', data.user.id)
+    }
+
     const { subject, html } = welcomeEmail({ display_name: parsed.data.display_name })
     void sendEmail({
       to: parsed.data.email,
@@ -71,7 +84,7 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
       userId: data.user.id,
       email: parsed.data.email,
       displayName: parsed.data.display_name,
-      userType: 'talent',
+      userType: parsed.data.user_type,
     })
   }
 

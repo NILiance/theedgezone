@@ -123,6 +123,22 @@ export async function grantAdminRole(
   return { ok: true }
 }
 
+/** Manually confirm a user's email (for users who never clicked the link). */
+export async function confirmUser(
+  formData: FormData
+): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin()
+  const userId = String(formData.get('user_id') ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, message: 'Invalid user id' }
+  const supabase = createServiceClient()
+  if (!supabase) return { ok: false, message: 'Service role key missing' }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, { email_confirm: true })
+  if (error) return { ok: false, message: error.message }
+  revalidatePath('/dashboard/admin/users')
+  return { ok: true }
+}
+
 const suspendSchema = z.object({
   user_id: z.string().uuid(),
   suspend: z.coerce.boolean(),

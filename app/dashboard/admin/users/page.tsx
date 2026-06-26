@@ -27,6 +27,7 @@ export default async function UsersAdminPage({ searchParams }: PageProps) {
     created_at: u.created_at,
     last_sign_in_at: u.last_sign_in_at,
     banned_until: u.banned_until,
+    email_confirmed_at: (u as { email_confirmed_at?: string | null }).email_confirmed_at ?? null,
   }))
 
   if (sp.q) {
@@ -64,6 +65,7 @@ export default async function UsersAdminPage({ searchParams }: PageProps) {
     created_at: u.created_at,
     last_sign_in_at: u.last_sign_in_at ?? null,
     banned_until: u.banned_until ?? null,
+    email_confirmed_at: u.email_confirmed_at,
     roles: rolesByUserId.get(u.id) ?? [],
   }))
 
