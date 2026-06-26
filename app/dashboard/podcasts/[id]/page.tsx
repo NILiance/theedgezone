@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { PodcastEditor } from './editor'
 
 export const metadata = { title: 'Podcast editor' }
+// Transcription (Gemini) runs as a server action on this route — give it room.
+export const maxDuration = 300
 
 export default async function PodcastEditorPage({
   params,

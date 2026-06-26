@@ -3,7 +3,12 @@
 import { useActionState, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AssetPicker } from '@/components/site/editor/asset-picker'
-import { upsertEpisode, deleteEpisode, type EpisodeState } from './actions'
+import {
+  upsertEpisode,
+  deleteEpisode,
+  generateEpisodeTranscript,
+  type EpisodeState,
+} from './actions'
 
 export interface Episode {
   id: string
@@ -167,6 +172,28 @@ function EpisodeForm({
   const [imageUrl, setImageUrl] = useState(episode?.image_url ?? '')
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState<string | null>(null)
+  const [transcript, setTranscript] = useState(episode?.transcript ?? '')
+  const [transcribing, setTranscribing] = useState(false)
+  const [transcribeMsg, setTranscribeMsg] = useState<string | null>(null)
+
+  const runTranscribe = async () => {
+    if (!episode?.id) return
+    setTranscribeMsg(null)
+    setTranscribing(true)
+    try {
+      const res = await generateEpisodeTranscript(episode.id)
+      if (res.ok && res.transcript) {
+        setTranscript(res.transcript)
+        setTranscribeMsg('Transcript generated + saved.')
+      } else {
+        setTranscribeMsg(res.message ?? 'Transcription failed')
+      }
+    } catch (err) {
+      setTranscribeMsg(err instanceof Error ? err.message : 'Transcription failed')
+    } finally {
+      setTranscribing(false)
+    }
+  }
 
   // Close on successful save.
   if (state.ok) {
@@ -260,18 +287,36 @@ function EpisodeForm({
             className={inputCls}
           />
         </label>
-        <label className="block text-sm sm:col-span-2">
-          <span className="block text-xs text-muted-foreground">
-            Transcript (optional — shown on the episode page)
-          </span>
+        <div className="block text-sm sm:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="block text-xs text-muted-foreground">
+              Transcript (optional — shown on the episode page)
+            </span>
+            {episode?.id && episode.audio_url && (
+              <div className="flex items-center gap-2">
+                {transcribeMsg && (
+                  <span className="text-[10px] text-muted-foreground">{transcribeMsg}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={runTranscribe}
+                  disabled={transcribing}
+                  className="text-display rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-panel disabled:opacity-50"
+                >
+                  {transcribing ? 'Transcribing…' : '✨ Generate from audio'}
+                </button>
+              </div>
+            )}
+          </div>
           <textarea
             name="transcript"
             rows={5}
-            defaultValue={episode?.transcript ?? ''}
-            placeholder="Paste the episode transcript…"
-            className={inputCls}
+            value={transcript}
+            onChange={(e) => setTranscript(e.target.value)}
+            placeholder="Paste the episode transcript… or generate it from the audio."
+            className={`${inputCls} mt-1`}
           />
-        </label>
+        </div>
         <label className="block text-sm sm:col-span-2">
           <span className="block text-xs text-muted-foreground">
             Chapters (optional — one per line as “M:SS Title”)

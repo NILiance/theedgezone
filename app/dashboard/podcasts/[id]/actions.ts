@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { transcribeAudio } from '@/lib/gemini-transcribe'
 
 export type PodcastState = { ok?: boolean; error?: string }
 
@@ -124,6 +125,33 @@ export async function upsertEpisode(_prev: EpisodeState, form: FormData): Promis
   }
   revalidatePath(`/dashboard/podcasts/${podcastId}`)
   return { ok: true }
+}
+
+/** Generate (and save) a transcript for an episode from its audio, via Gemini. */
+export async function generateEpisodeTranscript(
+  episodeId: string
+): Promise<{ ok: boolean; transcript?: string; message?: string }> {
+  const user = await requireUser()
+  const supabase = await createClient()
+  const { data: ep } = await supabase
+    .from('podcast_episodes')
+    .select('id, audio_url, podcast_id, podcasts!inner(user_id)')
+    .eq('id', episodeId)
+    .maybeSingle()
+  const ownerId = (ep as { podcasts?: { user_id?: string } } | null)?.podcasts?.user_id
+  if (!ep || ownerId !== user.id) return { ok: false, message: 'Not your episode' }
+  if (!ep.audio_url) return { ok: false, message: 'This episode has no audio yet.' }
+
+  const res = await transcribeAudio(ep.audio_url)
+  if (!res.ok || !res.transcript) return { ok: false, message: res.error ?? 'Transcription failed' }
+
+  await supabase
+    .from('podcast_episodes')
+    .update({ transcript: res.transcript })
+    .eq('id', episodeId)
+    .eq('podcast_id', ep.podcast_id)
+  revalidatePath(`/dashboard/podcasts/${ep.podcast_id}`)
+  return { ok: true, transcript: res.transcript }
 }
 
 export async function deleteEpisode(
