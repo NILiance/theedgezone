@@ -267,16 +267,30 @@ function parseHeightToInches(raw: unknown): number | null {
   return Number.isFinite(n) && n > 12 ? n : null
 }
 
+function uuidFrom(rec: unknown): string | null {
+  const id = (rec as { id?: unknown } | null)?.id
+  if (typeof id === 'string') return id
+  return (id as { uuid?: string } | null)?.uuid ?? null
+}
+
 /** Look up a NILiance (Sharetribe) user id by email via the Integration API. */
 export async function resolveNilianceUserId(email: string): Promise<string | null> {
   if (!sharetribeEnabled || !email) return null
+  const sdk = await getIntegrationSdk().catch(() => null)
+  if (!sdk) return null
+  // Integration API users/show supports an `email` param (legacy used the same
+  // endpoint). Fall back to users/query?email= if show rejects the param.
   try {
-    const sdk = await getIntegrationSdk()
-    if (!sdk) return null
-    // Integration API users/show supports an `email` param (legacy uses the
-    // same endpoint); the SDK forwards it to the query string.
     const res = await sdk.users.show({ email })
-    return res?.data?.data?.id?.uuid ?? null
+    const id = uuidFrom(res?.data?.data)
+    if (id) return id
+  } catch {
+    // fall through to query
+  }
+  try {
+    const q = await sdk.users.query({ email })
+    const first = Array.isArray(q?.data?.data) ? q.data.data[0] : null
+    return uuidFrom(first)
   } catch {
     return null
   }

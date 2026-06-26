@@ -52,6 +52,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   // in on load (one round-trip; stops once there's data). The cron also does
   // this in the background.
   const profileIsSparse = !p.sport && !p.school && !p.bio
+  let nilianceDiag: string | null = null
   if (isNilianceLinked && profileIsSparse) {
     try {
       const { pullProfileFromNiliance } = await import('@/lib/niliance')
@@ -66,9 +67,14 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           profile = refetched.data
           p = refetched.data
         }
+      } else if (res.ok) {
+        nilianceDiag =
+          'Connected to NILiance, but no profile fields were found to import — your NILiance profile may be empty, or its field names differ from what we expect. Check Admin → NILiance → Recent events.'
+      } else {
+        nilianceDiag = res.error ?? 'NILiance sync did not run.'
       }
-    } catch {
-      // Best-effort — fall through with whatever we have.
+    } catch (err) {
+      nilianceDiag = err instanceof Error ? err.message : 'NILiance sync error.'
     }
   }
   const socials = (p.socials as Record<string, string>) ?? {}
@@ -197,6 +203,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               : "Connect to manage opportunities, get paid through NILiance, and have your profile data sync automatically. Don't have an account? We'll auto-create one when you save your profile."}
           </p>
           {isNilianceLinked ? <NilianceSyncButton /> : <NilianceConnectButton />}
+          {nilianceDiag && (
+            <p className="mt-2 text-[11px] leading-relaxed text-accent">{nilianceDiag}</p>
+          )}
         </div>
 
         <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
