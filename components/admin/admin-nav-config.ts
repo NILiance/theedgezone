@@ -66,6 +66,10 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   },
   {
     title: 'System',
-    items: [{ label: 'Migrations', href: '/dashboard/admin/migrations' }],
+    items: [
+      { label: 'Setup Checklist', href: '/dashboard/admin/setup' },
+      { label: 'Suppliers', href: '/dashboard/admin/suppliers' },
+      { label: 'Migrations', href: '/dashboard/admin/migrations' },
+    ],
   },
 ]
