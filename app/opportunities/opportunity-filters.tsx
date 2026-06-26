@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { OFFERING_FILTERS } from '@/lib/opportunities'
+import { OFFERING_FILTERS } from '@/lib/opportunity-categories'
 
 export function OpportunityFilters({ q, category }: { q: string; category: string }) {
   const router = useRouter()
