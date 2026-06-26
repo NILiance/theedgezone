@@ -18,6 +18,8 @@ export interface Episode {
   published_at: string | null
   explicit: boolean | null
   image_url: string | null
+  play_count: number | null
+  download_count: number | null
 }
 
 function fmtDuration(s: number | null): string {
@@ -55,10 +57,21 @@ export function EpisodeManager({
 }) {
   const [editing, setEditing] = useState<Episode | 'new' | null>(null)
 
+  const totalPlays = episodes.reduce((a, e) => a + (e.play_count ?? 0), 0)
+  const totalDownloads = episodes.reduce((a, e) => a + (e.download_count ?? 0), 0)
+
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-eyebrow text-primary">Episodes ({episodes.length})</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-eyebrow text-primary">Episodes ({episodes.length})</p>
+          {(totalPlays > 0 || totalDownloads > 0) && (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {totalDownloads.toLocaleString()} downloads · {totalPlays.toLocaleString()} on-site
+              plays
+            </p>
+          )}
+        </div>
         {editing === null && (
           <button
             type="button"
@@ -100,6 +113,9 @@ export function EpisodeManager({
                     : 'Unpublished'}
                   {e.duration_seconds ? ` · ${fmtDuration(e.duration_seconds)}` : ''}
                   {e.audio_url ? '' : ' · ⚠ no audio'}
+                  {(e.download_count ?? 0) > 0 || (e.play_count ?? 0) > 0
+                    ? ` · ${e.download_count ?? 0} dl / ${e.play_count ?? 0} plays`
+                    : ''}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">

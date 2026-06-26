@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { EpisodePlayer } from './episode-player'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -190,7 +191,7 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
                   <p className="mt-2 line-clamp-3 text-sm text-white/70">{e.description}</p>
                 )}
                 {e.audio_url && (
-                  <audio controls preload="none" src={e.audio_url} className="mt-3 w-full" />
+                  <EpisodePlayer episodeId={e.id} src={e.audio_url} className="mt-3 w-full" />
                 )}
               </article>
             ))}

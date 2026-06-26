@@ -17,6 +17,7 @@ export interface RssPodcast {
 }
 
 export interface RssEpisode {
+  id: string
   title: string
   description: string | null
   audio_url: string | null
@@ -54,7 +55,7 @@ function rfc2822(iso: string | null): string {
 export function buildPodcastRss(
   podcast: RssPodcast,
   episodes: RssEpisode[],
-  opts: { siteUrl: string; feedUrl: string }
+  opts: { siteUrl: string; feedUrl: string; slug: string }
 ): string {
   const explicit = podcast.explicit ? 'true' : 'false'
   const lang = podcast.language || 'en'
@@ -80,7 +81,9 @@ export function buildPodcastRss(
     .filter((e) => e.audio_url && e.published_at)
     .map((e) => {
       const epExplicit = e.explicit ? 'true' : 'false'
-      const enclosure = `<enclosure url="${esc(e.audio_url!)}" length="${e.audio_bytes ?? 0}" type="${esc(
+      // Route through the counting redirect so downloads are tracked.
+      const enclosureUrl = `${opts.siteUrl}/podcasts/${opts.slug}/e/${e.id}/audio`
+      const enclosure = `<enclosure url="${esc(enclosureUrl)}" length="${e.audio_bytes ?? 0}" type="${esc(
         e.audio_mime || 'audio/mpeg'
       )}"/>`
       const dur = e.duration_seconds ? `<itunes:duration>${Math.round(e.duration_seconds)}</itunes:duration>` : ''
