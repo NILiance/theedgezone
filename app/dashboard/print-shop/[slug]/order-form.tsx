@@ -1,7 +1,8 @@
 'use client'
 
 import { useActionState, useMemo, useState } from 'react'
-import { createPrintOrder, type PrintOrderState } from '../actions'
+import { createPrintOrder, generatePrintProof, type PrintOrderState } from '../actions'
+import { AssetPicker } from '@/components/site/editor/asset-picker'
 
 type Variant = { label: string; price_cents: number }
 type Option = { key: string; label: string; values: string[] }
@@ -12,16 +13,63 @@ export function OrderForm({
   basePriceCents,
   variants,
   options,
+  coverUrl,
+  brandLogoUrl,
 }: {
   productId: string
   productName: string
   basePriceCents: number
   variants: Variant[]
   options: Option[]
+  coverUrl: string
+  brandLogoUrl: string
 }) {
   const [state, action, pending] = useActionState<PrintOrderState, FormData>(createPrintOrder, {})
   const [variant, setVariant] = useState<string>(variants[0]?.label ?? '')
   const [quantity, setQuantity] = useState<number>(1)
+  const [artwork, setArtwork] = useState('')
+
+  // Proof generator
+  const [logoUrl, setLogoUrl] = useState(brandLogoUrl)
+  const [placement, setPlacement] = useState('center')
+  const [sizePct, setSizePct] = useState(40)
+  const [knockout, setKnockout] = useState(true)
+  const [proofBusy, setProofBusy] = useState(false)
+  const [proofErr, setProofErr] = useState<string | null>(null)
+  const [proof, setProof] = useState<string | null>(null)
+
+  const runProof = async () => {
+    setProofErr(null)
+    setProof(null)
+    if (!coverUrl) {
+      setProofErr('This product has no image to print on.')
+      return
+    }
+    if (!logoUrl) {
+      setProofErr('Add a logo to place.')
+      return
+    }
+    setProofBusy(true)
+    try {
+      const res = await generatePrintProof({
+        blank_url: coverUrl,
+        logo_url: logoUrl,
+        placement,
+        size_pct: sizePct,
+        knockout_white: knockout,
+      })
+      if (res.ok && res.url) setProof(res.url)
+      else setProofErr(res.message ?? 'Proof failed')
+    } catch (err) {
+      setProofErr(err instanceof Error ? err.message : 'Proof failed')
+    } finally {
+      setProofBusy(false)
+    }
+  }
+  const addProofToArtwork = (url: string) => {
+    setArtwork((a) => (a.trim() ? `${a.trim()}\n${url}` : url))
+    setProof(null)
+  }
 
   const unitPrice = useMemo(() => {
     const v = variants.find((x) => x.label === variant)
@@ -93,6 +141,85 @@ export function OrderForm({
         />
       </label>
 
+      {/* Proof generator */}
+      <div className="rounded-[var(--radius)] border border-border bg-panel/30 p-3">
+        <p className="text-display text-xs font-bold uppercase tracking-widest text-accent">
+          Generate a proof
+        </p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Drop your logo onto this product to preview the print, then add it to your artwork.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <span className="block text-[11px] text-muted-foreground">Logo</span>
+            <div className="mt-1">
+              <AssetPicker value={logoUrl} onChange={setLogoUrl} accept="image/*" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <span className="block text-[11px] text-muted-foreground">Placement</span>
+              <select
+                value={placement}
+                onChange={(e) => setPlacement(e.target.value)}
+                className="mt-1 h-9 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 text-xs"
+              >
+                <option value="center">Centered</option>
+                <option value="front_center">Upper center</option>
+              </select>
+            </div>
+            <div>
+              <span className="block text-[11px] text-muted-foreground">Logo size — {sizePct}%</span>
+              <input
+                type="range"
+                min={10}
+                max={70}
+                value={sizePct}
+                onChange={(e) => setSizePct(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-[11px]">
+              <input
+                type="checkbox"
+                checked={knockout}
+                onChange={(e) => setKnockout(e.target.checked)}
+                className="h-3.5 w-3.5 accent-primary"
+              />
+              Remove white background from the logo
+            </label>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={runProof}
+            disabled={proofBusy}
+            className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-1.5 text-xs font-bold uppercase tracking-widest hover:bg-panel disabled:opacity-50"
+          >
+            {proofBusy ? 'Rendering…' : 'Generate proof'}
+          </button>
+          {proofErr && <span className="text-[11px] text-destructive">{proofErr}</span>}
+        </div>
+        {proof && (
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={proof}
+              alt="Proof"
+              className="h-36 w-36 rounded-[var(--radius-sm)] border border-border object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => addProofToArtwork(proof)}
+              className="text-display rounded-[var(--radius-sm)] bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+            >
+              Add to artwork
+            </button>
+          </div>
+        )}
+      </div>
+
       <label className="block text-sm">
         <span className="text-xs uppercase tracking-widest text-muted-foreground">
           Artwork URLs (one per line)
@@ -100,7 +227,9 @@ export function OrderForm({
         <textarea
           name="artwork_urls"
           rows={3}
-          placeholder="https://… (PDF, PNG, AI, EPS)"
+          value={artwork}
+          onChange={(e) => setArtwork(e.target.value)}
+          placeholder="https://… (PDF, PNG, AI, EPS) — or generate a proof above"
           className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 font-mono text-xs"
         />
       </label>

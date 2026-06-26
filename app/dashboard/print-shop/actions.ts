@@ -5,8 +5,69 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
+import { composeMockup } from '@/lib/store-mockup'
 
 export type PrintOrderState = { ok?: boolean; error?: string; checkoutUrl?: string }
+
+/**
+ * Print proof: composite the talent's logo onto a product image to preview the
+ * print before ordering. Reuses the Sharp mockup compositor. The proof URL is
+ * added to the order's artwork.
+ */
+export async function generatePrintProof(input: {
+  blank_url: string
+  logo_url: string
+  placement: string
+  size_pct: number
+  knockout_white: boolean
+}): Promise<{ ok: boolean; url?: string; message?: string }> {
+  const user = await requireUser()
+  if (!input.blank_url) return { ok: false, message: 'This product has no image to print on.' }
+  if (!input.logo_url) return { ok: false, message: 'Add a logo to place.' }
+
+  const fetchImage = async (url: string): Promise<Buffer | null> => {
+    if (!/^https?:\/\//i.test(url)) return null
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return null
+      return Buffer.from(await res.arrayBuffer())
+    } catch {
+      return null
+    }
+  }
+  const [blankBuffer, logoBuffer] = await Promise.all([
+    fetchImage(input.blank_url),
+    fetchImage(input.logo_url),
+  ])
+  if (!blankBuffer) return { ok: false, message: 'Could not load the product image.' }
+  if (!logoBuffer) return { ok: false, message: 'Could not load the logo image.' }
+
+  const placement = (['front_center', 'center', 'front_chest'].includes(input.placement)
+    ? input.placement
+    : 'center') as 'front_center' | 'center' | 'front_chest'
+
+  let png: Buffer
+  try {
+    png = await composeMockup({
+      blankBuffer,
+      logoBuffer,
+      placement,
+      sizePct: Math.max(10, Math.min(70, Math.round(input.size_pct) || 40)),
+      knockoutWhite: input.knockout_white,
+    })
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Proof render failed' }
+  }
+
+  const supabase = await createClient()
+  const path = `${user.id}/print-proofs/${Date.now()}.png`
+  const { error: upErr } = await supabase.storage
+    .from('site-assets')
+    .upload(path, png, { contentType: 'image/png', upsert: true })
+  if (upErr) return { ok: false, message: upErr.message }
+  const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
+  return { ok: true, url: pub.publicUrl }
+}
 
 export async function createPrintOrder(
   _prev: PrintOrderState,

@@ -12,7 +12,7 @@ export const metadata = { title: 'Print Product' }
 
 export default async function PrintProductPage({ params }: PageProps) {
   const { slug } = await params
-  await requireUser()
+  const user = await requireUser()
   const supabase = createServiceClient()
   if (!supabase) notFound()
   const { data: product } = await supabase
@@ -25,6 +25,21 @@ export default async function PrintProductPage({ params }: PageProps) {
 
   const variants = (product.variants as Array<{ label: string; price_cents: number }>) ?? []
   const options = (product.options as Array<{ key: string; label: string; values: string[] }>) ?? []
+
+  // Latest finalized brand logo — the default for print proofs.
+  const { data: brand } = await supabase
+    .from('brand_designs')
+    .select('final_logo_url, admin_final_logo_url')
+    .eq('user_id', user.id)
+    .not('final_logo_url', 'is', null)
+    .order('finalized_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle()
+  const brandLogoUrl =
+    (brand as { admin_final_logo_url?: string | null; final_logo_url?: string | null } | null)
+      ?.admin_final_logo_url ??
+    (brand as { final_logo_url?: string | null } | null)?.final_logo_url ??
+    ''
 
   return (
     <div className="space-y-6">
@@ -64,6 +79,8 @@ export default async function PrintProductPage({ params }: PageProps) {
           basePriceCents={product.base_price_cents}
           variants={variants}
           options={options}
+          coverUrl={product.cover_image_url ?? ''}
+          brandLogoUrl={brandLogoUrl}
         />
       </div>
     </div>

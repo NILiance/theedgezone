@@ -6,12 +6,13 @@
  * imported lazily (libvips load is finicky on Vercel; see brand-kit.ts).
  */
 
-export type MockupPlacement = 'front_chest' | 'front_center' | 'back'
+export type MockupPlacement = 'front_chest' | 'front_center' | 'back' | 'center'
 
 export const MOCKUP_PLACEMENTS: { id: MockupPlacement; label: string }[] = [
   { id: 'front_chest', label: 'Left chest (small)' },
   { id: 'front_center', label: 'Center (large)' },
   { id: 'back', label: 'Back (centered)' },
+  { id: 'center', label: 'Dead center' },
 ]
 
 interface ComposeMockupInput {
@@ -76,6 +77,8 @@ export async function composeMockup({
     dstY = Math.round(bh * 0.26)
   } else if (placement === 'back') {
     dstY = Math.round(bh * 0.3)
+  } else if (placement === 'center') {
+    dstY = Math.round((bh - lh) / 2)
   }
   // Keep the logo on-canvas.
   dstX = clamp(dstX, 0, Math.max(0, bw - lw))
