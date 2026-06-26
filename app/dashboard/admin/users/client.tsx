@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { grantAdminRole, suspendUser } from './actions'
+import { grantAdminRole, suspendUser, createUser, type CreateUserResult } from './actions'
 
 interface Row {
   id: string
@@ -30,6 +30,7 @@ export function UsersAdminClient({ rows, filter }: Props) {
   const sp = useSearchParams()
   const [search, setSearch] = useState(filter.q)
   const [, startTransition] = useTransition()
+  const [addOpen, setAddOpen] = useState(false)
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(sp.toString())
@@ -40,7 +41,11 @@ export function UsersAdminClient({ rows, filter }: Props) {
 
   return (
     <div className="space-y-4">
+      {addOpen && <AddUserModal onClose={() => setAddOpen(false)} />}
       <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={() => setAddOpen(true)}>
+          + Add user
+        </Button>
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -110,6 +115,160 @@ export function UsersAdminClient({ rows, filter }: Props) {
         </table>
       </div>
     </div>
+  )
+}
+
+function AddUserModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [result, setResult] = useState<CreateUserResult | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    setResult(null)
+    startTransition(async () => {
+      const res = await createUser(fd)
+      setResult(res)
+      if (res.ok) router.refresh()
+    })
+  }
+
+  const done = () => {
+    router.refresh()
+    onClose()
+  }
+
+  // Success view — show the temp password (if generated) before closing.
+  if (result?.ok) {
+    return (
+      <Overlay onClose={done}>
+        <div className="p-6">
+          <p className="text-display text-lg font-black text-success">✓ User created</p>
+          <p className="mt-2 text-sm text-muted-foreground">{result.message}</p>
+          {result.tempPassword && (
+            <div className="mt-4 rounded-[var(--radius-sm)] border border-border bg-panel-elevated p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Temporary password
+              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <code className="flex-1 break-all font-mono text-sm">{result.tempPassword}</code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(result.tempPassword!)
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 1600)
+                    } catch {
+                      window.prompt('Copy the password:', result.tempPassword)
+                    }
+                  }}
+                >
+                  {copied ? 'Copied ✓' : 'Copy'}
+                </Button>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Share this securely. It won&apos;t be shown again — the user can also reset it via
+                &ldquo;Forgot password.&rdquo;
+              </p>
+            </div>
+          )}
+          <div className="mt-5 flex justify-end">
+            <Button size="sm" onClick={done}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </Overlay>
+    )
+  }
+
+  return (
+    <Overlay onClose={onClose}>
+      <form onSubmit={submit} className="p-6">
+        <div className="flex items-center justify-between">
+          <p className="text-display text-lg font-black">Add user</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full bg-panel-elevated px-2 py-0.5 text-sm font-bold hover:bg-panel"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="mt-4 space-y-3">
+          <Field label="Email *">
+            <Input name="email" type="email" required placeholder="athlete@example.com" />
+          </Field>
+          <Field label="Full name">
+            <Input name="display_name" placeholder="Jordan Rivers" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Type">
+              <select
+                name="user_type"
+                defaultValue="talent"
+                className="flex h-10 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 text-sm"
+              >
+                <option value="talent">Talent</option>
+                <option value="brand">Brand</option>
+              </select>
+            </Field>
+            <Field label="Password">
+              <Input name="password" type="text" placeholder="Blank = auto-generate" />
+            </Field>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="make_admin" className="h-4 w-4 accent-primary" />
+            Grant admin access
+          </label>
+        </div>
+        {result && !result.ok && (
+          <p className="mt-3 rounded-[var(--radius-sm)] border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {result.message}
+          </p>
+        )}
+        <div className="mt-5 flex justify-end gap-2">
+          <Button size="sm" variant="ghost" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button size="sm" type="submit" disabled={pending}>
+            {pending ? 'Creating…' : 'Create user'}
+          </Button>
+        </div>
+      </form>
+    </Overlay>
+  )
+}
+
+function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-[var(--radius)] bg-background shadow-elevated"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </span>
+      <div className="mt-1">{children}</div>
+    </label>
   )
 }
 
