@@ -3,6 +3,8 @@ import type {
   SupplierProduct,
   SupplierSearchParams,
   SupplierTestResult,
+  SupplierOrderRequest,
+  SupplierOrderResult,
 } from './types'
 
 /**
@@ -125,6 +127,100 @@ export class SsActivewearSupplier implements Supplier {
     } catch {
       return null
     }
+  }
+
+  /**
+   * Drop-ship order placement via POST /v2/orders/.
+   *
+   * Opt-in: only fires when SS_AUTO_FULFILL=true, so testing can't place (and
+   * pay for) a real S&S order. Set SS_TEST_ORDERS=true to send S&S's testOrder
+   * flag — validates the order without committing it. SS_SHIPPING_METHOD sets
+   * a method code (omitted → account default). Any non-2xx returns 'failed'
+   * with S&S's error text so the dispatcher routes it to manual.
+   */
+  async submitOrder(req: SupplierOrderRequest): Promise<SupplierOrderResult> {
+    if (process.env.SS_AUTO_FULFILL !== 'true') {
+      return { status: 'unsupported', message: 'S&S auto-fulfill disabled (set SS_AUTO_FULFILL=true)' }
+    }
+    const addr = normalizeAddress(req.shipTo.address)
+    if (!addr) return { status: 'failed', message: 'Order has no usable shipping address' }
+
+    const isTest = process.env.SS_TEST_ORDERS === 'true'
+    const body: Record<string, unknown> = {
+      poNumber: req.reference.slice(0, 30),
+      testOrder: isTest,
+      emailConfirmation: req.shipTo.email || undefined,
+      shippingAddress: {
+        customer: req.shipTo.name || addr.name || 'Customer',
+        address1: addr.address1,
+        address2: addr.address2,
+        city: addr.city,
+        state: addr.state,
+        zip: addr.zip,
+        country: addr.country || 'US',
+      },
+      lines: req.lines.map((l) => ({ identifier: l.variantSku || l.supplierSku, qty: l.quantity })),
+    }
+    if (process.env.SS_SHIPPING_METHOD) body.shippingMethod = process.env.SS_SHIPPING_METHOD
+
+    try {
+      const res = await fetch(`${this.baseUrl}/orders/`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(body),
+      })
+      const text = await res.text()
+      if (!res.ok) {
+        return { status: 'failed', message: `S&S HTTP ${res.status}: ${text.slice(0, 200)}` }
+      }
+      let parsed: unknown = null
+      try {
+        parsed = JSON.parse(text)
+      } catch {
+        /* non-JSON success body is fine */
+      }
+      const obj = (Array.isArray(parsed) ? parsed[0] : parsed) as Record<string, unknown> | null
+      const idVal = obj?.orderNumber ?? obj?.invoiceNumber ?? obj?.poNumber ?? obj?.guid
+      return {
+        status: 'submitted',
+        supplierOrderId: idVal != null ? String(idVal) : undefined,
+        message: isTest ? 'Submitted (S&S TEST order)' : 'Submitted to S&S Activewear',
+      }
+    } catch (err) {
+      return { status: 'failed', message: err instanceof Error ? err.message : 'S&S order request failed' }
+    }
+  }
+}
+
+function str(v: unknown): string {
+  return typeof v === 'string' ? v : ''
+}
+
+/**
+ * Accepts either a flat address or Stripe's shipping_details shape
+ * ({ name, address: { line1, city, state, postal_code, country } }).
+ */
+function normalizeAddress(
+  raw: Record<string, unknown> | null | undefined
+): { name?: string; address1: string; address2?: string; city: string; state: string; zip: string; country?: string } | null {
+  if (!raw || typeof raw !== 'object') return null
+  const inner =
+    raw.address && typeof raw.address === 'object'
+      ? (raw.address as Record<string, unknown>)
+      : raw
+  const address1 = str(inner.line1) || str(inner.address1)
+  const city = str(inner.city)
+  const state = str(inner.state)
+  const zip = str(inner.postal_code) || str(inner.zip)
+  if (!address1 || !city || !zip) return null
+  return {
+    name: str(raw.name) || str(inner.name) || undefined,
+    address1,
+    address2: str(inner.line2) || str(inner.address2) || undefined,
+    city,
+    state,
+    zip,
+    country: str(inner.country) || undefined,
   }
 }
 
