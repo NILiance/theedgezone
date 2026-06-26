@@ -40,6 +40,11 @@ export async function savePodcast(_prev: PodcastState, form: FormData): Promise<
   update.spotify_url = String(form.get('spotify_url') ?? '').trim() || null
   update.youtube_url = String(form.get('youtube_url') ?? '').trim() || null
   update.amazon_url = String(form.get('amazon_url') ?? '').trim() || null
+  update.subscription_enabled =
+    form.get('subscription_enabled') === 'on' || form.get('subscription_enabled') === 'true'
+  const subPrice = Number(String(form.get('subscription_price') ?? '').trim())
+  update.subscription_price_cents =
+    Number.isFinite(subPrice) && subPrice > 0 ? Math.round(subPrice * 100) : null
 
   const { error } = await supabase.from('podcasts').update(update).eq('id', id)
   if (error) return { error: error.message }
@@ -108,6 +113,7 @@ export async function upsertEpisode(_prev: EpisodeState, form: FormData): Promis
     image_url: String(form.get('image_url') ?? '').trim() || null,
     transcript: String(form.get('transcript') ?? '').trim() || null,
     chapters: parseChapters(String(form.get('chapters_text') ?? '')),
+    premium: form.get('premium') === 'on' || form.get('premium') === 'true',
     published_at: publishedAt,
   }
 

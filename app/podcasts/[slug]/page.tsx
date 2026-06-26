@@ -2,6 +2,7 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { EpisodePlayer } from './episode-player'
+import { SubscribePanel } from './subscribe-panel'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -56,7 +57,7 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
   const { data: podcast } = await supabase
     .from('podcasts')
     .select(
-      'id, slug, title, description, cover_url, author, primary_color, secondary_color, status, user_id, apple_url, spotify_url, youtube_url, amazon_url'
+      'id, slug, title, description, cover_url, author, primary_color, secondary_color, status, user_id, apple_url, spotify_url, youtube_url, amazon_url, subscription_enabled, subscription_price_cents'
     )
     .eq('slug', slug)
     .maybeSingle()
@@ -72,7 +73,7 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
   const { data: episodes } = await supabase
     .from('podcast_episodes')
     .select(
-      'id, episode_number, season_number, title, description, audio_url, duration_seconds, published_at, image_url, transcript'
+      'id, episode_number, season_number, title, description, audio_url, duration_seconds, published_at, image_url, transcript, premium'
     )
     .eq('podcast_id', podcast.id)
     .not('published_at', 'is', null)
@@ -154,6 +155,18 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
         </div>
       </section>
 
+      {(podcast as { subscription_enabled?: boolean }).subscription_enabled &&
+      (podcast as { subscription_price_cents?: number }).subscription_price_cents ? (
+        <section className="mx-auto max-w-4xl px-6 pb-2">
+          <SubscribePanel
+            podcastId={podcast.id}
+            priceCents={(podcast as { subscription_price_cents: number }).subscription_price_cents}
+            primary={primary}
+            secondary={secondary}
+          />
+        </section>
+      ) : null}
+
       <section className="mx-auto max-w-4xl px-6 pb-20">
         <p
           className="text-display mb-4 text-xs font-bold uppercase tracking-widest"
@@ -190,8 +203,14 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
                 {e.description && (
                   <p className="mt-2 line-clamp-3 text-sm text-white/70">{e.description}</p>
                 )}
-                {e.audio_url && (
-                  <EpisodePlayer episodeId={e.id} src={e.audio_url} className="mt-3 w-full" />
+                {(e as { premium?: boolean }).premium ? (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/60">
+                    <span>🔒</span> Premium — subscribe to listen in your podcast app.
+                  </div>
+                ) : (
+                  e.audio_url && (
+                    <EpisodePlayer episodeId={e.id} src={e.audio_url} className="mt-3 w-full" />
+                  )
                 )}
                 {(e as { transcript?: string | null }).transcript && (
                   <details className="mt-3">

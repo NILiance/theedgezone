@@ -25,6 +25,8 @@ type Podcast = {
   spotify_url: string | null
   youtube_url: string | null
   amazon_url: string | null
+  subscription_enabled: boolean | null
+  subscription_price_cents: number | null
 }
 
 const inputCls =
@@ -153,6 +155,41 @@ export function PodcastEditor({ podcast, episodes }: { podcast: Podcast; episode
             <label className="block text-sm">
               <span className="block text-xs text-muted-foreground">Amazon Music URL</span>
               <input name="amazon_url" defaultValue={podcast.amazon_url ?? ''} placeholder="https://music.amazon.com/podcasts/…" className={`${inputCls} font-mono text-xs`} />
+            </label>
+          </div>
+        </div>
+
+        <div className="space-y-3 border-t border-border pt-4">
+          <p className="text-eyebrow text-primary">Monetization</p>
+          <p className="text-xs text-muted-foreground">
+            Charge for premium episodes. Subscribers get a private feed URL; the public feed +
+            player hide premium episodes.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="subscription_enabled"
+                defaultChecked={podcast.subscription_enabled ?? false}
+                className="h-4 w-4 accent-primary"
+              />
+              Enable paid subscriptions
+            </label>
+            <label className="block text-sm">
+              <span className="block text-xs text-muted-foreground">Price per month (USD)</span>
+              <input
+                name="subscription_price"
+                type="number"
+                min={1}
+                step="0.01"
+                defaultValue={
+                  podcast.subscription_price_cents
+                    ? (podcast.subscription_price_cents / 100).toFixed(2)
+                    : ''
+                }
+                placeholder="5.00"
+                className={inputCls}
+              />
             </label>
           </div>
         </div>

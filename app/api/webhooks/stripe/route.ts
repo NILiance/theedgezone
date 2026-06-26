@@ -3,9 +3,11 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { env } from '@/lib/env'
+import { randomUUID } from 'node:crypto'
 import { createServiceClient } from '@/lib/supabase/server'
 import { provisionOrder } from '@/lib/provisioning'
 import { dispatchStoreOrder } from '@/lib/store-fulfillment'
+import { sendEmail } from '@/lib/resend'
 
 export const runtime = 'nodejs' // raw body needed for signature verification
 
@@ -220,6 +222,12 @@ async function handleCheckoutCompleted(
   // NIL Store merch purchase — promotes the matching store_orders row.
   if (metadata.kind === 'store_merch') {
     await handleStoreOrderCompleted(supabase, session)
+    return
+  }
+
+  // Podcast premium subscription — mint a private feed token + email it.
+  if (metadata.kind === 'podcast_sub') {
+    await handlePodcastSubscription(supabase, session)
     return
   }
 
@@ -516,6 +524,62 @@ async function handleStoreOrderCompleted(
     await dispatchStoreOrder(supabase, orderId)
   } catch {
     // Best-effort — the order is already paid; owner can retry from the dashboard.
+  }
+}
+
+async function handlePodcastSubscription(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const md = session.metadata ?? {}
+  const podcastId = typeof md.podcast_id === 'string' ? md.podcast_id : ''
+  const email =
+    (typeof md.subscriber_email === 'string' ? md.subscriber_email : '') ||
+    session.customer_details?.email ||
+    ''
+  if (!podcastId || !email) return
+  const subId = typeof session.subscription === 'string' ? session.subscription : null
+  const customerId = typeof session.customer === 'string' ? session.customer : null
+
+  // Idempotent on the Stripe subscription id.
+  if (subId) {
+    const { data: existing } = await supabase
+      .from('podcast_subscriptions')
+      .select('id')
+      .eq('stripe_subscription_id', subId)
+      .maybeSingle()
+    if (existing) return
+  }
+
+  const token = randomUUID().replace(/-/g, '')
+  await supabase.from('podcast_subscriptions').insert({
+    podcast_id: podcastId,
+    subscriber_email: email,
+    feed_token: token,
+    stripe_subscription_id: subId,
+    stripe_customer_id: customerId,
+    status: 'active',
+  })
+
+  const { data: pod } = await supabase
+    .from('podcasts')
+    .select('slug, title')
+    .eq('id', podcastId)
+    .maybeSingle()
+  const slug = (pod as { slug?: string } | null)?.slug
+  if (slug) {
+    const site = env.NEXT_PUBLIC_SITE_URL ?? 'https://theedgezone.com'
+    const feedUrl = `${site}/podcasts/${slug}/private/${token}/feed.xml`
+    void sendEmail({
+      to: email,
+      subject: `Your private feed for ${(pod as { title?: string } | null)?.title ?? 'the show'}`,
+      templateKey: 'podcast_private_feed',
+      html: `<p>Thanks for subscribing!</p>
+<p>Add this private feed URL to your podcast app to unlock premium episodes:</p>
+<p><a href="${feedUrl}">${feedUrl}</a></p>
+<p>Keep it to yourself — it's unique to you.</p>`,
+      metadata: { podcast_id: podcastId },
+    })
   }
 }
 

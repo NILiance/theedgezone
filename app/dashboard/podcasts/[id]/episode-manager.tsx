@@ -25,6 +25,7 @@ export interface Episode {
   image_url: string | null
   transcript: string | null
   chapters: { start?: string; title?: string }[] | null
+  premium: boolean | null
   play_count: number | null
   download_count: number | null
 }
@@ -369,6 +370,15 @@ function EpisodeForm({
             className="h-4 w-4 accent-primary"
           />
           Published (visible in feed)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="premium"
+            defaultChecked={episode?.premium ?? false}
+            className="h-4 w-4 accent-primary"
+          />
+          Premium (subscribers only)
         </label>
       </div>
 
