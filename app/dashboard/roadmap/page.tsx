@@ -61,7 +61,10 @@ export default async function TalentRoadmapPage() {
               The path from new account to NIL-ready. Check items off as you knock them out.
             </p>
           </div>
-          <div className="flex gap-2 print:hidden">
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <Link href="/dashboard/roadmap/build">
+              <Button>✨ Build personalized roadmap</Button>
+            </Link>
             <PrintButton />
           </div>
         </div>
