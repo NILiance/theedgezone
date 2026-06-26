@@ -58,3 +58,16 @@
     font-size: 0.75rem;
   }
 }
+
+@layer base {
+  /* Native date/time pickers render dark-on-dark on the dark theme — tell the
+     browser to draw the control (text + calendar icon) in dark mode so it's
+     visible. */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'],
+  input[type='week'] {
+    color-scheme: dark;
+  }
+}

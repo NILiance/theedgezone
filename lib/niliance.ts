@@ -258,13 +258,39 @@ export async function syncProfile(params: SyncProfileParams): Promise<boolean> {
 // publicData, and map the canonical pub_* fields onto the Edge Zone profile.
 
 function parseHeightToInches(raw: unknown): number | null {
-  if (typeof raw === 'number') return raw > 0 ? Math.round(raw) : null
+  if (raw == null) return null
+  // Object form { feet, inches }
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    const o = raw as Record<string, unknown>
+    const f = Number(o.feet ?? o.ft)
+    const i = Number(o.inches ?? o.in)
+    return Number.isFinite(f) && f > 0 ? f * 12 + (Number.isFinite(i) ? i : 0) : null
+  }
+  // Array form [6, 5]
+  if (Array.isArray(raw)) {
+    const f = Number(raw[0])
+    const i = Number(raw[1])
+    return Number.isFinite(f) && f > 0 ? f * 12 + (Number.isFinite(i) ? i : 0) : null
+  }
+  if (typeof raw === 'number') return raw >= 36 && raw <= 96 ? Math.round(raw) : null
   if (typeof raw !== 'string') return null
-  // Forms like 6'5", 6' 5, 6-5
-  const m = raw.match(/(\d+)\s*['’\-]\s*(\d+)?/)
+  const s = raw.trim()
+  // 6'5" / 6' 5 / 6'5
+  let m = s.match(/^(\d+)\s*['’]\s*(\d+)?/)
   if (m) return parseInt(m[1]!, 10) * 12 + (m[2] ? parseInt(m[2], 10) : 0)
-  const n = parseInt(raw, 10)
-  return Number.isFinite(n) && n > 12 ? n : null
+  // 6 ft 5 in / 6 ft 5
+  m = s.match(/^(\d+)\s*ft\.?\s*(\d+)?/i)
+  if (m) return parseInt(m[1]!, 10) * 12 + (m[2] ? parseInt(m[2], 10) : 0)
+  // 6-5 / 6_5
+  m = s.match(/^(\d+)[-_](\d+)$/)
+  if (m) return parseInt(m[1]!, 10) * 12 + parseInt(m[2]!, 10)
+  // pure total inches like 77
+  m = s.match(/^(\d+)$/)
+  if (m) {
+    const n = parseInt(m[1]!, 10)
+    return n >= 36 && n <= 96 ? n : null
+  }
+  return null
 }
 
 function uuidFrom(rec: unknown): string | null {
@@ -498,14 +524,18 @@ export async function pullProfileFromNiliance(params: {
     const stateRaw = str(pick(['pub_state', 'state', 'pub_hometown_state']))
     if (stateRaw) setIf('us_state', normalizeState(stateRaw))
 
-    // Height: separate feet/inches fields, else a combined string.
-    const feet = parseInt(str(pick(['height_feet', 'pub_height_feet'])) ?? '', 10)
-    const inches = parseInt(str(pick(['height_inches', 'pub_height_inches'])) ?? '', 10)
-    let totalIn: number | null = null
-    if (Number.isFinite(feet) && feet > 0) {
-      totalIn = feet * 12 + (Number.isFinite(inches) ? inches : 0)
-    } else {
-      totalIn = parseHeightToInches(pick(['pub_height', 'height', 'heightString']))
+    // Height: NILiance usually stores a combined value (string/object/array);
+    // fall back to separate feet/inches keys.
+    let totalIn = parseHeightToInches(
+      pick(['pub_height', 'height', 'heightString', 'heightDisplay'])
+    )
+    if (!totalIn) {
+      const feet = parseInt(str(pick(['height_feet', 'pub_height_feet', 'heightFeet'])) ?? '', 10)
+      const inches = parseInt(
+        str(pick(['height_inches', 'pub_height_inches', 'heightInches'])) ?? '',
+        10
+      )
+      if (Number.isFinite(feet) && feet > 0) totalIn = feet * 12 + (Number.isFinite(inches) ? inches : 0)
     }
     if (totalIn && totalIn > 12) update.height_inches = totalIn
 
@@ -609,7 +639,7 @@ export async function pullProfileFromNiliance(params: {
       user_id: params.userId,
       level: 'info',
       direction: 'inbound',
-      message: `Pulled ${fieldCount} field(s) from NILiance: ${fieldKeys.join(', ')}`,
+      message: `Pulled ${fieldCount} field(s): ${fieldKeys.join(', ')} — all NILiance keys seen: ${availableKeys.slice(0, 60).join(', ')}`,
       metadata: { fields: fieldKeys, availableKeys },
     })
     return { ok: true, fields: fieldCount, availableKeys }
