@@ -9,6 +9,7 @@ import {
   suspendUser,
   createUser,
   confirmUser,
+  setUserType,
   type CreateUserResult,
 } from './actions'
 
@@ -294,6 +295,16 @@ function UserRow({ user }: { user: Row }) {
     })
   }
 
+  const changeType = (value: string) => {
+    if (!value || value === user.user_type) return
+    const fd = new FormData()
+    fd.set('user_id', user.id)
+    fd.set('user_type', value)
+    startTransition(async () => {
+      await setUserType(fd)
+    })
+  }
+
   const toggleAdmin = () => {
     const verb = isAdmin ? 'revoke admin from' : 'grant admin to'
     if (!confirm(`Are you sure you want to ${verb} ${user.email}?`)) return
@@ -328,8 +339,20 @@ function UserRow({ user }: { user: Row }) {
           </p>
         )}
       </td>
-      <td className="px-3 py-2 text-xs uppercase tracking-widest text-muted-foreground">
-        {user.user_type ?? '—'}
+      <td className="px-3 py-2">
+        <select
+          value={user.user_type ?? ''}
+          onChange={(e) => changeType(e.target.value)}
+          disabled={isPending}
+          aria-label="Role type"
+          className="rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1 text-xs"
+        >
+          <option value="" disabled>
+            — set —
+          </option>
+          <option value="talent">Talent</option>
+          <option value="brand">Brand</option>
+        </select>
       </td>
       <td className="px-3 py-2">
         <div className="flex flex-wrap gap-1">

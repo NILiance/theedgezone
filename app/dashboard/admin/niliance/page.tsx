@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sharetribeEnabled, integrationConfigured, marketplaceConfigured } from '@/lib/sharetribe'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatEastern } from '@/lib/format-date'
 
 export const metadata = { title: 'NILiance Bridge' }
 
@@ -125,10 +126,8 @@ export default async function NilianceAdminPage() {
                   </Td>
                   <Td className="text-xs text-muted-foreground">
                     {p.niliance_synced_at
-                      ? new Date(p.niliance_synced_at).toLocaleString()
-                      : p.niliance_last_attempt_at
-                        ? new Date(p.niliance_last_attempt_at).toLocaleString()
-                        : '—'}
+                      ? formatEastern(p.niliance_synced_at)
+                      : formatEastern(p.niliance_last_attempt_at)}
                   </Td>
                   <Td className="max-w-xs truncate text-xs text-destructive">
                     {p.niliance_link_error ?? ''}
@@ -162,7 +161,7 @@ export default async function NilianceAdminPage() {
               {(events ?? []).map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-b-0">
                   <Td className="whitespace-nowrap text-xs text-muted-foreground">
-                    {new Date(e.created_at).toLocaleString()}
+                    {formatEastern(e.created_at)}
                   </Td>
                   <Td>
                     <LevelPill level={e.level} />

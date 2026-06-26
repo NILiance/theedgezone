@@ -123,6 +123,27 @@ export async function grantAdminRole(
   return { ok: true }
 }
 
+/** Designate a user's role type (talent | brand) on their profile. */
+export async function setUserType(
+  formData: FormData
+): Promise<{ ok: boolean; message?: string }> {
+  await requireAdmin()
+  const userId = String(formData.get('user_id') ?? '')
+  const userType = String(formData.get('user_type') ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, message: 'Invalid user id' }
+  if (!['talent', 'brand'].includes(userType)) return { ok: false, message: 'Invalid type' }
+  const supabase = createServiceClient()
+  if (!supabase) return { ok: false, message: 'Service role key missing' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ user_type: userType })
+    .eq('id', userId)
+  if (error) return { ok: false, message: error.message }
+  revalidatePath('/dashboard/admin/users')
+  return { ok: true }
+}
+
 /** Manually confirm a user's email (for users who never clicked the link). */
 export async function confirmUser(
   formData: FormData

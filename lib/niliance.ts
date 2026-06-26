@@ -124,6 +124,34 @@ export async function createNilianceUser(params: CreateNilianceUserParams): Prom
     return 'linked'
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
+    const status =
+      (err as { status?: number })?.status ??
+      (err as { data?: { errors?: Array<{ status?: number }> } })?.data?.errors?.[0]?.status
+    // 409 Conflict = the email already has a NILiance account. That's not a
+    // failure — the bridge goal (every Edge Zone user has a NILiance account)
+    // is already met. Mark it linked-by-email instead of surfacing a red error.
+    // (A failed create doesn't return the existing user's UUID, and the
+    // Integration API can't look users up by email, so niliance_user_id stays
+    // null; outbound profile sync simply no-ops until it's known.)
+    const isDuplicate = status === 409 || /\b409\b/.test(message)
+    if (isDuplicate) {
+      await supabase
+        .from('profiles')
+        .update({
+          niliance_link_status: 'linked',
+          niliance_link_error: null,
+          niliance_synced_at: new Date().toISOString(),
+        })
+        .eq('id', params.userId)
+      await logEvent({
+        user_id: params.userId,
+        level: 'info',
+        direction: 'outbound',
+        message: 'NILiance account already exists for this email — linked.',
+      })
+      return 'linked'
+    }
+
     await supabase
       .from('profiles')
       .update({
