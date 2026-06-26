@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
 import { provisionEpk } from '@/lib/provisioning'
 import { defaultPropsFor } from '@/lib/site-builder/block-types'
+import { epkTemplate } from '@/lib/epk-templates'
 
 export async function createEpk(formData?: FormData) {
   const user = await requireUser()
@@ -58,6 +59,45 @@ export async function updateEpkSettings(formData: FormData) {
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
   revalidatePath(`/dashboard/epks/${parsed.data.epk_id}`)
+}
+
+/** Replace an EPK's blocks + theme with a starter template. */
+export async function applyEpkTemplate(
+  epkId: string,
+  templateId: string
+): Promise<{ ok: boolean; message?: string }> {
+  const user = await requireUser()
+  const tpl = epkTemplate(templateId)
+  if (!tpl) return { ok: false, message: 'Unknown template' }
+
+  const supabase = await createClient()
+  const { data: epk } = await supabase
+    .from('epks')
+    .select('id, user_id')
+    .eq('id', epkId)
+    .maybeSingle()
+  if (!epk || epk.user_id !== user.id) return { ok: false, message: 'Not your EPK' }
+
+  // Replace blocks.
+  await supabase.from('epk_blocks').delete().eq('epk_id', epkId)
+  const rows = tpl.blocks.map((b, i) => ({
+    epk_id: epkId,
+    position: i,
+    block_type: b.type,
+    props: { ...(defaultPropsFor(b.type) ?? {}), ...(b.props ?? {}) },
+  }))
+  const { error: insErr } = await supabase.from('epk_blocks').insert(rows)
+  if (insErr) return { ok: false, message: insErr.message }
+
+  const { error: upErr } = await supabase
+    .from('epks')
+    .update({ theme: tpl.theme, template_id: tpl.id, layout: 'classic' })
+    .eq('id', epkId)
+    .eq('user_id', user.id)
+  if (upErr) return { ok: false, message: upErr.message }
+
+  revalidatePath(`/dashboard/epks/${epkId}`)
+  return { ok: true }
 }
 
 const publishSchema = z.object({ epk_id: z.string().uuid() })

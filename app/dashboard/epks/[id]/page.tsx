@@ -6,6 +6,7 @@ import { BLOCK_TYPES } from '@/lib/site-builder/block-types'
 import { defaultTokens, type ThemeTokens } from '@/lib/site-builder/theme-presets'
 import { EpkBlockEditor } from './block-editor-wrapper'
 import { EpkSettingsForm } from './settings-form'
+import { EpkTemplatePicker } from './template-picker'
 import { SharePanel } from './share-panel'
 import { addEpkBlock, publishEpk, unpublishEpk } from '../actions'
 import type { SiteBlock } from '@/components/site/block-renderer'
@@ -112,6 +113,8 @@ export default async function EpkEditorPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      <EpkTemplatePicker epkId={epk.id} current={(epk.template_id as string | null) ?? null} />
 
       <EpkSettingsForm
         epkId={epk.id}
