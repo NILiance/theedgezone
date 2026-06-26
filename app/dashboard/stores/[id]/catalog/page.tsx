@@ -47,6 +47,7 @@ export default async function CatalogPage({ params, searchParams }: PageProps) {
         'id, supplier_code, supplier_sku, name, brand, category, base_price_cents, suggested_msrp_cents, primary_image_url, color_options, size_options, inventory_total'
       )
       .eq('active', true)
+      .eq('approved', true)
       .order('name', { ascending: true })
       .limit(60)
     if (q) {
