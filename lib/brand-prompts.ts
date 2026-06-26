@@ -24,6 +24,9 @@ export interface BrandPrefs {
   vibe?: string | null
   /** Free-text color description, e.g. "navy and gold" or "#7a0000 and #808080". */
   colors?: string | null
+  /** Exact primary/secondary hex so the prompt can demand an exact match. */
+  primaryColor?: string | null
+  secondaryColor?: string | null
   /** 'variety' | 'light' | 'dark' | 'gradient' — drives background guidance. */
   backgroundPref?: string | null
   /** Free-text brand inspirations. */
@@ -125,7 +128,10 @@ export function buildLogoPrompt(opts: LogoPromptOptions): string {
   const initialsUpper = initials.toUpperCase()
 
   const spellingBlock = buildSpellingBlock(nameUpper)
-  const initialsBlock = buildInitialsBlock(initialsUpper)
+  // Only inject initials when the talent actually opted in — otherwise the
+  // model would render initials they never asked for.
+  const initialsBlock =
+    prefs.includeInitials && initialsUpper ? buildInitialsBlock(initialsUpper) : ''
   // LOGO concepts are always rendered on white — that's what the legacy
   // did and it lets the same logo drop into any future Arsenal asset
   // (which DO respect background pref). The talent's bg pref only
@@ -133,9 +139,19 @@ export function buildLogoPrompt(opts: LogoPromptOptions): string {
   const backgroundLine = 'Background: pure white background, no gradients, no patterns.'
   void buildBackgroundGuidance // kept for Arsenal prompts
 
+  // Exact-color enforcement: hand the model the literal hex values and tell it
+  // to use ONLY those, so the output matches the talent's chosen palette.
+  const hexes = [prefs.primaryColor, prefs.secondaryColor]
+    .map((c) => (c || '').trim())
+    .filter((c) => /^#?[0-9a-fA-F]{3,8}$/.test(c))
+    .map((c) => (c.startsWith('#') ? c.toUpperCase() : `#${c.toUpperCase()}`))
+  const colorSpec = hexes.length
+    ? `using ONLY this exact color palette — ${hexes.join(' and ')}${colors ? ` (${colors})` : ''} — match these hex values precisely and use no other colors (aside from white background and necessary black/white for contrast)`
+    : `color palette of ${colors}`
+
   // Style mod rotation gives per-concept variety.
   const mod = STYLE_MODS[conceptIndex % STYLE_MODS.length]!
-  let conceptStyle = `${vibe} aesthetic, color palette of ${colors}, ${mod.join(', ')}`
+  let conceptStyle = `${vibe} aesthetic, ${colorSpec}, ${mod.join(', ')}`
   if (refinementSeed) conceptStyle += `, inspired by ${refinementSeed}`
   if (inspo) conceptStyle += `, influenced by brands like ${inspo}`
 

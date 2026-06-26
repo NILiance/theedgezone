@@ -174,6 +174,8 @@ function buildPrefsFromBrandAndProfile(
     initials: profile?.brand_initials ?? null,
     elements: profile?.brand_elements ?? null,
     colors: colorWords,
+    primaryColor: brand.primary_color,
+    secondaryColor: brand.secondary_color,
     vibe: profile?.brand_vibe ?? brand.style_seed ?? null,
     backgroundPref: profile?.brand_bg_pref ?? 'variety',
     includeName: profile?.brand_include_name ?? true,
