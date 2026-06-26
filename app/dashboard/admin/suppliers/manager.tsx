@@ -30,6 +30,7 @@ const FIELDS: Record<string, { key: string; label: string; secret?: boolean }[]>
     { key: 'password', label: 'Password', secret: true },
     { key: 'product_data_endpoint', label: 'Product Data WSDL URL' },
     { key: 'inventory_endpoint', label: 'Inventory WSDL URL' },
+    { key: 'purchase_order_endpoint', label: 'PurchaseOrder (SendPO) WSDL URL' },
   ],
   sanmar: [
     { key: 'username', label: 'Username' },

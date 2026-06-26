@@ -14,7 +14,13 @@ export type SupplierActionState = {
 
 const FIELDS_BY_SUPPLIER: Record<string, string[]> = {
   ssactivewear: ['account_number', 'api_token'],
-  promostandards: ['username', 'password', 'product_data_endpoint', 'inventory_endpoint'],
+  promostandards: [
+    'username',
+    'password',
+    'product_data_endpoint',
+    'inventory_endpoint',
+    'purchase_order_endpoint',
+  ],
   sanmar: ['username', 'password', 'customer_number'],
   onesource: ['client_id', 'client_secret'],
   mock: [],

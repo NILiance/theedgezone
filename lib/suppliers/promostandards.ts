@@ -3,6 +3,8 @@ import type {
   SupplierProduct,
   SupplierSearchParams,
   SupplierTestResult,
+  SupplierOrderRequest,
+  SupplierOrderResult,
 } from './types'
 
 /**
@@ -24,6 +26,7 @@ import type {
 interface PsCreds {
   productDataEndpoint?: string
   inventoryEndpoint?: string
+  purchaseOrderEndpoint?: string
   username: string
   password: string
 }
@@ -131,6 +134,172 @@ export class PromoStandardsSupplier implements Supplier {
     } catch {
       return null
     }
+  }
+
+  /**
+   * Order placement via the PromoStandards PurchaseOrder Service (SendPO 1.0.0).
+   *
+   * Opt-in (PS_AUTO_FULFILL=true) and requires a PurchaseOrder endpoint in the
+   * supplier creds. The PO schema is large and supplier-specific, so this is a
+   * best-effort blank-goods order: any SOAP fault / Error ServiceMessage is
+   * returned as 'failed' with the fault text, so the dispatcher routes the
+   * order to manual and surfaces the reason. PS_CARRIER / PS_SERVICE set the
+   * ship method (omitted → supplier default).
+   */
+  async submitOrder(req: SupplierOrderRequest): Promise<SupplierOrderResult> {
+    if (process.env.PS_AUTO_FULFILL !== 'true') {
+      return {
+        status: 'unsupported',
+        message: 'PromoStandards auto-fulfill disabled (set PS_AUTO_FULFILL=true)',
+      }
+    }
+    if (!this.creds.purchaseOrderEndpoint) {
+      return { status: 'unsupported', message: 'No PromoStandards PurchaseOrder endpoint configured' }
+    }
+    const addr = normalizeAddress(req.shipTo.address)
+    if (!addr) return { status: 'failed', message: 'Order has no usable shipping address' }
+
+    const orderDate = new Date().toISOString().slice(0, 10)
+    const customer = req.shipTo.name || addr.name || 'Customer'
+    const carrier = process.env.PS_CARRIER
+    const service = process.env.PS_SERVICE
+    const shipmentDetailsXml =
+      carrier || service
+        ? `
+              <ns:shipmentDetails>
+                ${carrier ? `<ns:carrier>${escapeXml(carrier)}</ns:carrier>` : ''}
+                ${service ? `<ns:service>${escapeXml(service)}</ns:service>` : ''}
+              </ns:shipmentDetails>`
+        : ''
+
+    const lineItemsXml = req.lines
+      .map((l, i) => {
+        const part = l.variantSku || l.supplierSku
+        return `
+            <ns:LineItem>
+              <ns:lineNumber>${i + 1}</ns:lineNumber>
+              <ns:lineType>New</ns:lineType>
+              <ns:description>${escapeXml(part)}</ns:description>
+              <ns:allowExceptions>true</ns:allowExceptions>
+              <ns:parts>
+                <ns:Part>
+                  <ns:partId>${escapeXml(part)}</ns:partId>
+                  <ns:quantity>
+                    <ns:value>${l.quantity}</ns:value>
+                    <ns:uom>EA</ns:uom>
+                  </ns:quantity>
+                </ns:Part>
+              </ns:parts>
+            </ns:LineItem>`
+      })
+      .join('')
+
+    const body = `
+        <ns:wsVersion>1.0.0</ns:wsVersion>
+        <ns:id>${escapeXml(this.creds.username)}</ns:id>
+        <ns:password>${escapeXml(this.creds.password)}</ns:password>
+        <ns:PO>
+          <ns:orderType>Blank</ns:orderType>
+          <ns:poNumber>${escapeXml(req.reference.slice(0, 30))}</ns:poNumber>
+          <ns:orderDate>${orderDate}</ns:orderDate>
+          <ns:rush><ns:isRush>false</ns:isRush></ns:rush>
+          <ns:shipments>
+            <ns:Shipment>
+              <ns:shipmentId>1</ns:shipmentId>
+              <ns:blindShip>false</ns:blindShip>
+              <ns:packingListRequired>false</ns:packingListRequired>
+              <ns:shipTo>
+                <ns:shipToType>Customer</ns:shipToType>
+                <ns:contactName>${escapeXml(customer)}</ns:contactName>
+                <ns:companyName>${escapeXml(customer)}</ns:companyName>
+                <ns:address1>${escapeXml(addr.address1)}</ns:address1>
+                ${addr.address2 ? `<ns:address2>${escapeXml(addr.address2)}</ns:address2>` : ''}
+                <ns:city>${escapeXml(addr.city)}</ns:city>
+                <ns:region>${escapeXml(addr.state)}</ns:region>
+                <ns:postalCode>${escapeXml(addr.zip)}</ns:postalCode>
+                <ns:country>${escapeXml(addr.country || 'US')}</ns:country>
+              </ns:shipTo>${shipmentDetailsXml}
+            </ns:Shipment>
+          </ns:shipments>
+          <ns:lineItems>${lineItemsXml}
+          </ns:lineItems>
+        </ns:PO>`
+
+    const envelope = buildSoapEnvelope({
+      ns: 'http://www.promostandards.org/WSDL/PurchaseOrderService/1.0.0/',
+      operation: 'SendPO',
+      body,
+    })
+
+    try {
+      const res = await fetch(this.creds.purchaseOrderEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '"SendPO"' },
+        body: envelope,
+      })
+      const text = await res.text()
+      if (!res.ok) {
+        return {
+          status: 'failed',
+          message: `PromoStandards HTTP ${res.status}: ${stripTags(text).slice(0, 200)}`,
+        }
+      }
+      const txId =
+        text.match(/<(?:[a-z0-9]+:)?transactionId>([^<]+)<\/(?:[a-z0-9]+:)?transactionId>/i)?.[1]
+      const fault =
+        text.match(/<(?:[a-z0-9]+:)?faultstring>([^<]+)</i)?.[1] ??
+        text.match(/<(?:[a-z0-9]+:)?description>([^<]+)</i)?.[1]
+      const hasError = /<(?:[a-z0-9]+:)?severity>\s*Error\s*<\/(?:[a-z0-9]+:)?severity>/i.test(text)
+      if ((hasError || !txId) && fault) {
+        return { status: 'failed', message: `PromoStandards: ${fault.trim().slice(0, 200)}` }
+      }
+      return {
+        status: 'submitted',
+        supplierOrderId: txId ? txId.trim() : undefined,
+        message: 'Submitted to PromoStandards (SendPO)',
+      }
+    } catch (err) {
+      return {
+        status: 'failed',
+        message: err instanceof Error ? err.message : 'PromoStandards order request failed',
+      }
+    }
+  }
+}
+
+function psStr(v: unknown): string {
+  return typeof v === 'string' ? v : ''
+}
+
+function stripTags(s: string): string {
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Accepts a flat address or Stripe's shipping_details ({ name, address: {…} }). */
+function normalizeAddress(
+  raw: Record<string, unknown> | null | undefined
+): { name?: string; address1: string; address2?: string; city: string; state: string; zip: string; country?: string } | null {
+  if (!raw || typeof raw !== 'object') return null
+  const inner =
+    raw.address && typeof raw.address === 'object'
+      ? (raw.address as Record<string, unknown>)
+      : raw
+  const address1 = psStr(inner.line1) || psStr(inner.address1)
+  const city = psStr(inner.city)
+  const state = psStr(inner.state) || psStr(inner.region)
+  const zip = psStr(inner.postal_code) || psStr(inner.zip) || psStr(inner.postalCode)
+  if (!address1 || !city || !zip) return null
+  return {
+    name: psStr(raw.name) || psStr(inner.name) || undefined,
+    address1,
+    address2: psStr(inner.line2) || psStr(inner.address2) || undefined,
+    city,
+    state,
+    zip,
+    country: psStr(inner.country) || undefined,
   }
 }
 

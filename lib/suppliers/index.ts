@@ -58,6 +58,7 @@ export async function getSupplier(code: string): Promise<SupplierFactoryResult> 
       const creds = row.credentials as {
         product_data_endpoint?: string
         inventory_endpoint?: string
+        purchase_order_endpoint?: string
         username?: string
         password?: string
       }
@@ -69,6 +70,7 @@ export async function getSupplier(code: string): Promise<SupplierFactoryResult> 
         supplier: new PromoStandardsSupplier({
           productDataEndpoint: creds.product_data_endpoint,
           inventoryEndpoint: creds.inventory_endpoint,
+          purchaseOrderEndpoint: creds.purchase_order_endpoint,
           username: creds.username,
           password: creds.password,
         }),
