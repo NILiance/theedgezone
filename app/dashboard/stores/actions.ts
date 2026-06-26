@@ -4,9 +4,10 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { provisionStore } from '@/lib/provisioning'
 import { composeMockup } from '@/lib/store-mockup'
+import { dispatchStoreOrder } from '@/lib/store-fulfillment'
 
 function slugify(s: string): string {
   return s
@@ -288,4 +289,88 @@ export async function generateProductMockup(input: {
   if (upErr) return { ok: false, message: upErr.message }
   const { data: pub } = supabase.storage.from('site-assets').getPublicUrl(path)
   return { ok: true, url: pub.publicUrl }
+}
+
+// ── Fulfillment (owner-side) ─────────────────────────────────────────────────
+const fulfillmentSchema = z.object({
+  order_id: z.string().uuid(),
+  status: z.enum(['paid', 'fulfilled', 'shipped', 'cancelled', 'refunded']),
+  fulfillment_status: z
+    .enum(['unfulfilled', 'manual', 'submitted', 'shipped', 'delivered', 'failed'])
+    .optional(),
+  tracking_carrier: z.string().max(80).optional(),
+  tracking_number: z.string().max(120).optional(),
+})
+
+async function orderOwnerStoreId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orderId: string,
+  userId: string
+): Promise<string | null> {
+  const { data: order } = await supabase
+    .from('store_orders')
+    .select('id, store_id, stores!inner(user_id)')
+    .eq('id', orderId)
+    .single()
+  const ownerId = (order as { stores?: { user_id?: string } } | null)?.stores?.user_id
+  if (!order || ownerId !== userId) return null
+  return order.store_id
+}
+
+/** Owner updates an order's status / tracking / fulfillment state. */
+export async function updateStoreOrderFulfillment(
+  formData: FormData
+): Promise<{ ok: boolean; message?: string }> {
+  const user = await requireUser()
+  const parsed = fulfillmentSchema.safeParse({
+    order_id: formData.get('order_id'),
+    status: formData.get('status'),
+    fulfillment_status: formData.get('fulfillment_status') || undefined,
+    tracking_carrier: formData.get('tracking_carrier') || undefined,
+    tracking_number: formData.get('tracking_number') || undefined,
+  })
+  if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
+
+  const supabase = await createClient()
+  const storeId = await orderOwnerStoreId(supabase, parsed.data.order_id, user.id)
+  if (!storeId) return { ok: false, message: 'Order not found' }
+
+  const patch: Record<string, unknown> = { status: parsed.data.status }
+  if (parsed.data.fulfillment_status) patch.fulfillment_status = parsed.data.fulfillment_status
+  if (parsed.data.tracking_carrier !== undefined)
+    patch.tracking_carrier = parsed.data.tracking_carrier || null
+  if (parsed.data.tracking_number !== undefined)
+    patch.tracking_number = parsed.data.tracking_number || null
+  if (parsed.data.status === 'shipped') {
+    patch.shipped_at = new Date().toISOString()
+    if (!parsed.data.fulfillment_status) patch.fulfillment_status = 'shipped'
+  }
+
+  const { error } = await supabase
+    .from('store_orders')
+    .update(patch)
+    .eq('id', parsed.data.order_id)
+  if (error) return { ok: false, message: error.message }
+  revalidatePath(`/dashboard/stores/${storeId}`)
+  return { ok: true }
+}
+
+/** Owner re-runs auto-fulfillment for an order (supplier submission). */
+export async function retryStoreFulfillment(
+  orderId: string
+): Promise<{ ok: boolean; status?: string; message?: string }> {
+  const user = await requireUser()
+  const supabase = await createClient()
+  const storeId = await orderOwnerStoreId(supabase, orderId, user.id)
+  if (!storeId) return { ok: false, message: 'Order not found' }
+
+  const service = createServiceClient()
+  if (!service) return { ok: false, message: 'Service role key not configured.' }
+  await service
+    .from('store_orders')
+    .update({ fulfillment_status: 'unfulfilled', fulfillment_error: null })
+    .eq('id', orderId)
+  const res = await dispatchStoreOrder(service, orderId)
+  revalidatePath(`/dashboard/stores/${storeId}`)
+  return { ok: true, status: res.fulfillmentStatus, message: res.message }
 }

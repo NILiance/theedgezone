@@ -10,6 +10,8 @@ import {
   upsertStoreProduct,
   deleteStoreProduct,
   generateProductMockup,
+  updateStoreOrderFulfillment,
+  retryStoreFulfillment,
 } from '../actions'
 
 const MOCKUP_PLACEMENTS = [
@@ -68,6 +70,9 @@ interface Order {
   paid_at: string | null
   quantity: number
   variant_label: string | null
+  fulfillment_status: string
+  supplier_order_id: string | null
+  fulfillment_error: string | null
 }
 
 interface Props {
@@ -659,6 +664,25 @@ function SettingsTab({ store }: { store: Store }) {
   )
 }
 
+const badgeClass = 'text-display rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest'
+
+function statusBadge(status: string) {
+  return status === 'paid' || status === 'fulfilled' || status === 'shipped'
+    ? 'bg-success/20 text-success'
+    : status === 'cancelled' || status === 'refunded'
+    ? 'bg-destructive/20 text-destructive'
+    : 'bg-panel-elevated text-muted-foreground'
+}
+
+const FULFILLMENT_BADGE: Record<string, string> = {
+  submitted: 'bg-success/20 text-success',
+  shipped: 'bg-success/20 text-success',
+  delivered: 'bg-success/20 text-success',
+  manual: 'bg-accent/20 text-accent',
+  failed: 'bg-destructive/20 text-destructive',
+  unfulfilled: 'bg-panel-elevated text-muted-foreground',
+}
+
 function OrdersTab({ orders, products }: { orders: Order[]; products: Product[] }) {
   const productsById = new Map(products.map((p) => [p.id, p]))
   if (orders.length === 0) {
@@ -678,52 +702,138 @@ function OrdersTab({ orders, products }: { orders: Order[]; products: Product[] 
             <th className="px-3 py-2 text-left">Buyer</th>
             <th className="px-3 py-2 text-right">Amount</th>
             <th className="px-3 py-2 text-left">Status</th>
+            <th className="px-3 py-2 text-left">Fulfillment</th>
+            <th className="px-3 py-2" />
           </tr>
         </thead>
         <tbody>
-          {orders.map((o) => {
-            const p = o.product_id ? productsById.get(o.product_id) : null
-            return (
-              <tr key={o.id} className="border-t border-border">
-                <td className="px-3 py-2 text-xs">
-                  {new Date(o.created_at).toLocaleString()}
-                </td>
-                <td className="px-3 py-2 text-xs">
-                  {p?.name ?? '—'}
-                  {(o.variant_label || o.quantity > 1) && (
-                    <span className="text-muted-foreground">
-                      {o.variant_label ? ` · ${o.variant_label}` : ''}
-                      {o.quantity > 1 ? ` · ×${o.quantity}` : ''}
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-xs">
-                  {o.buyer_name ?? '—'}
-                  {o.buyer_email && (
-                    <p className="text-muted-foreground">{o.buyer_email}</p>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right font-bold text-primary">
-                  ${(o.amount_cents / 100).toFixed(2)}
-                </td>
-                <td className="px-3 py-2">
-                  <span
-                    className={`text-display rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${
-                      o.status === 'paid' || o.status === 'fulfilled' || o.status === 'shipped'
-                        ? 'bg-success/20 text-success'
-                        : o.status === 'cancelled' || o.status === 'refunded'
-                        ? 'bg-destructive/20 text-destructive'
-                        : 'bg-panel-elevated text-muted-foreground'
-                    }`}
-                  >
-                    {o.status}
-                  </span>
-                </td>
-              </tr>
-            )
-          })}
+          {orders.map((o) => (
+            <OrderRow
+              key={o.id}
+              order={o}
+              product={o.product_id ? productsById.get(o.product_id) ?? null : null}
+            />
+          ))}
         </tbody>
       </table>
     </div>
+  )
+}
+
+function OrderRow({ order, product }: { order: Order; product: Product | null }) {
+  const [open, setOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const save = (fd: FormData) => {
+    fd.set('order_id', order.id)
+    setMsg(null)
+    startTransition(async () => {
+      const res = await updateStoreOrderFulfillment(fd)
+      setMsg(res.ok ? 'Saved.' : res.message ?? 'Save failed')
+    })
+  }
+  const retry = () => {
+    setMsg(null)
+    startTransition(async () => {
+      const res = await retryStoreFulfillment(order.id)
+      setMsg(res.ok ? `Auto-fulfill → ${res.status}` : res.message ?? 'Retry failed')
+    })
+  }
+
+  const labelCls = 'mb-1 block text-[9px] font-bold uppercase tracking-widest text-muted-foreground'
+  return (
+    <>
+      <tr className="border-t border-border">
+        <td className="px-3 py-2 text-xs">{new Date(order.created_at).toLocaleString()}</td>
+        <td className="px-3 py-2 text-xs">
+          {product?.name ?? '—'}
+          {(order.variant_label || order.quantity > 1) && (
+            <span className="text-muted-foreground">
+              {order.variant_label ? ` · ${order.variant_label}` : ''}
+              {order.quantity > 1 ? ` · ×${order.quantity}` : ''}
+            </span>
+          )}
+        </td>
+        <td className="px-3 py-2 text-xs">
+          {order.buyer_name ?? '—'}
+          {order.buyer_email && <p className="text-muted-foreground">{order.buyer_email}</p>}
+        </td>
+        <td className="px-3 py-2 text-right font-bold text-primary">
+          ${(order.amount_cents / 100).toFixed(2)}
+        </td>
+        <td className="px-3 py-2">
+          <span className={`${badgeClass} ${statusBadge(order.status)}`}>{order.status}</span>
+        </td>
+        <td className="px-3 py-2">
+          <span
+            className={`${badgeClass} ${
+              FULFILLMENT_BADGE[order.fulfillment_status] ?? FULFILLMENT_BADGE.unfulfilled
+            }`}
+          >
+            {order.fulfillment_status}
+          </span>
+        </td>
+        <td className="px-3 py-2 text-right">
+          <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
+            {open ? 'Close' : 'Manage'}
+          </Button>
+        </td>
+      </tr>
+      {open && (
+        <tr className="border-t border-border bg-panel/20">
+          <td colSpan={7} className="px-3 py-3">
+            <form action={save} className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className={labelCls}>Order status</label>
+                <select
+                  name="status"
+                  defaultValue={order.status}
+                  className="flex h-8 rounded-[var(--radius-sm)] border border-border bg-background px-2 text-xs"
+                >
+                  {['paid', 'fulfilled', 'shipped', 'cancelled', 'refunded'].map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Carrier</label>
+                <Input
+                  name="tracking_carrier"
+                  defaultValue={order.tracking_carrier ?? ''}
+                  placeholder="USPS"
+                  className="h-8 w-28 text-xs"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Tracking #</label>
+                <Input
+                  name="tracking_number"
+                  defaultValue={order.tracking_number ?? ''}
+                  className="h-8 w-44 text-xs"
+                />
+              </div>
+              <Button type="submit" size="sm" disabled={isPending}>
+                {isPending ? 'Saving…' : 'Save'}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={retry} disabled={isPending}>
+                Retry auto-fulfill
+              </Button>
+              {msg && <span className="text-[11px] text-muted-foreground">{msg}</span>}
+            </form>
+            {order.supplier_order_id && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Supplier order: <code>{order.supplier_order_id}</code>
+              </p>
+            )}
+            {order.fulfillment_error && (
+              <p className="mt-1 text-[11px] text-destructive">{order.fulfillment_error}</p>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
   )
 }

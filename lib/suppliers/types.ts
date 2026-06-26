@@ -61,6 +61,30 @@ export interface SupplierTestResult {
   message: string
 }
 
+export interface SupplierOrderLine {
+  supplierSku: string
+  variantSku?: string
+  quantity: number
+}
+
+export interface SupplierOrderRequest {
+  lines: SupplierOrderLine[]
+  shipTo: {
+    name?: string
+    email?: string
+    address?: Record<string, unknown> | null
+  }
+  /** Our order id, passed through as the supplier's customer reference. */
+  reference: string
+}
+
+export interface SupplierOrderResult {
+  /** submitted = accepted by supplier; unsupported = route to manual; failed = error. */
+  status: 'submitted' | 'unsupported' | 'failed'
+  supplierOrderId?: string
+  message?: string
+}
+
 export interface Supplier {
   code: string
   displayName: string
@@ -76,6 +100,13 @@ export interface Supplier {
 
   /** Live inventory check for a SKU (and optionally a variant). */
   getInventory(supplierSku: string, variantSku?: string): Promise<SupplierInventory | null>
+
+  /**
+   * Submit a drop-ship order to the supplier. Optional — adapters without a
+   * wired order API omit this, and the platform routes those orders to manual
+   * fulfillment.
+   */
+  submitOrder?(req: SupplierOrderRequest): Promise<SupplierOrderResult>
 }
 
 export type SupplierFactoryResult =

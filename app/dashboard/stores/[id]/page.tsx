@@ -28,7 +28,7 @@ export default async function StoreManagerPage({ params }: PageProps) {
       supabase
         .from('store_orders')
         .select(
-          'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at, quantity, variant_label'
+          'id, product_id, buyer_email, buyer_name, amount_cents, currency, status, tracking_carrier, tracking_number, created_at, paid_at, quantity, variant_label, fulfillment_status, supplier_order_id, fulfillment_error'
         )
         .eq('store_id', id)
         .order('created_at', { ascending: false })
@@ -141,6 +141,12 @@ export default async function StoreManagerPage({ params }: PageProps) {
           ...o,
           quantity: (o as { quantity?: number }).quantity ?? 1,
           variant_label: (o as { variant_label?: string | null }).variant_label ?? null,
+          fulfillment_status:
+            (o as { fulfillment_status?: string | null }).fulfillment_status ?? 'unfulfilled',
+          supplier_order_id:
+            (o as { supplier_order_id?: string | null }).supplier_order_id ?? null,
+          fulfillment_error:
+            (o as { fulfillment_error?: string | null }).fulfillment_error ?? null,
         })) as Array<{
           id: string
           product_id: string | null
@@ -155,6 +161,9 @@ export default async function StoreManagerPage({ params }: PageProps) {
           paid_at: string | null
           quantity: number
           variant_label: string | null
+          fulfillment_status: string
+          supplier_order_id: string | null
+          fulfillment_error: string | null
         }>}
       />
     </div>

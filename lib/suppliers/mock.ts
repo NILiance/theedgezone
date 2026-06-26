@@ -1,4 +1,10 @@
-import type { Supplier, SupplierProduct, SupplierSearchParams } from './types'
+import type {
+  Supplier,
+  SupplierProduct,
+  SupplierSearchParams,
+  SupplierOrderRequest,
+  SupplierOrderResult,
+} from './types'
 
 /**
  * Mock supplier — returns deterministic sample data so the talent UI is
@@ -146,6 +152,16 @@ export class MockSupplier implements Supplier {
       supplierSku,
       available: product.inventoryTotal ?? 0,
       fetchedAt: new Date().toISOString(),
+    }
+  }
+
+  async submitOrder(req: SupplierOrderRequest): Promise<SupplierOrderResult> {
+    // Always "accepts" — lets the auto-fulfillment path be exercised end-to-end
+    // without a real supplier. The id is derived from our reference.
+    return {
+      status: 'submitted',
+      supplierOrderId: `MOCK-${req.reference.slice(0, 8).toUpperCase()}`,
+      message: 'Mock supplier accepted the order',
     }
   }
 }

@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { env } from '@/lib/env'
 import { createServiceClient } from '@/lib/supabase/server'
 import { provisionOrder } from '@/lib/provisioning'
+import { dispatchStoreOrder } from '@/lib/store-fulfillment'
 
 export const runtime = 'nodejs' // raw body needed for signature verification
 
@@ -508,6 +509,13 @@ async function handleStoreOrderCompleted(
         await supabase.from('store_products').update(patch).eq('id', existing.product_id)
       }
     }
+  }
+
+  // Dispatch fulfillment (auto-submit to supplier or route to manual + notify).
+  try {
+    await dispatchStoreOrder(supabase, orderId)
+  } catch {
+    // Best-effort — the order is already paid; owner can retry from the dashboard.
   }
 }
 
