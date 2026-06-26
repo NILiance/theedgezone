@@ -60,13 +60,8 @@ export async function MarketingNav() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              {isAdmin && (
-                <Link href="/dashboard/admin" className="hidden sm:block">
-                  <Button size="sm" variant="ghost">
-                    Admin
-                  </Button>
-                </Link>
-              )}
+              {/* Admin link lives inside the account dropdown (AccountMenu) —
+                  no separate nav button needed. */}
               <AccountMenu
                 displayName={displayName ?? user.email ?? 'Account'}
                 isAdmin={isAdmin}

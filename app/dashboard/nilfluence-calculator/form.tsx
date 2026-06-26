@@ -199,9 +199,9 @@ export function CalculatorForm({ lastInputs, lastBms, autoPopularity }: FormProp
             />
             <FieldNumber
               name="adjustment_factor"
-              label="Adjustment factor (–48 to +48)"
+              label="Adjustment factor (0 to 48)"
               value={snapshot.adjustment_factor ?? 0}
-              hint="Brand-friendliness nudge"
+              hint="Brand-friendliness bonus"
               onChange={update}
             />
           </div>
