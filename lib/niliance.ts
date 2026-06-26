@@ -551,6 +551,35 @@ export async function pullProfileFromNiliance(params: {
       null
     setIf('avatar_url', avatarUrl)
 
+    // Affiliations (past teams, charities, sponsors). Written in a SEPARATE
+    // best-effort update so a missing column (migration not yet applied)
+    // can't fail the main field sync.
+    const affRaw = pick(['affiliations'])
+    if (Array.isArray(affRaw) && affRaw.length) {
+      const affs = affRaw
+        .map((a) => {
+          if (typeof a === 'string') return { organization: a, role: '' }
+          if (a && typeof a === 'object') {
+            const o = a as Record<string, unknown>
+            return {
+              organization: str(o.organization ?? o.name ?? o.org ?? o.title) ?? '',
+              role: str(o.role ?? o.position ?? o.type) ?? '',
+            }
+          }
+          return null
+        })
+        .filter((a): a is { organization: string; role: string } => Boolean(a && a.organization))
+      if (affs.length) {
+        const { error: affErr } = await supabase
+          .from('profiles')
+          .update({ affiliations: affs })
+          .eq('id', params.userId)
+        if (affErr) {
+          // Most likely the migration isn't applied yet — non-fatal.
+        }
+      }
+    }
+
     const fieldKeys = Object.keys(update)
     const fieldCount = fieldKeys.length
 

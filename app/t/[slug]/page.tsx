@@ -87,6 +87,21 @@ export default async function PublicTalentProfile({ params }: PageProps) {
 
   if (!profile) notFound()
 
+  // Affiliations live in a column added by a later migration — fetch separately
+  // so the page still works if that migration hasn't been applied yet.
+  let affiliations: Array<{ organization?: string; role?: string }> = []
+  try {
+    const { data: affRow } = await supabase
+      .from('profiles')
+      .select('affiliations')
+      .eq('id', userId)
+      .maybeSingle()
+    const raw = (affRow as { affiliations?: unknown } | null)?.affiliations
+    if (Array.isArray(raw)) affiliations = raw as Array<{ organization?: string; role?: string }>
+  } catch {
+    // Column not present yet — skip.
+  }
+
   const score = (latestScore?.result as { nilfluence?: { nilfluence_score?: number } } | null)
     ?.nilfluence?.nilfluence_score
   const followers = (
@@ -184,6 +199,24 @@ export default async function PublicTalentProfile({ params }: PageProps) {
                 <p className="mt-2 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                   {profile.achievements}
                 </p>
+              </div>
+            )}
+
+            {affiliations.filter((a) => a?.organization).length > 0 && (
+              <div className="mt-6">
+                <p className="text-eyebrow text-primary">Affiliations</p>
+                <ul className="mt-2 space-y-1.5">
+                  {affiliations
+                    .filter((a) => a?.organization)
+                    .map((a, i) => (
+                      <li key={`${a.organization}-${i}`} className="text-sm text-muted-foreground">
+                        <span className="text-display font-bold text-foreground">
+                          {a.organization}
+                        </span>
+                        {a.role ? ` · ${a.role}` : ''}
+                      </li>
+                    ))}
+                </ul>
               </div>
             )}
 
