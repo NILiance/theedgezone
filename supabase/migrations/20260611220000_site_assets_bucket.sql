@@ -73,6 +73,7 @@ create table if not exists public.site_assets (
 create index if not exists site_assets_user_idx on public.site_assets (user_id, created_at desc);
 create index if not exists site_assets_site_idx on public.site_assets (site_id, created_at desc);
 alter table public.site_assets enable row level security;
+drop policy if exists "site_assets_owner_all" on public.site_assets;
 create policy "site_assets_owner_all"
   on public.site_assets for all
   using (auth.uid() = user_id)

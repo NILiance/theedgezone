@@ -14,9 +14,11 @@ create table if not exists public.app_defaults (
   constraint app_defaults_singleton check (id = 'default')
 );
 alter table public.app_defaults enable row level security;
+drop policy if exists "app_defaults read for authed" on public.app_defaults;
 create policy "app_defaults read for authed"
   on public.app_defaults for select
   to authenticated using (true);
+drop policy if exists "app_defaults admin write" on public.app_defaults;
 create policy "app_defaults admin write"
   on public.app_defaults for all
   to authenticated using (
@@ -42,9 +44,11 @@ create table if not exists public.cms_pages (
   published_at timestamptz
 );
 alter table public.cms_pages enable row level security;
+drop policy if exists "cms_pages public read published" on public.cms_pages;
 create policy "cms_pages public read published"
   on public.cms_pages for select
   to anon, authenticated using (status = 'published');
+drop policy if exists "cms_pages admin all" on public.cms_pages;
 create policy "cms_pages admin all"
   on public.cms_pages for all
   to authenticated using (
@@ -68,12 +72,15 @@ create table if not exists public.podcasts (
   updated_at timestamptz not null default now()
 );
 alter table public.podcasts enable row level security;
+drop policy if exists "podcasts public read live" on public.podcasts;
 create policy "podcasts public read live"
   on public.podcasts for select
   to anon, authenticated using (status = 'live');
+drop policy if exists "podcasts owner full" on public.podcasts;
 create policy "podcasts owner full"
   on public.podcasts for all
   to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists "podcasts admin full" on public.podcasts;
 create policy "podcasts admin full"
   on public.podcasts for all
   to authenticated using (
@@ -95,6 +102,7 @@ create table if not exists public.podcast_episodes (
   created_at timestamptz not null default now()
 );
 alter table public.podcast_episodes enable row level security;
+drop policy if exists "podcast_episodes follow podcast" on public.podcast_episodes;
 create policy "podcast_episodes follow podcast"
   on public.podcast_episodes for select
   to anon, authenticated using (
@@ -103,6 +111,7 @@ create policy "podcast_episodes follow podcast"
       where p.id = podcast_episodes.podcast_id and p.status = 'live'
     )
   );
+drop policy if exists "podcast_episodes owner full" on public.podcast_episodes;
 create policy "podcast_episodes owner full"
   on public.podcast_episodes for all
   to authenticated using (
@@ -116,6 +125,7 @@ create policy "podcast_episodes owner full"
       where p.id = podcast_episodes.podcast_id and p.user_id = auth.uid()
     )
   );
+drop policy if exists "podcast_episodes admin full" on public.podcast_episodes;
 create policy "podcast_episodes admin full"
   on public.podcast_episodes for all
   to authenticated using (
@@ -137,9 +147,11 @@ create table if not exists public.reward_items (
   updated_at timestamptz not null default now()
 );
 alter table public.reward_items enable row level security;
+drop policy if exists "reward_items public read active" on public.reward_items;
 create policy "reward_items public read active"
   on public.reward_items for select
   to anon, authenticated using (status = 'active');
+drop policy if exists "reward_items admin write" on public.reward_items;
 create policy "reward_items admin write"
   on public.reward_items for all
   to authenticated using (
@@ -159,12 +171,15 @@ create table if not exists public.reward_redemptions (
   fulfilled_at timestamptz
 );
 alter table public.reward_redemptions enable row level security;
+drop policy if exists "reward_redemptions owner read" on public.reward_redemptions;
 create policy "reward_redemptions owner read"
   on public.reward_redemptions for select
   to authenticated using (user_id = auth.uid());
+drop policy if exists "reward_redemptions owner insert" on public.reward_redemptions;
 create policy "reward_redemptions owner insert"
   on public.reward_redemptions for insert
   to authenticated with check (user_id = auth.uid());
+drop policy if exists "reward_redemptions admin all" on public.reward_redemptions;
 create policy "reward_redemptions admin all"
   on public.reward_redemptions for all
   to authenticated using (

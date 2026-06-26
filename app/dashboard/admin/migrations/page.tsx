@@ -52,6 +52,15 @@ function prettyLabel(file: string): string {
 }
 
 /** Parse the DDL targets a migration creates, so we can check they exist. */
+// Tokens that are SQL keywords, never real object names — guards against the
+// parser mistaking e.g. `... on public.foo` for a column named "on".
+const SQL_KEYWORDS = new Set([
+  'on', 'for', 'to', 'using', 'with', 'select', 'insert', 'update', 'delete',
+  'all', 'table', 'policy', 'index', 'exists', 'if', 'not', 'and', 'or',
+  'references', 'default', 'check', 'unique', 'primary', 'foreign', 'key',
+  'constraint', 'create', 'alter', 'add', 'column', 'public',
+])
+
 function parseExpectedObjects(sql: string): {
   tables: string[]
   columns: string[]
@@ -74,17 +83,29 @@ function parseExpectedObjects(sql: string): {
     /create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?"?(\w+)"?\s+on/g
   ))
     indexes.add(m[1]!)
-  for (const m of s.matchAll(/create\s+policy\s+"([^"]+)"\s+on\s+(?:public\.)?"?(\w+)"?/g))
-    policies.add(`${m[2]}.${m[1]}`)
+  // Policies — capture optional schema. db_objects() only reflects the public
+  // schema, so policies on storage.objects / auth.* can't be verified; skip
+  // them rather than flag a permanent false "pending".
+  for (const m of s.matchAll(
+    /create\s+policy\s+"([^"]+)"\s+on\s+(?:(\w+)\.)?"?(\w+)"?/g
+  )) {
+    const schema = m[2]
+    const tbl = m[3]!
+    if (schema && schema !== 'public') continue
+    policies.add(`${tbl}.${m[1]}`)
+  }
 
-  // Columns scoped to their enclosing ALTER TABLE block.
+  // Columns scoped to their enclosing ALTER TABLE … ADD COLUMN block.
   const blocks = s.split(/alter\s+table\s+(?:if\s+exists\s+)?/).slice(1)
   for (const block of blocks) {
     const tm = block.match(/^(?:only\s+)?(?:public\.)?"?(\w+)"?/)
     if (!tm) continue
     const tbl = tm[1]!
-    for (const cm of block.matchAll(/add\s+column\s+(?:if\s+not\s+exists\s+)?"?(\w+)"?/g))
-      columns.add(`${tbl}.${cm[1]!}`)
+    for (const cm of block.matchAll(/add\s+column\s+(?:if\s+not\s+exists\s+)?"?(\w+)"?/g)) {
+      const col = cm[1]!
+      if (SQL_KEYWORDS.has(col)) continue
+      columns.add(`${tbl}.${col}`)
+    }
   }
 
   return {
