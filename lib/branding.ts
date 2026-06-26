@@ -5,12 +5,14 @@ export interface BrandingSettings {
   logo_height_nav: number
   logo_height_footer: number
   tagline: string
+  favicon_url: string | null
 }
 
 const DEFAULTS: BrandingSettings = {
   logo_height_nav: 52,
   logo_height_footer: 36,
   tagline: 'Elevate Your Game',
+  favicon_url: null,
 }
 
 /**
@@ -22,12 +24,22 @@ const DEFAULTS: BrandingSettings = {
 export const getBrandingSettings = cache(async (): Promise<BrandingSettings> => {
   try {
     const supabase = await createClient()
-    const { data } = await supabase
+    // Try with favicon_url; if the column isn't there yet (migration not
+    // applied), fall back to the original columns so the rest still works.
+    const withFavicon = await supabase
+      .from('branding_settings')
+      .select('logo_height_nav, logo_height_footer, tagline, favicon_url')
+      .eq('id', 1)
+      .maybeSingle()
+    if (!withFavicon.error) {
+      return { ...DEFAULTS, ...(withFavicon.data ?? {}) }
+    }
+    const base = await supabase
       .from('branding_settings')
       .select('logo_height_nav, logo_height_footer, tagline')
       .eq('id', 1)
       .maybeSingle()
-    return data ?? DEFAULTS
+    return { ...DEFAULTS, ...(base.data ?? {}) }
   } catch {
     return DEFAULTS
   }

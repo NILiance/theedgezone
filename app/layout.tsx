@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Montserrat } from 'next/font/google'
+import { getBrandingSettings } from '@/lib/branding'
 import './globals.css'
 
 const inter = Inter({
@@ -15,12 +16,16 @@ const montserrat = Montserrat({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: {
-    default: 'Edge Zone',
-    template: '%s · Edge Zone',
-  },
-  description: 'Athlete brand-building, fulfillment, and creator tools.',
+export async function generateMetadata(): Promise<Metadata> {
+  const { favicon_url } = await getBrandingSettings()
+  return {
+    title: {
+      default: 'Edge Zone',
+      template: '%s · Edge Zone',
+    },
+    description: 'Athlete brand-building, fulfillment, and creator tools.',
+    ...(favicon_url ? { icons: { icon: favicon_url, shortcut: favicon_url, apple: favicon_url } } : {}),
+  }
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
