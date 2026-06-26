@@ -5,20 +5,12 @@ import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { AccountMenu } from '@/components/landing/account-menu'
 
-const PUBLIC_LINKS = [
-  { label: 'HOME', href: '/' },
-  { label: 'SERVICES', href: '/services' },
-  { label: 'OPPORTUNITIES', href: '/opportunities' },
-  { label: 'ABOUT NILIANCE', href: '/about' },
-  { label: 'FREE ROADMAP', href: '/roadmap' },
-  { label: 'FREE RESOURCES', href: '/resources' },
-]
-
 export async function MarketingNav() {
   const user = await getCurrentUser()
 
   let isAdmin = false
   let displayName: string | null = null
+  let userType: string | null = null
   if (user) {
     const supabase = await createClient()
     const [{ data: roleRow }, { data: profile }] = await Promise.all([
@@ -28,18 +20,34 @@ export async function MarketingNav() {
         .eq('user_id', user.id)
         .eq('role', 'admin')
         .maybeSingle(),
-      supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
+      supabase.from('profiles').select('display_name, user_type').eq('id', user.id).maybeSingle(),
     ])
     isAdmin = !!roleRow
     displayName = (profile?.display_name as string | null) ?? null
+    userType = (profile?.user_type as string | null) ?? null
   }
+
+  // Role-split nav: talent (+ guests/admins) see Opportunities; brands (+ admins)
+  // see the Talent Directory — mirrors the legacy header.
+  const links: Array<{ label: string; href: string }> = [
+    { label: 'HOME', href: '/' },
+    { label: 'SERVICES', href: '/services' },
+  ]
+  if (userType !== 'brand' || isAdmin) links.push({ label: 'OPPORTUNITIES', href: '/opportunities' })
+  if (userType === 'brand' || isAdmin)
+    links.push({ label: 'TALENT DIRECTORY', href: '/dashboard/talent-directory' })
+  links.push(
+    { label: 'ABOUT NILIANCE', href: '/about' },
+    { label: 'FREE ROADMAP', href: '/roadmap' },
+    { label: 'FREE RESOURCES', href: '/resources' }
+  )
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
         <Wordmark variant="nav" />
         <nav className="hidden items-center gap-7 lg:flex">
-          {PUBLIC_LINKS.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}

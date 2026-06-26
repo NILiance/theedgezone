@@ -445,16 +445,27 @@ export async function pullProfileFromNiliance(params: {
     // Athlete fields (pub_*) live on the talent's LISTING, not the user.
     let listingPub: Record<string, unknown> = {}
     let listingDescription: string | null = null
+    let listingId: string | null = null
+    let listingSlug: string | null = null
     try {
       const lq = await sdk.listings.query({ authorId: stUserId })
       const listings = Array.isArray(lq?.data?.data) ? lq.data.data : []
       const first = listings[0]
       const lAttrs = (first?.attributes ?? {}) as {
+        title?: unknown
         description?: unknown
         publicData?: Record<string, unknown>
       }
       listingPub = (lAttrs.publicData ?? {}) as Record<string, unknown>
       listingDescription = typeof lAttrs.description === 'string' ? lAttrs.description : null
+      listingId = typeof first?.id === 'string' ? first.id : first?.id?.uuid ?? null
+      const slugRaw =
+        (typeof listingPub.slug === 'string' && listingPub.slug) ||
+        (typeof listingPub.permalink === 'string' && listingPub.permalink) ||
+        (typeof lAttrs.title === 'string' ? lAttrs.title : '')
+      listingSlug = slugRaw
+        ? slugRaw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+        : null
     } catch {
       // Listing fetch is best-effort.
     }
@@ -608,6 +619,18 @@ export async function pullProfileFromNiliance(params: {
           // Most likely the migration isn't applied yet — non-fatal.
         }
       }
+    }
+
+    // Capture the talent's NILiance listing id + slug (drives the "View on
+    // NILiance" profile/edit links). Separate best-effort write.
+    if (listingId || listingSlug) {
+      await supabase
+        .from('profiles')
+        .update({
+          ...(listingId ? { niliance_listing_id: listingId } : {}),
+          ...(listingSlug ? { niliance_listing_slug: listingSlug } : {}),
+        })
+        .eq('id', params.userId)
     }
 
     const fieldKeys = Object.keys(update)

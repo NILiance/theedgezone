@@ -1,141 +1,125 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { MarketingNav } from '@/components/landing/marketing-nav'
 import { Footer } from '@/components/landing/footer'
-import { Button } from '@/components/ui/button'
-import { getCurrentUser } from '@/lib/auth'
-import { createClient } from '@/lib/supabase/server'
-import { formatEasternDate } from '@/lib/format-date'
+import { getUserContext } from '@/lib/auth'
+import { listBrandOpportunities } from '@/lib/opportunities'
+import { OpportunityFilters } from './opportunity-filters'
 
 export const metadata = { title: 'Opportunities' }
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  searchParams: Promise<{ category?: string; audience?: string }>
+  searchParams: Promise<{ q?: string; category?: string }>
 }
 
 export default async function OpportunitiesPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const user = await getCurrentUser()
-  const supabase = await createClient()
+  const { user, userType, isAdmin } = await getUserContext()
 
-  let query = supabase
-    .from('opportunities')
-    .select('id, title, description, category, audience, price_cents, currency, location, deadline_at, contact_email, external_url, created_at')
-    .eq('status', 'published')
-    .order('created_at', { ascending: false })
-    .limit(60)
+  // Login-gated. Guests → sign in (legacy bounces to login).
+  if (!user) redirect('/sign-in?next=/opportunities')
 
-  if (sp.category) query = query.eq('category', sp.category)
-  if (sp.audience) query = query.eq('audience', sp.audience)
+  // Talent-only. Brands and any other role get the denial page (admins bypass).
+  if (userType !== 'talent' && !isAdmin) {
+    return (
+      <>
+        <MarketingNav />
+        <main className="mx-auto max-w-2xl px-6 py-24 text-center">
+          <p className="text-eyebrow text-accent">Talent accounts only</p>
+          <h1 className="text-display mt-3 text-3xl font-black">This page is for talent</h1>
+          <p className="mt-3 text-muted-foreground">
+            Opportunities are where talent discover brand-offered campaigns and gigs. If you&rsquo;re
+            a brand, head to the{' '}
+            <Link href="/dashboard/talent-directory" className="text-primary hover:underline">
+              Talent Directory
+            </Link>{' '}
+            to find talent, or post an opportunity on NILiance.
+          </p>
+          <Link
+            href="/dashboard"
+            className="text-display mt-6 inline-block rounded-[var(--radius-sm)] bg-primary px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+          >
+            Back to dashboard
+          </Link>
+        </main>
+        <Footer />
+      </>
+    )
+  }
 
-  const { data: opportunities } = await query
+  const opportunities = await listBrandOpportunities({
+    keywords: sp.q?.trim() || undefined,
+    category: sp.category || undefined,
+  })
 
   return (
     <>
       <MarketingNav />
       <main>
-        <section className="mx-auto max-w-7xl px-6 py-16">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-eyebrow text-accent">Opportunities</p>
-              <h1 className="text-display mt-3 text-4xl font-black uppercase tracking-tight sm:text-5xl">
-                Brand deals & opportunities
-              </h1>
-              <p className="mt-3 max-w-2xl text-muted-foreground">
-                Brand campaigns, single & bulk jobs, subscription boxes, perks, and rewards —
-                synced from{' '}
-                <Link href="/about" className="text-primary hover:underline">
-                  NILiance
-                </Link>
-                .
-              </p>
-            </div>
-            {user ? (
-              <Link href="/dashboard/opportunities/new">
-                <Button>Post an opportunity</Button>
-              </Link>
-            ) : (
-              <Link href="/sign-up">
-                <Button>Sign up to post</Button>
-              </Link>
-            )}
-          </div>
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <p className="text-eyebrow text-accent">Opportunities</p>
+          <h1 className="text-display mt-2 text-4xl font-black uppercase tracking-tight sm:text-5xl">
+            Opportunities
+          </h1>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            Brand campaigns, paid appearances, and gigs available right now.
+          </p>
 
-          <div className="mt-6 flex flex-wrap gap-2 text-xs">
-            <FilterPill label="All" href="/opportunities" active={!sp.audience} />
-            <FilterPill
-              label="For talent"
-              href="/opportunities?audience=talent"
-              active={sp.audience === 'talent'}
-            />
-            <FilterPill
-              label="For brands"
-              href="/opportunities?audience=brand"
-              active={sp.audience === 'brand'}
-            />
-            <FilterPill
-              label="Open to all"
-              href="/opportunities?audience=everyone"
-              active={sp.audience === 'everyone'}
-            />
-          </div>
+          <OpportunityFilters q={sp.q ?? ''} category={sp.category ?? ''} />
 
-          {(opportunities ?? []).length === 0 ? (
-            <div className="mt-12 rounded-[var(--radius)] border border-border bg-panel/40 p-12 text-center">
-              <p className="text-display text-lg font-bold">No opportunities posted yet.</p>
+          {opportunities.length === 0 ? (
+            <div className="mt-10 rounded-[var(--radius)] border border-border bg-panel/40 p-12 text-center">
+              <p className="text-display text-lg font-bold">No opportunities match.</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                {user
-                  ? 'Be the first — post one above.'
-                  : 'Sign up to post the first one or get notified when brands list something.'}
+                Check back soon — new brand offers sync from NILiance regularly.
               </p>
             </div>
           ) : (
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(opportunities ?? []).map((o) => (
+              {opportunities.map((o) => (
                 <article
-                  key={o.id}
+                  key={o.uuid}
                   className="flex flex-col gap-3 rounded-[var(--radius)] border border-border bg-panel/40 p-5"
                 >
-                  <div className="flex items-baseline justify-between gap-3">
-                    {o.category && (
-                      <p className="text-eyebrow text-primary">{o.category}</p>
-                    )}
-                    {o.price_cents != null && o.price_cents > 0 && (
-                      <p className="text-display text-lg font-black text-primary">
-                        ${(o.price_cents / 100).toFixed(0)}
-                      </p>
-                    )}
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-display rounded-full bg-primary/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+                      {o.categoryLabel}
+                    </span>
+                    <span className="text-right">
+                      {o.price && o.price.amount > 0 ? (
+                        <span className="text-display text-lg font-black text-primary">
+                          ${Math.round(o.price.amount / 100)}
+                        </span>
+                      ) : (
+                        <span className="text-display text-[10px] font-bold uppercase leading-tight tracking-widest text-primary">
+                          Free Exclusive
+                          <br />
+                          Offer for
+                          <br />
+                          Qualified Talent
+                        </span>
+                      )}
+                    </span>
                   </div>
                   <h3 className="text-display text-base font-bold">{o.title}</h3>
-                  <p className="line-clamp-3 text-sm text-muted-foreground">{o.description}</p>
-                  <div className="mt-auto flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {o.location && <span>📍 {o.location}</span>}
-                    {o.deadline_at && (
-                      <span>Closes {formatEasternDate(o.deadline_at)}</span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 border-t border-border pt-3 text-xs">
-                    {o.external_url ? (
-                      <a
-                        href={o.external_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        View details →
-                      </a>
-                    ) : o.contact_email ? (
-                      <a
-                        href={`mailto:${o.contact_email}`}
-                        className="text-primary hover:underline"
-                      >
-                        Reach out →
-                      </a>
-                    ) : (
-                      <Link href={`/opportunities/${o.id}`} className="text-primary hover:underline">
-                        Details →
-                      </Link>
-                    )}
-                  </div>
+                  {o.description && (
+                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                      {o.description.length > 180
+                        ? `${o.description.slice(0, 180)}…`
+                        : o.description}
+                    </p>
+                  )}
+                  {o.nilianceUrl && (
+                    <a
+                      href={o.nilianceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-display mt-auto inline-block rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-center text-xs font-bold uppercase tracking-widest text-primary-foreground"
+                    >
+                      View on NILiance →
+                    </a>
+                  )}
                 </article>
               ))}
             </div>
@@ -144,28 +128,5 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
       </main>
       <Footer />
     </>
-  )
-}
-
-function FilterPill({
-  label,
-  href,
-  active,
-}: {
-  label: string
-  href: string
-  active: boolean
-}) {
-  return (
-    <Link
-      href={href}
-      className={`text-display rounded-full px-3 py-1.5 font-bold uppercase tracking-widest transition-colors ${
-        active
-          ? 'bg-primary text-primary-foreground'
-          : 'bg-panel-elevated/50 text-muted-foreground hover:bg-panel'
-      }`}
-    >
-      {label}
-    </Link>
   )
 }

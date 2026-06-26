@@ -41,3 +41,32 @@ export async function requireAdmin() {
   if (!data) redirect('/dashboard')
   return user
 }
+
+/**
+ * Resolve the current user's role context: their user_type (talent | brand)
+ * and whether they're an admin. Used to gate the NILiance Opportunities /
+ * Talent Directory views (talent-only vs brand-only, admins bypass).
+ */
+export async function getUserContext(): Promise<{
+  user: Awaited<ReturnType<typeof getCurrentUser>>
+  userType: string | null
+  isAdmin: boolean
+}> {
+  const user = await getCurrentUser()
+  if (!user) return { user: null, userType: null, isAdmin: false }
+  const supabase = await createClient()
+  const [{ data: profile }, { data: adminRow }] = await Promise.all([
+    supabase.from('profiles').select('user_type').eq('id', user.id).maybeSingle(),
+    supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle(),
+  ])
+  return {
+    user,
+    userType: (profile?.user_type as string | null) ?? null,
+    isAdmin: Boolean(adminRow),
+  }
+}

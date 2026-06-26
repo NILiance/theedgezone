@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { ScoreRing } from '@/components/dashboard/score-ring'
 import { MarketingNav } from '@/components/landing/marketing-nav'
 import { Footer } from '@/components/landing/footer'
+import { nilianceProfileUrl, slugify } from '@/lib/niliance-urls'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -100,6 +101,36 @@ export default async function PublicTalentProfile({ params }: PageProps) {
     if (Array.isArray(raw)) affiliations = raw as Array<{ organization?: string; role?: string }>
   } catch {
     // Column not present yet — skip.
+  }
+
+  // NILiance "View Full Profile" link — uses the LISTING slug+uuid when synced,
+  // else the user uuid (legacy fallback). Fetched resiliently.
+  let nilianceProfileHref: string | null = null
+  try {
+    const withRef = await supabase
+      .from('profiles')
+      .select('niliance_listing_id, niliance_listing_slug, niliance_user_id')
+      .eq('id', userId)
+      .maybeSingle()
+    type NRef = {
+      niliance_listing_id?: string | null
+      niliance_listing_slug?: string | null
+      niliance_user_id?: string | null
+    }
+    const r = (withRef.error ? null : withRef.data) as NRef | null
+    const ref: NRef | null =
+      r ??
+      ((
+        await supabase.from('profiles').select('niliance_user_id').eq('id', userId).maybeSingle()
+      ).data as NRef | null)
+    const nameSlug = slugify(profile.display_name ?? '')
+    if (ref?.niliance_listing_id) {
+      nilianceProfileHref = nilianceProfileUrl(ref.niliance_listing_slug || nameSlug, ref.niliance_listing_id)
+    } else if (ref?.niliance_user_id) {
+      nilianceProfileHref = nilianceProfileUrl(nameSlug, ref.niliance_user_id)
+    }
+  } catch {
+    // skip
   }
 
   const score = (latestScore?.result as { nilfluence?: { nilfluence_score?: number } } | null)
@@ -257,6 +288,17 @@ export default async function PublicTalentProfile({ params }: PageProps) {
                 >
                   Press kit →
                 </Link>
+              )}
+              {nilianceProfileHref && (
+                <a
+                  href={nilianceProfileHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-display rounded-[var(--radius-sm)] px-5 py-2 text-sm font-bold uppercase tracking-widest text-primary-foreground"
+                  style={{ background: primary }}
+                >
+                  View Full Profile on NILiance ↗
+                </a>
               )}
             </div>
           </div>
