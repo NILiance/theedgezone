@@ -458,6 +458,37 @@ export async function selectFinalConcept(formData: FormData) {
  * the kit after cloning a brand for an additional-final-logo purchase.
  */
 export { assembleKitForBrand as assembleKitForBrandId }
+
+/**
+ * Self-heal the site-assets bucket so the brand-kit ZIP isn't rejected with
+ * "mime type application/zip is not supported". The bucket was first created
+ * for site-builder images only (restricted MIME allowlist + 10MB cap), so a
+ * fresh or late environment rejects the kit. We merge zip+pdf into the
+ * allowlist and lift the cap via the service role — no hand-applied storage
+ * migration required. Non-blocking: a null allowlist already accepts
+ * everything, and any failure just falls through to the normal upload error.
+ */
+async function ensureSiteAssetsAcceptsKit(): Promise<void> {
+  const service = createServiceClient()
+  if (!service) return
+  try {
+    const { data: bucket, error } = await service.storage.getBucket('site-assets')
+    if (error || !bucket) return
+    // getBucket returns snake_case; updateBucket takes camelCase.
+    const current = bucket.allowed_mime_types ?? null
+    if (current && !current.includes('application/zip')) {
+      const merged = Array.from(new Set([...current, 'application/zip', 'application/pdf']))
+      await service.storage.updateBucket('site-assets', {
+        public: bucket.public,
+        allowedMimeTypes: merged,
+        fileSizeLimit: 100 * 1024 * 1024,
+      })
+    }
+  } catch (err) {
+    console.error('[brand-kit] could not ensure site-assets accepts the kit ZIP', err)
+  }
+}
+
 async function assembleKitForBrand(brandId: string, userId: string): Promise<string | null> {
   const supabase = await createClient()
   const { data: brand } = await supabase
@@ -506,6 +537,10 @@ async function assembleKitForBrand(brandId: string, userId: string): Promise<str
   }
 
   if (!publicUrl) {
+    // Make sure the bucket accepts a ZIP before we try (self-heals a
+    // restrictive MIME allowlist so we don't fail with "mime type
+    // application/zip is not supported").
+    await ensureSiteAssetsAcceptsKit()
     const path = `${userId}/brand-kits/${brand.id}/${kit.filename}`
     const { error: upErr } = await supabase.storage
       .from('site-assets')
