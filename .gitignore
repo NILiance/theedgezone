@@ -3,11 +3,11 @@ node_modules
 .pnp
 .pnp.js
 
-# Build output
+# Build output (anchored to repo root so nested app routes named "build" aren't ignored)
 .next
-out
-build
-dist
+/out
+/build
+/dist
 
 # Environment
 .env
