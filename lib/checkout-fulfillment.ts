@@ -22,6 +22,7 @@ import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe'
 import { createServiceClient } from '@/lib/supabase/server'
 import { provisionOrder, provisionBrandDesign } from '@/lib/provisioning'
+import { awardPurchase } from '@/lib/points'
 
 type Supabase = NonNullable<ReturnType<typeof createServiceClient>>
 
@@ -72,6 +73,13 @@ export async function fulfillCheckoutSession(
   // session by pasting the session_id into their URL.
   if (!userId || userId !== expectedUserId) {
     return { ok: false, reason: 'Session does not belong to this user.' }
+  }
+
+  // Reward the buyer with points for the purchase (deduped by session, so the
+  // webhook + dashboard fallback can't double-award). Runs for every paid
+  // session regardless of which fulfilment branch handles it below.
+  if (typeof session.amount_total === 'number' && session.amount_total > 0) {
+    await awardPurchase(userId, session.amount_total, sessionId)
   }
 
   // Brand-design "additional brand" purchase — bypasses orders and

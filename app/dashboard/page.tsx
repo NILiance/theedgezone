@@ -9,6 +9,7 @@ import { DashboardTabs } from '@/components/dashboard/dashboard-tabs'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { fulfillCheckoutSession } from '@/lib/checkout-fulfillment'
+import { awardEngagement, awardProfileComplete } from '@/lib/points'
 
 export const metadata = { title: 'Dashboard' }
 
@@ -30,7 +31,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     await fulfillCheckoutSession(sp.session_id, user.id)
   }
 
+  // Reward engagement (one-time signup bonus + daily check-in). Idempotent —
+  // safe to call every load; no-ops without a service-role key.
+  await awardEngagement(user.id)
+
   const { profile, orders } = await getDashboardData(user.id)
+  if ((profile?.profile_completion_pct ?? 0) >= 100) {
+    await awardProfileComplete(user.id)
+  }
 
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'there'
   const userType = profile?.user_type ?? 'talent'
@@ -369,14 +377,17 @@ function PointsPanel({ points }: { points: number }) {
       title="Points"
       description="Earn points for every action that grows your NIL footprint — finished profile sections, purchases, fan submissions, completed roadmap milestones."
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SmallStat value={points.toLocaleString('en-US')} label="Lifetime points" />
-        <SmallStat value="—" label="This month" />
-        <SmallStat value="—" label="Rank" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SmallStat value={points.toLocaleString('en-US')} label="Points balance" />
+        <div className="flex items-center">
+          <Link href="/dashboard/rewards" className="w-full">
+            <Button className="w-full">Open rewards store →</Button>
+          </Link>
+        </div>
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        Coming soon: redeem points for discounts on services, premium roadmap unlocks, and
-        spotlight features.
+        Earn points from daily check-ins, completing your profile, and purchases — then redeem them
+        in the rewards store.
       </p>
     </PanelShell>
   )
