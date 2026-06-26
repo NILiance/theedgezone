@@ -1119,50 +1119,12 @@ export async function assembleBrandKit(
     social.file(`${variant.size}-${variant.label}.png`, sized)
   }
 
-  // 7. Typography specimen
-  const typoBuf = await makeTypographySpecimen(input)
-  addFile({
-    name: 'typography-specimen.png',
-    label: 'Typography Specimen',
-    mimeType: 'image/png',
-    buffer: typoBuf,
-    shortMeta: 'PNG · 1600x600',
-  })
-
-  // 7b. Brand guidelines preview PNG (1200x800) — a single composite
-  //     showing the logo, palette, and font pair at a glance. Useful for
-  //     pasting into Slack/email without sending the full PDF.
-  const guidesPreview = await makeGuidelinesPreview(input, transparentBuf)
-  addFile({
-    name: 'brand-guidelines.png',
-    label: 'Brand Guidelines',
-    mimeType: 'image/png',
-    buffer: guidesPreview,
-    shortMeta: 'PNG · 1200x800',
-  })
-
-  // 8. Fonts list
+  // Typography Specimen, Brand Guidelines (PNG), and the Font Reference TXT
+  // were removed — everything they showed is already in the Brand Guidelines
+  // PDF below (and the PNGs rendered text as tofu boxes without embedded
+  // fonts). The font pair is still computed for brand.json + the PDF.
   const fontPair = input.font_pair ?? 'Inter Display / Inter'
   const fonts = fontPair.split(/[\/,]/).map((f) => f.trim()).filter(Boolean)
-  const fontLines: string[] = [
-    `# ${input.brand_name} — Brand Fonts`,
-    '',
-    `Recommended pair: ${fontPair}`,
-    '',
-  ]
-  for (const f of fonts) {
-    const slug = f.replace(/\s+/g, '+')
-    fontLines.push(`* ${f}`)
-    fontLines.push(`  Google Fonts: https://fonts.google.com/specimen/${slug}`)
-    fontLines.push('')
-  }
-  addFile({
-    name: 'fonts.txt',
-    label: 'Font Reference',
-    mimeType: 'text/plain',
-    buffer: Buffer.from(fontLines.join('\n'), 'utf-8'),
-    shortMeta: 'TXT',
-  })
 
   // 9. Brand metadata
   const brandJson = {
