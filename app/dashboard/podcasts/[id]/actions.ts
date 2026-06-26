@@ -90,6 +90,7 @@ export async function upsertEpisode(_prev: EpisodeState, form: FormData): Promis
     season_number: numOrNull(form, 'season_number'),
     explicit: form.get('explicit') === 'on' || form.get('explicit') === 'true',
     image_url: String(form.get('image_url') ?? '').trim() || null,
+    transcript: String(form.get('transcript') ?? '').trim() || null,
     published_at: publishedAt,
   }
 

@@ -18,6 +18,7 @@ export interface Episode {
   published_at: string | null
   explicit: boolean | null
   image_url: string | null
+  transcript: string | null
   play_count: number | null
   download_count: number | null
 }
@@ -255,6 +256,18 @@ function EpisodeForm({
             name="description"
             rows={4}
             defaultValue={episode?.description ?? ''}
+            className={inputCls}
+          />
+        </label>
+        <label className="block text-sm sm:col-span-2">
+          <span className="block text-xs text-muted-foreground">
+            Transcript (optional — shown on the episode page)
+          </span>
+          <textarea
+            name="transcript"
+            rows={5}
+            defaultValue={episode?.transcript ?? ''}
+            placeholder="Paste the episode transcript…"
             className={inputCls}
           />
         </label>

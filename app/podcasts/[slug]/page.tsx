@@ -72,7 +72,7 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
   const { data: episodes } = await supabase
     .from('podcast_episodes')
     .select(
-      'id, episode_number, season_number, title, description, audio_url, duration_seconds, published_at, image_url'
+      'id, episode_number, season_number, title, description, audio_url, duration_seconds, published_at, image_url, transcript'
     )
     .eq('podcast_id', podcast.id)
     .not('published_at', 'is', null)
@@ -192,6 +192,16 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
                 )}
                 {e.audio_url && (
                   <EpisodePlayer episodeId={e.id} src={e.audio_url} className="mt-3 w-full" />
+                )}
+                {(e as { transcript?: string | null }).transcript && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white">
+                      Transcript
+                    </summary>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-white/70">
+                      {(e as { transcript?: string | null }).transcript}
+                    </p>
+                  </details>
                 )}
               </article>
             ))}
