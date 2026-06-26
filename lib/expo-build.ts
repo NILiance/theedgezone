@@ -7,6 +7,7 @@
  * the talent_apps row.
  */
 import JSZip from 'jszip'
+import { screenPattern, type ScreenPattern } from '@/lib/app-screens'
 
 export interface ExpoBuildInput {
   name: string
@@ -79,6 +80,9 @@ export async function buildExpoZip(
               }
             : {}),
           ...(input.iap_enabled ? { 'react-native-iap': '^12.15.0' } : {}),
+          ...(input.screens.some((s) => screenPattern(s.type) === 'web')
+            ? { 'react-native-webview': '13.8.6' }
+            : {}),
         },
       },
       null,
@@ -399,38 +403,113 @@ function renderScreenJs(
   screen: ExpoBuildInput['screens'][number],
   input: ExpoBuildInput
 ): string {
-  const safeContent = JSON.stringify(screen.content ?? {}, null, 2)
   const componentName = pascal(screen.id) + 'Screen'
-  return `import { View, Text, ScrollView, StyleSheet } from 'react-native'
+  const pattern: ScreenPattern = screenPattern(screen.type)
+  const dataLiteral = JSON.stringify(screen.content ?? {})
+  const fg = input.theme_mode === 'dark' ? '#ffffff' : '#0a0a0a'
+  const sub = input.theme_mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)'
+  const bg = input.secondary_color
+  const accent = input.primary_color
+  const title = escapeJsString(screen.title)
 
-const data = ${safeContent}
+  // Embedded web view — fills the screen, no scroll wrapper.
+  if (pattern === 'web') {
+    return `import { View, Text, StyleSheet } from 'react-native'
+import { WebView } from 'react-native-webview'
+
+const data = ${dataLiteral}
+
+export default function ${componentName}() {
+  if (!data.url) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>This page isn't configured yet.</Text>
+      </View>
+    )
+  }
+  return <WebView source={{ uri: data.url }} style={{ flex: 1, backgroundColor: '${bg}' }} />
+}
+
+const styles = StyleSheet.create({
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '${bg}' },
+  emptyText: { color: '${sub}', fontSize: 15 },
+})
+`
+  }
+
+  const bodies: Record<Exclude<ScreenPattern, 'web'>, string> = {
+    profile: `      {data.image ? <Image source={{ uri: data.image }} style={styles.hero} /> : null}
+      <Text style={styles.h1}>{data.headline || '${title}'}</Text>
+      {data.bio ? <Text style={styles.body}>{data.bio}</Text> : null}`,
+    text: `      <Text style={styles.h1}>${title}</Text>
+      <Text style={styles.body}>{data.body || ''}</Text>`,
+    links: `      <Text style={styles.h1}>${title}</Text>
+      {(data.items || []).filter(i => i && (i.label || i.url)).map((it, i) => (
+        <Pressable key={i} style={styles.link} onPress={() => it.url && Linking.openURL(it.url)}>
+          <Text style={styles.linkText}>{it.label || it.url}</Text>
+          <Ionicons name="chevron-forward" size={18} color="${sub}" />
+        </Pressable>
+      ))}`,
+    list: `      <Text style={styles.h1}>${title}</Text>
+      {(data.items || []).filter(i => i && (i.title || i.subtitle || i.detail)).map((it, i) => (
+        <View key={i} style={styles.card}>
+          {it.title ? <Text style={styles.cardTitle}>{it.title}</Text> : null}
+          {it.subtitle ? <Text style={styles.cardSub}>{it.subtitle}</Text> : null}
+          {it.detail ? <Text style={styles.body}>{it.detail}</Text> : null}
+        </View>
+      ))}`,
+    gallery: `      <Text style={styles.h1}>${title}</Text>
+      <View style={styles.grid}>
+        {(data.images || []).filter(Boolean).map((u, i) => (
+          <Image key={i} source={{ uri: u }} style={styles.gridImg} />
+        ))}
+      </View>`,
+    video: `      <Text style={styles.h1}>${title}</Text>
+      {(data.items || []).filter(i => i && i.url).map((it, i) => (
+        <Pressable key={i} style={styles.card} onPress={() => Linking.openURL(it.url)}>
+          <Ionicons name="play-circle" size={28} color="${accent}" />
+          <Text style={styles.cardTitle}>{it.title || 'Watch'}</Text>
+        </Pressable>
+      ))}`,
+  }
+
+  const needsLinking = pattern === 'links' || pattern === 'video'
+  const needsImage = pattern === 'profile' || pattern === 'gallery'
+  const rnImports = [
+    'View',
+    'Text',
+    'ScrollView',
+    'StyleSheet',
+    ...(needsImage ? ['Image'] : []),
+    ...(needsLinking ? ['Pressable', 'Linking'] : []),
+  ].join(', ')
+  const iconImport =
+    needsLinking ? `\nimport { Ionicons } from '@expo/vector-icons'` : ''
+
+  return `import { ${rnImports} } from 'react-native'${iconImport}
+
+const data = ${dataLiteral}
 
 export default function ${componentName}() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
-      <Text style={styles.title}>${escapeJsString(screen.title)}</Text>
-      <Text style={styles.body}>{JSON.stringify(data, null, 2)}</Text>
+${bodies[pattern]}
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '${input.secondary_color}',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '${input.primary_color}',
-    marginBottom: 16,
-  },
-  body: {
-    color: '${input.theme_mode === 'dark' ? '#fff' : '#000'}',
-    fontSize: 14,
-    lineHeight: 22,
-    fontFamily: 'Menlo',
-  },
+  container: { flex: 1, backgroundColor: '${bg}' },
+  hero: { width: '100%', height: 200, borderRadius: 14, marginBottom: 16 },
+  h1: { fontSize: 28, fontWeight: '900', color: '${accent}', marginBottom: 14 },
+  body: { color: '${fg}', fontSize: 15, lineHeight: 23 },
+  link: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '${sub}' },
+  linkText: { color: '${fg}', fontSize: 16, fontWeight: '600' },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(127,127,127,0.12)', borderRadius: 12, padding: 14, marginBottom: 10 },
+  cardTitle: { color: '${fg}', fontSize: 16, fontWeight: '700' },
+  cardSub: { color: '${sub}', fontSize: 13, marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  gridImg: { width: '31.5%', aspectRatio: 1, borderRadius: 8 },
 })
 `
 }
