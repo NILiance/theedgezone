@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { computeNilfluence, computeBMS, type NilfluenceResult } from '@/lib/nilfluence'
 import type { AutoPopularity } from '@/lib/nilfluence-autocalc'
 import { ScoreRing } from '@/components/dashboard/score-ring'
@@ -33,12 +33,12 @@ interface FormProps {
   lastInputs: Record<string, unknown> | null
   lastBms: Record<string, unknown> | null
   autoPopularity: AutoPopularity
+  /** Auto-refine the four contextual inputs on load (when not already saved). */
+  autoCalc: boolean
 }
 
-export function CalculatorForm({ lastInputs, lastBms, autoPopularity }: FormProps) {
+export function CalculatorForm({ lastInputs, lastBms, autoPopularity, autoCalc }: FormProps) {
   const [state, action, pending] = useActionState<CalcState, FormData>(runCalculator, {})
-  // AI reasoning for the four "Automated AI Calculation" inputs, when computed.
-  const [aiNotes, setAiNotes] = useState<Record<string, string | undefined> | null>(null)
 
   const initial = useMemo<Record<string, number>>(() => {
     const platforms = (lastInputs ?? {}) as Record<string, SavedPlatform>
@@ -76,6 +76,29 @@ export function CalculatorForm({ lastInputs, lastBms, autoPopularity }: FormProp
   }, [lastInputs, lastBms, autoPopularity])
 
   const [snapshot, setSnapshot] = useState<Record<string, number>>(initial)
+
+  // Refine the four contextual inputs from the profile, silently, on load.
+  const [estimating, setEstimating] = useState(false)
+  const ranRef = useRef(false)
+  useEffect(() => {
+    if (!autoCalc || ranRef.current) return
+    ranRef.current = true
+    setEstimating(true)
+    aiPopularity()
+      .then((r) => {
+        if (r.ok) {
+          setSnapshot((prev) => ({
+            ...prev,
+            athlete_popularity: r.athlete_popularity ?? prev.athlete_popularity,
+            team_popularity: r.team_popularity ?? prev.team_popularity,
+            market_size: r.market_size ?? prev.market_size,
+            adjustment_factor: r.adjustment_factor ?? prev.adjustment_factor,
+          }))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setEstimating(false))
+  }, [autoCalc])
 
   const liveResult = useMemo(() => {
     const get = (k: string) => snapshot[k] ?? 0
@@ -119,9 +142,6 @@ export function CalculatorForm({ lastInputs, lastBms, autoPopularity }: FormProp
     const n = Number(value)
     setSnapshot((prev) => ({ ...prev, [name]: Number.isFinite(n) ? n : 0 }))
   }
-
-  const hint = (key: 'athlete' | 'team' | 'market', autoText: string) =>
-    aiNotes?.[key] ? `AI: ${aiNotes[key]}` : `Auto: ${autoText}`
 
   return (
     <div className="space-y-6">
@@ -186,56 +206,44 @@ export function CalculatorForm({ lastInputs, lastBms, autoPopularity }: FormProp
             </div>
           </section>
 
-          {/* Popularity + adjustment — "Automated AI Calculation" rows */}
+          {/* Popularity + adjustment — auto-estimated from the profile */}
           <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="text-eyebrow text-primary">Popularity inputs</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  These four are computed by AI from your profile. Override any value if you know
-                  better.
+                  Estimated from your profile. Override any value if you know better.
                 </p>
               </div>
-              <AiScoreButton
-                onScored={(r) => {
-                  setSnapshot((prev) => ({
-                    ...prev,
-                    athlete_popularity: r.athlete_popularity ?? prev.athlete_popularity,
-                    team_popularity: r.team_popularity ?? prev.team_popularity,
-                    market_size: r.market_size ?? prev.market_size,
-                    adjustment_factor: r.adjustment_factor ?? prev.adjustment_factor,
-                  }))
-                  setAiNotes(r.reasoning ?? null)
-                }}
-              />
+              {estimating && (
+                <span className="text-display animate-pulse text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Estimating…
+                </span>
+              )}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <FieldNumber
                 name="athlete_popularity"
                 label="Athlete popularity (0–100)"
                 value={snapshot.athlete_popularity ?? 0}
-                hint={hint('athlete', `${autoPopularity.athlete} (${autoPopularity.notes.athlete})`)}
                 onChange={update}
               />
               <FieldNumber
                 name="team_popularity"
                 label="Team popularity (0–100)"
                 value={snapshot.team_popularity ?? 0}
-                hint={hint('team', `${autoPopularity.team} (${autoPopularity.notes.team})`)}
                 onChange={update}
               />
               <FieldNumber
                 name="market_size"
                 label="Market size (0–100)"
                 value={snapshot.market_size ?? 0}
-                hint={hint('market', `${autoPopularity.market} (${autoPopularity.notes.market})`)}
                 onChange={update}
               />
               <FieldNumber
                 name="adjustment_factor"
                 label="Adjustment factor (0–48)"
                 value={snapshot.adjustment_factor ?? 0}
-                hint={aiNotes?.adjustment ? `AI: ${aiNotes.adjustment}` : 'Brand-friendliness bonus'}
                 onChange={update}
               />
             </div>
@@ -394,9 +402,7 @@ function FullBreakdown({ result, score }: { result: NilfluenceResult; score: num
   return (
     <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-5">
       <p className="text-eyebrow text-primary">Full breakdown</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Every metric from the NILfluence Score model.
-      </p>
+      <p className="mt-1 text-xs text-muted-foreground">Your complete NILfluence breakdown.</p>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
         {/* Reach + engagement per platform */}
@@ -489,40 +495,6 @@ function Table({
           </div>
         )
       })}
-    </div>
-  )
-}
-
-// ── AI scoring button ───────────────────────────────────────────────────────
-
-function AiScoreButton({
-  onScored,
-}: {
-  onScored: (r: Awaited<ReturnType<typeof aiPopularity>>) => void
-}) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const run = async () => {
-    setPending(true)
-    setError(null)
-    try {
-      const r = await aiPopularity()
-      if (!r.ok) setError(r.error ?? 'AI scoring failed.')
-      else onScored(r)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'AI scoring failed.')
-    } finally {
-      setPending(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <Button type="button" size="sm" variant="outline" onClick={run} disabled={pending}>
-        {pending ? 'Scoring…' : '✨ Auto-calculate with AI'}
-      </Button>
-      {error && <p className="text-[10px] text-destructive">{error}</p>}
     </div>
   )
 }

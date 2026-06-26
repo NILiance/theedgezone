@@ -39,6 +39,10 @@ export default async function NilfluenceCalculatorPage() {
   const lastInputs =
     (latest?.inputs as Record<string, unknown> | null)?.nilfluence ?? null
   const lastBms = (latest?.inputs as Record<string, unknown> | null)?.bms ?? null
+  // Auto-estimate the four contextual inputs on load only when the talent
+  // hasn't saved their own values yet (don't clobber prior overrides).
+  const hasSavedPopularity =
+    !!lastInputs && (lastInputs as Record<string, unknown>).athlete_popularity != null
 
   return (
     <div className="space-y-8">
@@ -64,6 +68,7 @@ export default async function NilfluenceCalculatorPage() {
         lastInputs={lastInputs as Record<string, unknown> | null}
         lastBms={lastBms as Record<string, unknown> | null}
         autoPopularity={autoPop}
+        autoCalc={!hasSavedPopularity}
       />
 
       {(recent ?? []).length > 0 && (
