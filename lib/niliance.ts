@@ -273,6 +273,66 @@ function uuidFrom(rec: unknown): string | null {
   return (id as { uuid?: string } | null)?.uuid ?? null
 }
 
+// ── Inbound value normalizers (mirror legacy ez_niliance_apply_inbound) ──────
+
+const US_STATE_ABBR: Record<string, string> = {
+  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
+  colorado: 'CO', connecticut: 'CT', delaware: 'DE', 'district of columbia': 'DC',
+  florida: 'FL', georgia: 'GA', hawaii: 'HI', idaho: 'ID', illinois: 'IL',
+  indiana: 'IN', iowa: 'IA', kansas: 'KS', kentucky: 'KY', louisiana: 'LA',
+  maine: 'ME', maryland: 'MD', massachusetts: 'MA', michigan: 'MI', minnesota: 'MN',
+  mississippi: 'MS', missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
+  'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+  'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK',
+  oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+  'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT',
+  virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY',
+}
+
+const DIVISION_NORM: Record<string, string> = {
+  division1fbs: 'NCAA D1 FBS', d1fbs: 'NCAA D1 FBS',
+  division1fcs: 'NCAA D1 FCS', d1fcs: 'NCAA D1 FCS',
+  division2: 'NCAA D2', d2: 'NCAA D2',
+  division3: 'NCAA D3', d3: 'NCAA D3',
+  naia: 'NAIA', njcaa: 'NJCAA',
+}
+
+const SPORT_NORM: Record<string, string> = {
+  'track-and-field': 'Track & Field', 'track-field': 'Track & Field',
+  'cross-country': 'Cross Country', 'water-polo': 'Water Polo',
+  'field-hockey': 'Field Hockey', 'cheer-dance': 'Cheer/Dance', cheer: 'Cheer/Dance',
+  'boxing-mma': 'Boxing/MMA', mma: 'Boxing/MMA', boxing: 'Boxing/MMA',
+}
+
+function normalizeState(v: string): string {
+  return US_STATE_ABBR[v.toLowerCase()] ?? v
+}
+
+function normalizeDivision(v: string): string {
+  const key = v.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return DIVISION_NORM[key] ?? v
+}
+
+/** "mens-basketball" → "Basketball"; "track-and-field" → "Track & Field". */
+function humanizeSport(v: string): string {
+  const slug = v.toLowerCase().replace(/^(mens|womens|coed)-/, '')
+  if (SPORT_NORM[v.toLowerCase()] || SPORT_NORM[slug]) return SPORT_NORM[v.toLowerCase()] ?? SPORT_NORM[slug]!
+  return slug
+    .split('-')
+    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : ''))
+    .join(' ')
+    .trim()
+}
+
+/** MM/DD/YYYY or ISO → YYYY-MM-DD (Postgres date). */
+function normalizeDob(v: string): string | null {
+  const mdy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (mdy) return `${mdy[3]}-${mdy[1]!.padStart(2, '0')}-${mdy[2]!.padStart(2, '0')}`
+  const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+  return null
+}
+
 /** Look up a NILiance (Sharetribe) user id by email via the Integration API. */
 export async function resolveNilianceUserId(email: string): Promise<string | null> {
   if (!sharetribeEnabled || !email) return null
@@ -337,19 +397,26 @@ export async function pullProfileFromNiliance(params: {
     const sdk = await getIntegrationSdk()
     if (!sdk) return { ok: false, error: 'Integration SDK unavailable.' }
 
-    // Read the USER. Handle both response shapes (data.attributes and
-    // data.data.attributes) like the legacy bridge does.
-    const userRes = await sdk.users.show({ id: stUserId })
+    // Read the USER (with profile image). Handle both response shapes.
+    const userRes = await sdk.users.show({
+      id: stUserId,
+      include: ['profileImage'],
+      'fields.image': 'variants.square-small2x,variants.default,variants.square-small',
+    })
     const userBody = userRes?.data ?? {}
     const userAttrs = (userBody?.data?.attributes ?? userBody?.attributes ?? {}) as {
-      profile?: { bio?: unknown; displayName?: unknown; publicData?: Record<string, unknown> }
+      profile?: {
+        bio?: unknown
+        displayName?: unknown
+        publicData?: Record<string, unknown>
+        protectedData?: Record<string, unknown>
+      }
     }
     const userProfile = userAttrs.profile ?? {}
     const userPub = (userProfile.publicData ?? {}) as Record<string, unknown>
+    const userProt = (userProfile.protectedData ?? {}) as Record<string, unknown>
 
-    // Athlete fields (the pub_* set) usually live on the talent's LISTING, not
-    // the user profile — that's the Sharetribe convention. Pull the first
-    // listing's publicData too and merge it (listing wins for athlete fields).
+    // Athlete fields (pub_*) live on the talent's LISTING, not the user.
     let listingPub: Record<string, unknown> = {}
     let listingDescription: string | null = null
     try {
@@ -366,17 +433,30 @@ export async function pullProfileFromNiliance(params: {
       // Listing fetch is best-effort.
     }
 
-    const merged: Record<string, unknown> = { ...userPub, ...listingPub }
+    // Listing wins for athletic fields; user publicData/protectedData fills the rest.
+    const merged: Record<string, unknown> = { ...userProt, ...userPub, ...listingPub }
     const availableKeys = Object.keys(merged)
 
     const str = (v: unknown): string | null =>
       typeof v === 'string' && v.trim() ? v.trim() : typeof v === 'number' ? String(v) : null
     const firstOf = (v: unknown): string | null =>
       Array.isArray(v) && v.length ? str(v[0]) : str(v)
+    // Key-variant resolver (mirrors legacy lookup_value): for each candidate
+    // also try pub_X↔X and snake↔camel forms — NILiance is inconsistent.
+    const variantsOf = (key: string): string[] => {
+      const out = [key]
+      if (key.startsWith('pub_')) out.push(key.slice(4))
+      else out.push('pub_' + key)
+      if (key.includes('_')) out.push(key.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase()))
+      else if (/[A-Z]/.test(key)) out.push(key.replace(/([A-Z])/g, '_$1').toLowerCase())
+      return out
+    }
     const pick = (keys: string[]): unknown => {
-      for (const k of keys) {
-        const v = merged[k]
-        if (v != null && v !== '' && !(Array.isArray(v) && v.length === 0)) return v
+      for (const key of keys) {
+        for (const vk of variantsOf(key)) {
+          const v = merged[vk]
+          if (v != null && v !== '' && !(Array.isArray(v) && v.length === 0)) return v
+        }
       }
       return null
     }
@@ -387,46 +467,89 @@ export async function pullProfileFromNiliance(params: {
     }
 
     setIf('bio', str(userProfile.bio) ?? str(pick(['bio'])) ?? listingDescription)
-    setIf('sport', firstOf(pick(['pub_sports', 'sports', 'sport'])))
-    // Position lives under a sport-specific key (e.g. position-mens-basketball).
-    const posKey = availableKeys.find((k) => k.toLowerCase().startsWith('position'))
+
+    const sportRaw = firstOf(pick(['pub_sports', 'sports', 'sport']))
+    if (sportRaw) setIf('sport', humanizeSport(sportRaw))
+
+    // Position: per-sport key like position-mens-basketball, else bare position.
+    const posEntryKey = availableKeys.find(
+      (k) => k.toLowerCase().startsWith('position-') && str(merged[k])
+    )
     setIf(
       'athletic_position',
-      firstOf(pick([...(posKey ? [posKey] : []), 'position', 'athletic_position', 'pub_position']))
+      posEntryKey ? firstOf(merged[posEntryKey]) : firstOf(pick(['position', 'athletic_position']))
     )
-    setIf(
-      'school',
-      str(
-        pick([
-          'schoolDisplayName',
-          'school',
-          'college_name',
-          'collegeName',
-          'university',
-          'pub_school_or_group_name',
-        ])
-      )
-    )
-    setIf('conference', str(pick(['conference', 'pub_conference'])))
-    setIf('jersey_number', str(pick(['pub_jersey_number', 'jersey_number', 'jerseyNumber'])))
-    setIf('hometown', str(pick(['pub_hometown', 'hometown'])))
-    setIf('city', str(pick(['pub_current_town', 'city', 'currentCity', 'pub_hometown_city'])))
-    setIf('us_state', str(pick(['pub_state', 'state', 'pub_hometown_state'])))
-    const h = parseHeightToInches(pick(['pub_height', 'height']))
-    if (h) update.height_inches = h
+
+    // School: NILiance splits school (canonical "Rutgers") + schoolDisplayName
+    // (mascot "Scarlet Knights"). Combine like the legacy does.
+    const schoolMain = str(pick(['school']))
+    const schoolSuffix = str(merged['schoolDisplayName'])
+    const schoolCombined =
+      [schoolMain, schoolSuffix].filter(Boolean).join(' ') ||
+      str(pick(['university', 'pub_school_or_group_name', 'collegeName']))
+    setIf('school', schoolCombined)
+
+    setIf('conference', str(pick(['conference'])))
+    const divRaw = str(pick(['division']))
+    if (divRaw) setIf('division', normalizeDivision(divRaw))
+    setIf('jersey_number', str(pick(['pub_jersey_number', 'jersey_number'])))
+    setIf('hometown', firstOf(pick(['pub_hometown', 'hometown'])))
+    setIf('city', str(pick(['pub_current_town', 'city', 'current_town', 'pub_hometown_city'])))
+    const stateRaw = str(pick(['pub_state', 'state', 'pub_hometown_state']))
+    if (stateRaw) setIf('us_state', normalizeState(stateRaw))
+
+    // Height: separate feet/inches fields, else a combined string.
+    const feet = parseInt(str(pick(['height_feet', 'pub_height_feet'])) ?? '', 10)
+    const inches = parseInt(str(pick(['height_inches', 'pub_height_inches'])) ?? '', 10)
+    let totalIn: number | null = null
+    if (Number.isFinite(feet) && feet > 0) {
+      totalIn = feet * 12 + (Number.isFinite(inches) ? inches : 0)
+    } else {
+      totalIn = parseHeightToInches(pick(['pub_height', 'height', 'heightString']))
+    }
+    if (totalIn && totalIn > 12) update.height_inches = totalIn
+
     const wPick = pick(['pub_weight', 'weight'])
     const wRaw = typeof wPick === 'number' ? wPick : parseInt(str(wPick) ?? '', 10)
     if (Number.isFinite(wRaw) && wRaw > 0) update.weight_lbs = wRaw
-    // Socials: an object map { instagram, tiktok, … }.
-    const socialsObj = pick(['socials'])
-    if (socialsObj && typeof socialsObj === 'object' && !Array.isArray(socialsObj)) {
-      const cleaned: Record<string, string> = {}
-      for (const [k, v] of Object.entries(socialsObj as Record<string, unknown>)) {
+
+    const dobRaw = str(pick(['dateOfBirth', 'date_of_birth', 'dob']))
+    if (dobRaw) setIf('date_of_birth', normalizeDob(dobRaw))
+
+    setIf('phone', str(pick(['phone', 'phoneNumber', 'contactPhone', 'mobilePhone'])))
+    setIf('agency_name', str(pick(['agencyName', 'agency_name', 'agency'])))
+
+    // Socials: a { instagram, tiktok, … } object and/or per-platform handle keys.
+    const socials: Record<string, string> = {}
+    const socObj = pick(['socials'])
+    if (socObj && typeof socObj === 'object' && !Array.isArray(socObj)) {
+      for (const [k, v] of Object.entries(socObj as Record<string, unknown>)) {
         const s = str(v)
-        if (s) cleaned[k.toLowerCase()] = s
+        if (s) socials[k.toLowerCase()] = s
       }
-      if (Object.keys(cleaned).length) update.socials = cleaned
     }
+    for (const plat of ['instagram', 'tiktok', 'twitter', 'youtube', 'facebook', 'snapchat']) {
+      if (socials[plat]) continue
+      const handle = str(pick([`${plat}_handle`, `${plat}Handle`, `${plat}_username`, plat]))
+      if (handle) socials[plat] = handle
+    }
+    const xHandle = str(pick(['x_handle', 'xHandle', 'twitterX_handle']))
+    if (xHandle && !socials.twitter) socials.twitter = xHandle
+    if (Object.keys(socials).length) update.socials = socials
+
+    // Profile image — Sharetribe returns the imgix URL on the included image.
+    const included = Array.isArray(userBody?.included) ? (userBody.included as unknown[]) : []
+    const imageRes = included.find(
+      (r) => (r as { type?: string } | null)?.type === 'image'
+    ) as { attributes?: { variants?: Record<string, { url?: string }> } } | undefined
+    const variants = imageRes?.attributes?.variants ?? {}
+    const avatarUrl =
+      variants['default']?.url ??
+      variants['square-small2x']?.url ??
+      variants['square-small']?.url ??
+      Object.values(variants).find((v) => v?.url)?.url ??
+      null
+    setIf('avatar_url', avatarUrl)
 
     const fieldKeys = Object.keys(update)
     const fieldCount = fieldKeys.length
