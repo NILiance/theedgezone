@@ -70,7 +70,7 @@ export default async function PublicTalentProfile({ params }: PageProps) {
       supabase
         .from('profiles')
         .select(
-          'display_name, avatar_url, sport, athletic_position, school, conference, jersey_number, hometown, city, us_state, bio, achievements, brand_tagline, brand_primary_color, socials'
+          'display_name, avatar_url, sport, athletic_position, school, conference, jersey_number, hometown, city, us_state, height_inches, weight_lbs, bio, achievements, brand_tagline, brand_primary_color, socials'
         )
         .eq('id', userId)
         .maybeSingle(),
@@ -101,6 +101,23 @@ export default async function PublicTalentProfile({ params }: PageProps) {
 
   const socials = (profile.socials as Record<string, string> | null) ?? {}
   const primary = profile.brand_primary_color ?? '#E63946'
+
+  const heightIn = profile.height_inches as number | null
+  const height = heightIn ? `${Math.floor(heightIn / 12)}'${heightIn % 12}"` : null
+  const location = [profile.city, profile.us_state].filter(Boolean).join(', ')
+  const vitals: Array<{ label: string; value: string }> = [
+    ['Sport', profile.sport],
+    ['Position', profile.athletic_position],
+    ['School', profile.school],
+    ['Conference', profile.conference],
+    ['Jersey', profile.jersey_number ? `#${profile.jersey_number}` : null],
+    ['Hometown', profile.hometown],
+    ['Location', location || null],
+    ['Height', height],
+    ['Weight', profile.weight_lbs ? `${profile.weight_lbs} lbs` : null],
+  ]
+    .filter(([, v]) => Boolean(v))
+    .map(([label, value]) => ({ label: label as string, value: String(value) }))
 
   return (
     <>
@@ -135,6 +152,22 @@ export default async function PublicTalentProfile({ params }: PageProps) {
                 )}
               </div>
             </div>
+
+            {vitals.length > 0 && (
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {vitals.map((v) => (
+                  <div
+                    key={v.label}
+                    className="rounded-[var(--radius-sm)] border border-border bg-panel/40 px-4 py-3"
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {v.label}
+                    </p>
+                    <p className="text-display mt-0.5 text-sm font-bold">{v.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {profile.bio && (
               <div className="mt-8">

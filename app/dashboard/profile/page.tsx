@@ -3,7 +3,11 @@ import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { ProfileEditor, type SectionKey } from '@/components/dashboard/profile-editor'
 import { PhylloConnectCard } from '@/components/dashboard/phyllo-connect-card'
-import { NilianceConnectButton, PublicProfileButtons } from './integration-buttons'
+import {
+  NilianceConnectButton,
+  NilianceSyncButton,
+  PublicProfileButtons,
+} from './integration-buttons'
 
 export const metadata = { title: 'Profile' }
 
@@ -159,10 +163,10 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           <p className="text-eyebrow text-primary">NILiance</p>
           <p className="mt-2 text-sm text-muted-foreground">
             {p.niliance_user_id
-              ? 'Connected — profile syncs automatically.'
+              ? 'Connected. Pull your latest NILiance profile data in with one click.'
               : "Connect to manage opportunities, get paid through NILiance, and have your profile data sync automatically. Don't have an account? We'll auto-create one when you save your profile."}
           </p>
-          {!p.niliance_user_id && <NilianceConnectButton />}
+          {p.niliance_user_id ? <NilianceSyncButton /> : <NilianceConnectButton />}
         </div>
 
         <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">

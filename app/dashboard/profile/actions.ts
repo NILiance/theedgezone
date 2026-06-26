@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
-import { syncProfile, createNilianceUser } from '@/lib/niliance'
+import { syncProfile, createNilianceUser, pullProfileFromNiliance } from '@/lib/niliance'
 import { sharetribeEnabled } from '@/lib/sharetribe'
 
 export type SectionState = { error?: string; success?: string } | undefined
@@ -64,6 +64,26 @@ export async function connectNiliance(): Promise<{
     }
   }
   return { ok: false, status, message: 'NILiance isn’t configured yet.' }
+}
+
+/**
+ * Pull the latest profile data FROM NILiance into the Edge Zone profile
+ * (sport, school, position, jersey, hometown, height/weight, bio, etc.).
+ */
+export async function syncFromNiliance(): Promise<{ ok: boolean; message: string }> {
+  const user = await requireUser()
+  if (!sharetribeEnabled) {
+    return { ok: false, message: 'NILiance isn’t connected on this site yet.' }
+  }
+  const res = await pullProfileFromNiliance({ userId: user.id })
+  revalidatePath('/dashboard/profile')
+  if (!res.ok) return { ok: false, message: res.error ?? 'Sync failed.' }
+  return {
+    ok: true,
+    message: res.fields
+      ? `Pulled ${res.fields} field${res.fields === 1 ? '' : 's'} from NILiance. Refresh to see updates.`
+      : 'Connected, but no data was found on your NILiance profile to pull in.',
+  }
 }
 
 // ── BASICS ────────────────────────────────────────────────────────────────

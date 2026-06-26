@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { connectNiliance } from './actions'
+import { connectNiliance, syncFromNiliance } from './actions'
 
 /** "Connect" button for the NILiance card — runs the bridge link on demand. */
 export function NilianceConnectButton() {
@@ -21,6 +22,35 @@ export function NilianceConnectButton() {
     <div className="mt-4">
       <Button size="sm" onClick={go} disabled={pending}>
         {pending ? 'Connecting…' : 'Connect'}
+      </Button>
+      {msg && (
+        <p className={`mt-2 text-xs ${msg.ok ? 'text-success' : 'text-muted-foreground'}`}>
+          {msg.text}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** "Sync from NILiance" — pulls profile data from the linked NILiance account. */
+export function NilianceSyncButton() {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const go = () => {
+    setMsg(null)
+    start(async () => {
+      const res = await syncFromNiliance()
+      setMsg({ ok: res.ok, text: res.message })
+      if (res.ok) router.refresh()
+    })
+  }
+
+  return (
+    <div className="mt-4">
+      <Button size="sm" variant="outline" onClick={go} disabled={pending}>
+        {pending ? 'Syncing…' : '↓ Sync from NILiance'}
       </Button>
       {msg && (
         <p className={`mt-2 text-xs ${msg.ok ? 'text-success' : 'text-muted-foreground'}`}>
