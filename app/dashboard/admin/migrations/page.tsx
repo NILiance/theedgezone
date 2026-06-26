@@ -3,6 +3,7 @@ import path from 'path'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { CopySql } from './copy-sql'
+import { MigrationRowActions } from './migration-row-actions'
 
 export const metadata = { title: 'Migrations' }
 // fs read + RPC are dynamic — never cache this page.
@@ -73,10 +74,17 @@ async function buildRunnableSql(m: LocalMigration): Promise<string> {
   return `${sql.trimEnd()}
 
 -- Record this migration so Admin -> System -> Migrations shows it as applied.
+-- Tries version-only, falls back to including an empty statements array if
+-- that column is NOT NULL on this instance.
 do $$
 begin
-  insert into supabase_migrations.schema_migrations (version)
-  values ('${m.version}') on conflict do nothing;
+  begin
+    insert into supabase_migrations.schema_migrations (version)
+    values ('${m.version}') on conflict do nothing;
+  exception when not_null_violation then
+    insert into supabase_migrations.schema_migrations (version, statements)
+    values ('${m.version}', array[]::text[]) on conflict do nothing;
+  end;
 exception when others then null;
 end $$;
 `
@@ -195,7 +203,7 @@ export default async function MigrationsAdminPage() {
 
       {/* Summary tiles */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <Tile label="Total migrations" value={rows.length.toString()} tone="neutral" />
+        <Tile label="Files on disk" value={rows.length.toString()} tone="neutral" />
         <Tile label="Applied" value={trackingInstalled ? appliedCount.toString() : '—'} tone="ok" />
         <Tile
           label="Pending"
@@ -236,12 +244,13 @@ export default async function MigrationsAdminPage() {
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Version</th>
               <th className="px-3 py-2 text-left">Migration</th>
+              {trackingInstalled && <th className="px-3 py-2 text-left">Reconcile</th>}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                <td colSpan={4} className="px-3 py-10 text-center text-sm text-muted-foreground">
                   Couldn&rsquo;t read the migration files in this deploy.
                 </td>
               </tr>
@@ -264,6 +273,11 @@ export default async function MigrationsAdminPage() {
                     <code>{r.file}</code>
                   </p>
                 </td>
+                {trackingInstalled && (
+                  <td className="px-3 py-2">
+                    <MigrationRowActions version={r.version} applied={r.applied} />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
