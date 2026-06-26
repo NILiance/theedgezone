@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { sharetribeEnabled, integrationConfigured, marketplaceConfigured } from '@/lib/sharetribe'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatEastern } from '@/lib/format-date'
+import { SyncButton } from './sync-button'
 
 export const metadata = { title: 'NILiance Bridge' }
 
@@ -110,6 +111,7 @@ export default async function NilianceAdminPage() {
                 <Th>NILiance UUID</Th>
                 <Th>Last sync / attempt</Th>
                 <Th>Error</Th>
+                <Th>Sync</Th>
               </tr>
             </thead>
             <tbody>
@@ -131,6 +133,9 @@ export default async function NilianceAdminPage() {
                   </Td>
                   <Td className="max-w-xs truncate text-xs text-destructive">
                     {p.niliance_link_error ?? ''}
+                  </Td>
+                  <Td>
+                    <SyncButton userId={p.id} />
                   </Td>
                 </tr>
               ))}
