@@ -4,6 +4,7 @@ import { Footer } from '@/components/landing/footer'
 import { Button } from '@/components/ui/button'
 import { getCurrentUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 
 export const metadata = { title: 'Opportunities' }
 
@@ -109,7 +110,7 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
                   <div className="mt-auto flex flex-wrap gap-2 text-xs text-muted-foreground">
                     {o.location && <span>📍 {o.location}</span>}
                     {o.deadline_at && (
-                      <span>Closes {new Date(o.deadline_at).toLocaleDateString()}</span>
+                      <span>Closes {formatEasternDate(o.deadline_at)}</span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 border-t border-border pt-3 text-xs">

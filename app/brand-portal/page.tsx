@@ -4,6 +4,7 @@ import { Footer } from '@/components/landing/footer'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getBrandClientSession } from '@/lib/brand-client-auth'
 import { Button } from '@/components/ui/button'
+import { formatEasternDate } from '@/lib/format-date'
 import { LogoutForm } from './logout-form'
 
 export const metadata = { title: 'Brand portal' }
@@ -111,7 +112,7 @@ export default async function BrandPortalPage({ searchParams }: PageProps) {
                       {a.kind}
                       {a.size_bytes && ` · ${(a.size_bytes / 1024).toFixed(0)} KB`}
                       {' · '}
-                      {new Date(a.created_at).toLocaleDateString()}
+                      {formatEasternDate(a.created_at)}
                     </p>
                   </div>
                   <a href={a.url} target="_blank" rel="noopener noreferrer" download>

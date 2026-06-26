@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { formatEastern } from '@/lib/format-date'
 import { sendPushMessage, cancelPushMessage } from '../../push-actions'
 import { SendButtons } from './send-buttons'
 
@@ -51,12 +52,12 @@ export default async function PushMessagePage({
       </div>
       {message.scheduled_for && (
         <p className="text-xs text-muted-foreground">
-          Scheduled for {new Date(message.scheduled_for).toLocaleString()}
+          Scheduled for {formatEastern(message.scheduled_for)}
         </p>
       )}
       {message.sent_at && (
         <p className="text-xs text-muted-foreground">
-          Sent at {new Date(message.sent_at).toLocaleString()}
+          Sent at {formatEastern(message.sent_at)}
         </p>
       )}
       {message.error && (

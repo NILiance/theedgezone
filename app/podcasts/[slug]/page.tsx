@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { EpisodePlayer } from './episode-player'
 import { SubscribePanel } from './subscribe-panel'
 
@@ -190,11 +191,7 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
                     </h2>
                     <p className="mt-0.5 text-xs text-white/50">
                       {e.published_at
-                        ? new Date(e.published_at).toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })
+                        ? formatEasternDate(e.published_at)
                         : ''}
                       {e.duration_seconds ? ` · ${fmtDuration(e.duration_seconds)}` : ''}
                     </p>

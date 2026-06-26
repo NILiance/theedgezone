@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { fulfillCheckoutSession } from '@/lib/checkout-fulfillment'
 import { awardEngagement, awardProfileComplete } from '@/lib/points'
+import { formatEasternDate } from '@/lib/format-date'
 
 export const metadata = { title: 'Dashboard' }
 
@@ -544,11 +545,7 @@ function ProductCard({
   order: Awaited<ReturnType<typeof getDashboardData>>['orders'][number]
 }) {
   const actions = getProductActions(order.product_slug, order.provisioned_entity_id)
-  const dateStr = new Date(order.purchased_at).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  const dateStr = formatEasternDate(order.purchased_at)
   const planLabel = order.plan === 'monthly' ? 'Monthly' : order.plan === 'annual' ? 'Annual' : 'Onetime'
 
   return (
@@ -650,7 +647,7 @@ function OrdersPanel({ orders }: { orders: Awaited<ReturnType<typeof getDashboar
                 <StatusPill status={order.status} />
               </td>
               <td className="px-4 py-3 text-muted-foreground">
-                {new Date(order.purchased_at).toLocaleDateString()}
+                {formatEasternDate(order.purchased_at)}
               </td>
             </tr>
           ))}

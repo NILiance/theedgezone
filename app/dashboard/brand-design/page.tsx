@@ -8,6 +8,7 @@ import { createBrandDesign } from '@/app/dashboard/brand-design/actions'
 import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 import { getBrandDesignExtras } from '@/lib/service-pricing'
 import { fulfillCheckoutSession } from '@/lib/checkout-fulfillment'
+import { formatEasternDate } from '@/lib/format-date'
 import { AdditionalBrandButton } from './additional-brand-button'
 
 export const metadata = { title: 'Brand Design' }
@@ -141,7 +142,7 @@ export default async function BrandDesignIndexPage({ searchParams }: PageProps) 
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {brand.sport ?? 'No sport set'} ·{' '}
-                  {new Date(brand.created_at).toLocaleDateString()}
+                  {formatEasternDate(brand.created_at)}
                 </p>
               </CardHeader>
               <CardContent>

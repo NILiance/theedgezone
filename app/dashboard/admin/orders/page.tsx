@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { OrdersFilters } from './orders-filters'
 
 export const metadata = { title: 'Orders' }
@@ -106,7 +107,7 @@ export default async function OrdersAdminPage({ searchParams }: PageProps) {
               return (
                 <tr key={o.id} className="border-t border-border">
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {new Date(o.purchased_at).toLocaleDateString()}
+                    {formatEasternDate(o.purchased_at)}
                   </td>
                   <td className="px-3 py-2">
                     <p className="text-display text-foreground">{o.product_title}</p>

@@ -4,6 +4,7 @@ import { MarketingNav } from '@/components/landing/marketing-nav'
 import { Footer } from '@/components/landing/footer'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -49,9 +50,9 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
           <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
             {opportunity.location && <span>📍 {opportunity.location}</span>}
             {opportunity.deadline_at && (
-              <span>Closes {new Date(opportunity.deadline_at).toLocaleDateString()}</span>
+              <span>Closes {formatEasternDate(opportunity.deadline_at)}</span>
             )}
-            <span>Posted {new Date(opportunity.created_at).toLocaleDateString()}</span>
+            <span>Posted {formatEasternDate(opportunity.created_at)}</span>
           </div>
         </div>
         <div className="mt-8 whitespace-pre-line leading-relaxed text-foreground/90">

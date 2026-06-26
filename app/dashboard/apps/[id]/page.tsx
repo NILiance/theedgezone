@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { formatEastern } from '@/lib/format-date'
 import { AppConfigClient } from './client'
 
 interface PageProps {
@@ -61,7 +62,7 @@ export default async function AppConfigPage({ params }: PageProps) {
         </div>
         {app.last_build_at && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Last built {new Date(app.last_build_at).toLocaleString()}
+            Last built {formatEastern(app.last_build_at)}
           </p>
         )}
       </div>

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEastern } from '@/lib/format-date'
 import { OrderActions } from './order-actions'
 
 interface PageProps {
@@ -55,7 +56,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           <code>{order.product_slug}</code> ·{' '}
-          {new Date(order.purchased_at).toLocaleString()}
+          {formatEastern(order.purchased_at)}
         </p>
       </div>
 
@@ -76,13 +77,13 @@ export default async function OrderDetailPage({ params }: PageProps) {
               />
               <DetailRow
                 label="CRM sync"
-                value={order.crm_synced_at ? new Date(order.crm_synced_at).toLocaleString() : '—'}
+                value={order.crm_synced_at ? formatEastern(order.crm_synced_at) : '—'}
               />
               <DetailRow
                 label="Provisioned"
                 value={
                   order.provisioned_at
-                    ? new Date(order.provisioned_at).toLocaleString()
+                    ? formatEastern(order.provisioned_at)
                     : '—'
                 }
               />

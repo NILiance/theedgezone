@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { SERVICES } from '@/lib/services-data'
+import { formatEasternDate } from '@/lib/format-date'
 import { NewPageForm } from './new-page-form'
 
 export const metadata = { title: 'Site Pages' }
@@ -60,7 +61,7 @@ export default async function PagesAdminPage() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {new Date(p.updated_at).toLocaleDateString()}
+                    {formatEasternDate(p.updated_at)}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <a

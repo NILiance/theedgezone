@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 
 export const metadata = { title: 'Print Shop' }
 
@@ -105,7 +106,7 @@ export default async function PrintShopPage() {
                     <p className="text-display font-bold">{product?.name ?? 'Print order'}</p>
                     <p className="text-xs text-muted-foreground">
                       Qty {o.quantity} · ${(o.amount_cents / 100).toFixed(2)} ·{' '}
-                      {new Date(o.created_at).toLocaleDateString()}
+                      {formatEasternDate(o.created_at)}
                     </p>
                   </div>
                   <StatusPill status={o.status} />

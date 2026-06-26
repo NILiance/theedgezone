@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 
 export const metadata = { title: 'Apps' }
 
@@ -69,7 +70,7 @@ export default async function AppsAdminPage() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {a.last_build_at ? new Date(a.last_build_at).toLocaleDateString() : '—'}
+                    {a.last_build_at ? formatEasternDate(a.last_build_at) : '—'}
                   </td>
                 </tr>
               )

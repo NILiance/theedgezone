@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 
 export const metadata = { title: 'Payouts' }
 
@@ -88,7 +89,7 @@ export default async function AdminPayoutsPage() {
                   <td className="px-3 py-2 text-xs">{p.stripe_connect_charges_enabled ? '✓' : '—'}</td>
                   <td className="px-3 py-2 text-xs">{p.stripe_connect_payouts_enabled ? '✓' : '—'}</td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {p.stripe_connect_onboarded_at ? new Date(p.stripe_connect_onboarded_at).toLocaleDateString() : '—'}
+                    {p.stripe_connect_onboarded_at ? formatEasternDate(p.stripe_connect_onboarded_at) : '—'}
                   </td>
                 </tr>
               ))}
@@ -122,7 +123,7 @@ export default async function AdminPayoutsPage() {
                 const profile = profilesById.get(p.user_id) ?? null
                 return (
                   <tr key={p.id} className="border-t border-border">
-                    <td className="px-3 py-2 text-xs">{new Date(p.created_at).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 text-xs">{formatEasternDate(p.created_at)}</td>
                     <td className="px-3 py-2 text-xs">{profile?.display_name ?? emailById.get(p.user_id) ?? '—'}</td>
                     <td className="px-3 py-2 text-right font-bold text-primary">
                       ${(Number(p.amount_cents) / 100).toFixed(2)}
@@ -146,7 +147,7 @@ export default async function AdminPayoutsPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {p.arrival_date ? new Date(p.arrival_date).toLocaleDateString() : '—'}
+                      {p.arrival_date ? formatEasternDate(p.arrival_date) : '—'}
                     </td>
                   </tr>
                 )

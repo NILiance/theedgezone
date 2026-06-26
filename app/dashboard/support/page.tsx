@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
+import { formatEastern } from '@/lib/format-date'
 
 export const metadata = { title: 'Support' }
 
@@ -68,7 +69,7 @@ export default async function SupportPage() {
                   </td>
                   <td className="px-4 py-3 text-xs uppercase tracking-widest">{t.priority}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {new Date(t.last_activity_at).toLocaleString()}
+                    {formatEastern(t.last_activity_at)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link

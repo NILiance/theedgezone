@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { RewardsManager } from './manager'
 
 export const metadata = { title: 'Rewards' }
@@ -69,7 +70,7 @@ export default async function RewardsAdminPage() {
                 const item = itemsById.get(r.reward_item_id)
                 return (
                   <tr key={r.id} className="border-t border-border">
-                    <td className="px-3 py-2 text-xs">{new Date(r.created_at).toLocaleDateString()}</td>
+                    <td className="px-3 py-2 text-xs">{formatEasternDate(r.created_at)}</td>
                     <td className="px-3 py-2 text-xs">
                       {profile?.display_name ?? profile?.email ?? '—'}
                     </td>

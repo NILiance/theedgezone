@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createApp } from './actions'
+import { formatEasternDate } from '@/lib/format-date'
 import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 
 export const metadata = { title: 'My apps' }
@@ -78,7 +79,7 @@ export default async function AppsIndexPage() {
               <CardContent>
                 {app.last_build_at && (
                   <p className="text-xs text-muted-foreground">
-                    Last built {new Date(app.last_build_at).toLocaleDateString()}
+                    Last built {formatEasternDate(app.last_build_at)}
                   </p>
                 )}
                 <div className="mt-3 flex flex-wrap gap-2">

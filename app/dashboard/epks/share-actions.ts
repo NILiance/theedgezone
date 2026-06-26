@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/resend'
+import { formatEasternDate } from '@/lib/format-date'
 
 export type ShareLinkState = { ok?: boolean; error?: string; token?: string }
 
@@ -73,7 +74,7 @@ export async function createEpkShareLink(
 <p><a href="${link}" style="background:#3aa7ff;color:#0a0e14;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none;font-family:sans-serif;">Open press kit →</a></p>
 <p style="font-family:sans-serif;color:#666;font-size:12px;">${link}</p>${
         expiresAt
-          ? `<p style="font-family:sans-serif;color:#666;font-size:12px;">Link expires ${new Date(expiresAt).toLocaleDateString()}.</p>`
+          ? `<p style="font-family:sans-serif;color:#666;font-size:12px;">Link expires ${formatEasternDate(expiresAt)}.</p>`
           : ''
       }`,
       templateKey: 'epk_share',

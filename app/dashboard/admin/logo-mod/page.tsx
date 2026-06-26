@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { updateLogoModRequest } from './actions'
 
 export const metadata = { title: 'Logo Mod Queue' }
@@ -60,7 +61,7 @@ export default async function AdminLogoModPage() {
                   <p className="text-display font-bold">{owner?.display_name ?? owner?.email ?? '—'}</p>
                   <p className="text-xs text-muted-foreground">
                     {r.tier} tier · ${(r.amount_cents / 100).toFixed(2)} ·{' '}
-                    {new Date(r.created_at).toLocaleDateString()}
+                    {formatEasternDate(r.created_at)}
                   </p>
                 </div>
                 <span

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { updatePrintOrderStatus } from './actions'
 
 export const metadata = { title: 'Print Orders' }
@@ -73,7 +74,7 @@ export default async function AdminPrintOrdersPage() {
                   <p className="text-xs text-muted-foreground">
                     {owner?.display_name ?? owner?.email ?? '—'} · Qty {o.quantity} · $
                     {(o.amount_cents / 100).toFixed(2)} ·{' '}
-                    {new Date(o.created_at).toLocaleDateString()}
+                    {formatEasternDate(o.created_at)}
                   </p>
                 </div>
                 <span

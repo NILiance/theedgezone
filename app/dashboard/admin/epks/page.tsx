@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { DeleteEpkButton } from './delete-button'
 
 export const metadata = { title: 'EPKs' }
@@ -71,7 +72,7 @@ export default async function EpksAdminPage() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {new Date(e.created_at).toLocaleDateString()}
+                    {formatEasternDate(e.created_at)}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex items-center justify-end gap-2">

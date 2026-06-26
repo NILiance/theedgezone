@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
+import { formatEasternDate } from '@/lib/format-date'
 
 export const metadata = { title: 'My opportunities' }
 
@@ -88,7 +89,7 @@ export default async function MyOpportunitiesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {new Date(o.created_at).toLocaleDateString()}
+                    {formatEasternDate(o.created_at)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link

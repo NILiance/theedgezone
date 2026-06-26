@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { PLATFORM_FEE_BPS } from '@/lib/stripe-connect'
+import { formatEasternDate } from '@/lib/format-date'
 import { ConnectActions } from './connect-actions'
 
 export const metadata = { title: 'Payouts' }
@@ -141,14 +142,14 @@ export default async function PayoutsPage({ searchParams }: PageProps) {
               {(payouts ?? []).map((p) => (
                 <tr key={p.id} className="border-t border-border">
                   <td className="px-5 py-2 text-xs">
-                    {new Date(p.created_at).toLocaleDateString()}
+                    {formatEasternDate(p.created_at)}
                   </td>
                   <td className="px-5 py-2 text-right font-bold text-primary">
                     ${(Number(p.amount_cents ?? 0) / 100).toFixed(2)}
                   </td>
                   <td className="px-5 py-2 text-xs uppercase tracking-widest">{p.status}</td>
                   <td className="px-5 py-2 text-xs text-muted-foreground">
-                    {p.arrival_date ? new Date(p.arrival_date).toLocaleDateString() : '—'}
+                    {p.arrival_date ? formatEasternDate(p.arrival_date) : '—'}
                   </td>
                 </tr>
               ))}

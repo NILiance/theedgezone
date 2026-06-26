@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { DeleteBrandButton } from './delete-brand-button'
 
 export const metadata = { title: 'Brand Designs' }
@@ -130,7 +131,7 @@ export default async function BrandsAdminPage() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {new Date(b.created_at).toLocaleDateString()}
+                    {formatEasternDate(b.created_at)}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex flex-wrap items-center justify-end gap-2">

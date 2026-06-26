@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { formatEastern } from '@/lib/format-date'
 import { adminReplyToTicket, adminUpdateTicketStatus } from '../actions'
 
 interface PageProps {
@@ -58,7 +59,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           From {requester} · {ticket.category} · {ticket.priority} priority · opened{' '}
-          {new Date(ticket.created_at).toLocaleString()}
+          {formatEastern(ticket.created_at)}
         </p>
       </div>
 
@@ -87,7 +88,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
                 : 'Edge Zone team'}
             </p>
             <p className="text-xs text-muted-foreground">
-              {new Date(r.created_at).toLocaleString()}
+              {formatEastern(r.created_at)}
             </p>
           </div>
           <p className="whitespace-pre-line text-sm text-foreground">{r.body}</p>

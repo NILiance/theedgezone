@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEastern } from '@/lib/format-date'
 import { DeliverRevisionForm } from './deliver-form'
 
 export const metadata = { title: 'Brand revisions' }
@@ -103,7 +104,7 @@ export default async function BrandRevisionsAdminPage() {
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {new Date(r.created_at).toLocaleString()}
+                    {formatEastern(r.created_at)}
                     {' · '}
                     <span className="capitalize">{r.source}</span>
                     {r.amount_cents > 0 && ` · $${(r.amount_cents / 100).toFixed(0)}`}

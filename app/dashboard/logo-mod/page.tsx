@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { formatEasternDate } from '@/lib/format-date'
 import { LogoModForm } from './form'
 import { InstantRemix } from './instant-remix'
 
@@ -70,7 +71,7 @@ export default async function LogoModPage() {
                     <div className="min-w-0 flex-1">
                       <p className="text-display font-bold">{r.requested_changes.slice(0, 100)}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {new Date(r.created_at).toLocaleDateString()} · {r.tier} tier · $
+                        {formatEasternDate(r.created_at)} · {r.tier} tier · $
                         {(r.amount_cents / 100).toFixed(2)}
                       </p>
                     </div>

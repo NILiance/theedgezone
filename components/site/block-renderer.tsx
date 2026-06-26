@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import type { ThemeTokens } from '@/lib/site-builder/theme-presets'
 import { parseIcon } from '@/lib/site-builder/emoji-library'
+import { formatEasternDate } from '@/lib/format-date'
 import {
   GuestbookForm,
   PollForm,
@@ -1262,12 +1263,7 @@ function CountdownBlock({
             style={{ color: tokens.primary, fontFamily: tokens.font_heading }}
             data-countdown-target={targetDate}
           >
-            {new Date(targetDate).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
+            {formatEasternDate(targetDate)}
           </p>
         )}
         {description && (

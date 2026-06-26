@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { formatEastern } from '@/lib/format-date'
 import { replyToTicket } from '../actions'
 
 interface PageProps {
@@ -44,7 +45,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
           <StatusPill status={ticket.status} />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Opened {new Date(ticket.created_at).toLocaleString()} ·{' '}
+          Opened {formatEastern(ticket.created_at)} ·{' '}
           {ticket.category} · {ticket.priority} priority
         </p>
       </div>
@@ -68,7 +69,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
               {r.author_id === user.id ? 'You' : 'Edge Zone team'}
             </p>
             <p className="text-xs text-muted-foreground">
-              {new Date(r.created_at).toLocaleString()}
+              {formatEastern(r.created_at)}
             </p>
           </div>
           <p className="whitespace-pre-line text-sm text-foreground">{r.body}</p>
