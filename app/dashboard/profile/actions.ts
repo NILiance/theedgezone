@@ -4,9 +4,67 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireUser } from '@/lib/auth'
-import { syncProfile } from '@/lib/niliance'
+import { syncProfile, createNilianceUser } from '@/lib/niliance'
+import { sharetribeEnabled } from '@/lib/sharetribe'
 
 export type SectionState = { error?: string; success?: string } | undefined
+
+/**
+ * On-demand "Connect to NILiance" — runs the bridge link for the current
+ * user (the same flow that fires automatically on signup). Idempotent: if
+ * the profile is already linked, it just reports so. No-ops with a clear
+ * message when the Sharetribe bridge isn't configured on this deployment.
+ */
+export async function connectNiliance(): Promise<{
+  ok: boolean
+  status?: string
+  message: string
+}> {
+  const user = await requireUser()
+
+  const supabase = await createClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('niliance_user_id, niliance_link_status, display_name')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profile?.niliance_user_id) {
+    return { ok: true, status: 'linked', message: 'Already connected — your profile syncs automatically.' }
+  }
+
+  if (!sharetribeEnabled) {
+    return {
+      ok: false,
+      status: 'unconfigured',
+      message: 'NILiance isn’t connected on this site yet. An admin needs to finish the Sharetribe setup first.',
+    }
+  }
+
+  const status = await createNilianceUser({
+    userId: user.id,
+    email: user.email ?? '',
+    displayName: (profile?.display_name as string | null) ?? null,
+    userType: 'talent',
+  })
+  revalidatePath('/dashboard/profile')
+
+  if (status === 'linked') {
+    return {
+      ok: true,
+      status,
+      message: 'Connected! Check your email to set your NILiance password.',
+    }
+  }
+  if (status === 'error') {
+    return {
+      ok: false,
+      status,
+      message: 'Connection attempt failed — see Admin → NILiance for the error detail.',
+    }
+  }
+  return { ok: false, status, message: 'NILiance isn’t configured yet.' }
+}
 
 // ── BASICS ────────────────────────────────────────────────────────────────
 const basicsSchema = z.object({

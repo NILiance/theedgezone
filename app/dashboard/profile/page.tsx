@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { ProfileEditor, type SectionKey } from '@/components/dashboard/profile-editor'
 import { PhylloConnectCard } from '@/components/dashboard/phyllo-connect-card'
-import { Button } from '@/components/ui/button'
+import { NilianceConnectButton, PublicProfileButtons } from './integration-buttons'
 
 export const metadata = { title: 'Profile' }
 
@@ -39,6 +39,20 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const p = profile ?? ({} as Record<string, unknown>)
   const socials = (p.socials as Record<string, string>) ?? {}
   const selected_goals = (p.selected_goals as string[]) ?? []
+
+  // Public-profile link (/t/<slug>). Prefer a site or EPK slug; fall back to
+  // a slugified display name (which the /t resolver also matches on).
+  const [sitesRes, epksRes] = await Promise.all([
+    supabase.from('sites').select('slug').eq('user_id', user.id).limit(1),
+    supabase.from('epks').select('slug').eq('user_id', user.id).limit(1),
+  ])
+  const publicSlug =
+    (sitesRes.data?.[0]?.slug as string | undefined) ||
+    (epksRes.data?.[0]?.slug as string | undefined) ||
+    String(p.display_name ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
 
   const sectionPercents = computeSectionPercents(p, socials)
   const overall = (p.profile_completion_pct as number | undefined) ?? 0
@@ -148,28 +162,16 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               ? 'Connected — profile syncs automatically.'
               : "Connect to manage opportunities, get paid through NILiance, and have your profile data sync automatically. Don't have an account? We'll auto-create one when you save your profile."}
           </p>
-          {!p.niliance_user_id && (
-            <Button size="sm" className="mt-4">
-              Connect
-            </Button>
-          )}
+          {!p.niliance_user_id && <NilianceConnectButton />}
         </div>
 
         <div className="rounded-[var(--radius)] border border-border bg-panel/60 p-6 shadow-elevated">
           <p className="text-eyebrow text-primary">Public Profile</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Share a clean public page that aggregates your Edge Zone profile and your NILiance
-            offerings. Off by default &mdash; turn it on when you&apos;re ready to be
-            discoverable.
+            offerings.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline">
-              Preview
-            </Button>
-            <Button size="sm" variant="outline">
-              Copy Link
-            </Button>
-          </div>
+          <PublicProfileButtons slug={publicSlug} />
         </div>
       </div>
     </div>
