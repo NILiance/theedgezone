@@ -21,6 +21,10 @@ type Podcast = {
   explicit: boolean | null
   primary_color: string | null
   secondary_color: string | null
+  apple_url: string | null
+  spotify_url: string | null
+  youtube_url: string | null
+  amazon_url: string | null
 }
 
 const inputCls =
@@ -125,6 +129,32 @@ export function PodcastEditor({ podcast, episodes }: { podcast: Podcast; episode
             />
             Mark show as explicit
           </label>
+        </div>
+
+        <div className="space-y-3 border-t border-border pt-4">
+          <p className="text-eyebrow text-primary">Distribution links</p>
+          <p className="text-xs text-muted-foreground">
+            After your feed is approved on each platform, paste the show URLs here — the public
+            player links straight to your real listings.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="block text-xs text-muted-foreground">Apple Podcasts URL</span>
+              <input name="apple_url" defaultValue={podcast.apple_url ?? ''} placeholder="https://podcasts.apple.com/…" className={`${inputCls} font-mono text-xs`} />
+            </label>
+            <label className="block text-sm">
+              <span className="block text-xs text-muted-foreground">Spotify URL</span>
+              <input name="spotify_url" defaultValue={podcast.spotify_url ?? ''} placeholder="https://open.spotify.com/show/…" className={`${inputCls} font-mono text-xs`} />
+            </label>
+            <label className="block text-sm">
+              <span className="block text-xs text-muted-foreground">YouTube URL</span>
+              <input name="youtube_url" defaultValue={podcast.youtube_url ?? ''} placeholder="https://youtube.com/@…" className={`${inputCls} font-mono text-xs`} />
+            </label>
+            <label className="block text-sm">
+              <span className="block text-xs text-muted-foreground">Amazon Music URL</span>
+              <input name="amazon_url" defaultValue={podcast.amazon_url ?? ''} placeholder="https://music.amazon.com/podcasts/…" className={`${inputCls} font-mono text-xs`} />
+            </label>
+          </div>
         </div>
 
         {state.error && <p className="text-xs text-destructive">{state.error}</p>}

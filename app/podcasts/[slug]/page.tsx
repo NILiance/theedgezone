@@ -55,7 +55,7 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
   const { data: podcast } = await supabase
     .from('podcasts')
     .select(
-      'id, slug, title, description, cover_url, author, primary_color, secondary_color, status, user_id'
+      'id, slug, title, description, cover_url, author, primary_color, secondary_color, status, user_id, apple_url, spotify_url, youtube_url, amazon_url'
     )
     .eq('slug', slug)
     .maybeSingle()
@@ -129,22 +129,26 @@ export default async function PublicPodcastPage({ params, searchParams }: PagePr
             >
               RSS feed
             </a>
-            <a
-              href={`https://podcasts.apple.com/podcast/`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full border border-white/30 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/80 hover:bg-white/10"
-            >
-              Apple Podcasts
-            </a>
-            <a
-              href={`https://open.spotify.com/`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full border border-white/30 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/80 hover:bg-white/10"
-            >
-              Spotify
-            </a>
+            {(
+              [
+                ['Apple Podcasts', (podcast as { apple_url?: string | null }).apple_url],
+                ['Spotify', (podcast as { spotify_url?: string | null }).spotify_url],
+                ['YouTube', (podcast as { youtube_url?: string | null }).youtube_url],
+                ['Amazon Music', (podcast as { amazon_url?: string | null }).amazon_url],
+              ] as const
+            )
+              .filter(([, url]) => Boolean(url))
+              .map(([label, url]) => (
+                <a
+                  key={label}
+                  href={url as string}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/30 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/80 hover:bg-white/10"
+                >
+                  {label}
+                </a>
+              ))}
           </div>
         </div>
       </section>

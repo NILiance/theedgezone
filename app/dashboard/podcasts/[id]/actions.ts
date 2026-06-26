@@ -35,6 +35,10 @@ export async function savePodcast(_prev: PodcastState, form: FormData): Promise<
   update.explicit = form.get('explicit') === 'on' || form.get('explicit') === 'true'
   update.primary_color = String(form.get('primary_color') ?? '').trim() || '#C8A84E'
   update.secondary_color = String(form.get('secondary_color') ?? '').trim() || '#0a0a0a'
+  update.apple_url = String(form.get('apple_url') ?? '').trim() || null
+  update.spotify_url = String(form.get('spotify_url') ?? '').trim() || null
+  update.youtube_url = String(form.get('youtube_url') ?? '').trim() || null
+  update.amazon_url = String(form.get('amazon_url') ?? '').trim() || null
 
   const { error } = await supabase.from('podcasts').update(update).eq('id', id)
   if (error) return { error: error.message }
