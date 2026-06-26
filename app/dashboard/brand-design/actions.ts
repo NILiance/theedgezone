@@ -397,12 +397,12 @@ export async function selectFinalConcept(formData: FormData) {
     .eq('id', parsed.data.concept_id)
 
   // Stamp the brand_design with the chosen URL + final status.
-  // Extract dominant colors from the chosen logo so the kit + downstream
-  // assets reflect what Ideogram actually rendered, not what the talent
-  // typed into their profile months ago. Failure is non-blocking — we
-  // keep the existing brand_designs colors if extraction errors. Lazy
-  // import keeps sharp out of the module init graph so the page doesn't
-  // 500 on Vercel when sharp's native binding is slow to resolve.
+  // We extract supplementary colors from the chosen logo for accent/neutral
+  // ONLY. We never touch primary/secondary — the talent picked those
+  // deliberately (e.g. black + orange) and auto-extraction muddies clean
+  // palettes into browns. Failure is non-blocking. Lazy import keeps sharp
+  // out of the module init graph so the page doesn't 500 on Vercel when
+  // sharp's native binding is slow to resolve.
   let extracted: {
     primary: string | null
     secondary: string | null
@@ -421,8 +421,7 @@ export async function selectFinalConcept(formData: FormData) {
     final_logo_url: concept.image_url,
     finalized_at: new Date().toISOString(),
   }
-  if (extracted?.primary) update.primary_color = extracted.primary
-  if (extracted?.secondary) update.secondary_color = extracted.secondary
+  // Only accent + neutral — never primary/secondary (talent's chosen colors).
   if (extracted?.accent) update.accent_color = extracted.accent
   if (extracted?.neutral) update.neutral_color = extracted.neutral
 

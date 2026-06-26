@@ -283,7 +283,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
               href={`/dashboard/brand-design/${brand.id}?view=${v.id}`}
               className={`text-display flex items-center justify-center gap-2 rounded-[var(--radius-sm)] px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors ${
                 active
-                  ? 'bg-primary/15 text-primary ring-1 ring-primary/40'
+                  ? 'bg-panel-elevated text-primary ring-1 ring-primary/50'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
