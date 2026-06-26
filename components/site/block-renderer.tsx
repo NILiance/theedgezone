@@ -152,6 +152,10 @@ export function BlockRenderer({ block, theme, social, siteData, interactive }: B
       return <HtmlBlock props={block.props} />
     case 'navigation':
       return <NavStubBlock props={block.props} />
+    case 'audio':
+      return <AudioBlock props={block.props} tokens={tokens} />
+    case 'press':
+      return <PressBlock props={block.props} tokens={tokens} />
 
     // ── Fan blocks ──────────────────────────────────────────────────────
     case 'tip_jar':
@@ -1452,6 +1456,103 @@ function NavStubBlock({ props }: { props: Record<string, unknown> }) {
       <p className="text-sm text-muted-foreground">
         Site navigation will render here when the page is viewed publicly.
       </p>
+    </Section>
+  )
+}
+
+function AudioBlock({ props, tokens }: { props: Record<string, unknown>; tokens: ThemeTokens }) {
+  const title = getStr(props, 'title')
+  const tracks = getArr<{ title?: string; url?: string }>(props, 'tracks').filter((t) => t.url)
+  if (!tracks.length && !title) return null
+  return (
+    <Section maxWidth="720px">
+      {title && (
+        <h3
+          className="mb-5 text-2xl font-bold"
+          style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+        >
+          {title}
+        </h3>
+      )}
+      <div className="space-y-4">
+        {tracks.map((t, i) => (
+          <div
+            key={i}
+            className="rounded-md border p-4"
+            style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+          >
+            {t.title && (
+              <p className="mb-2 text-sm font-bold" style={{ color: tokens.heading_color }}>
+                {t.title}
+              </p>
+            )}
+            <audio controls preload="none" src={t.url} className="w-full" />
+          </div>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
+function PressBlock({ props, tokens }: { props: Record<string, unknown>; tokens: ThemeTokens }) {
+  const title = getStr(props, 'title', 'In the press')
+  const items = getArr<{ outlet?: string; headline?: string; url?: string; date?: string; logo?: string }>(
+    props,
+    'items'
+  ).filter((p) => p.outlet || p.headline)
+  if (!items.length) return null
+  return (
+    <Section maxWidth="860px">
+      <h3
+        className="mb-6 text-2xl font-bold"
+        style={{ color: tokens.heading_color, fontFamily: tokens.font_heading }}
+      >
+        {title}
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {items.map((p, i) => {
+          const inner = (
+            <div
+              className="flex h-full items-start gap-3 rounded-md border p-4 transition hover:opacity-90"
+              style={{ borderColor: tokens.border_color, background: tokens.card_bg }}
+            >
+              {p.logo && (
+                <Image
+                  src={p.logo}
+                  alt={p.outlet ?? ''}
+                  width={48}
+                  height={48}
+                  className="h-10 w-10 shrink-0 object-contain"
+                  unoptimized
+                />
+              )}
+              <div className="min-w-0">
+                {p.outlet && (
+                  <p
+                    className="text-eyebrow text-xs uppercase tracking-widest"
+                    style={{ color: tokens.primary }}
+                  >
+                    {p.outlet}
+                    {p.date ? ` · ${p.date}` : ''}
+                  </p>
+                )}
+                {p.headline && (
+                  <p className="mt-1 text-sm font-bold" style={{ color: tokens.heading_color }}>
+                    {p.headline}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+          return p.url ? (
+            <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" className="block">
+              {inner}
+            </a>
+          ) : (
+            <div key={i}>{inner}</div>
+          )
+        })}
+      </div>
     </Section>
   )
 }

@@ -353,6 +353,54 @@ export const BLOCK_TYPES: BlockTypeDef[] = [
     ],
   },
   {
+    type: 'audio',
+    label: 'Audio',
+    icon: '♪',
+    category: 'mysite',
+    desc: 'Audio player for a track, mix, or interview.',
+    defaultProps: { title: '', tracks: [{ title: '', url: '' }] },
+    fields: [
+      { key: 'title', label: 'Section title', type: 'text', placeholder: 'Listen' },
+      {
+        key: 'tracks',
+        label: 'Tracks',
+        type: 'repeater',
+        itemFields: [
+          { key: 'title', label: 'Track title', type: 'text' },
+          { key: 'url', label: 'Audio URL (MP3/M4A)', type: 'url' },
+        ],
+        itemDefault: { title: '', url: '' },
+      },
+    ],
+  },
+  {
+    type: 'press',
+    label: 'Press / Media',
+    icon: '📰',
+    category: 'mysite',
+    desc: 'Press hits, features, and media coverage.',
+    defaultProps: {
+      title: 'In the press',
+      items: [{ outlet: '', headline: '', url: '', date: '', logo: '' }],
+    },
+    fields: [
+      { key: 'title', label: 'Section title', type: 'text', placeholder: 'In the press' },
+      {
+        key: 'items',
+        label: 'Press items',
+        type: 'repeater',
+        itemFields: [
+          { key: 'outlet', label: 'Outlet', type: 'text', placeholder: 'ESPN' },
+          { key: 'headline', label: 'Headline', type: 'text' },
+          { key: 'url', label: 'Article URL', type: 'url' },
+          { key: 'date', label: 'Date', type: 'text', placeholder: 'Mar 2026' },
+          { key: 'logo', label: 'Outlet logo (optional)', type: 'image' },
+        ],
+        itemDefault: { outlet: '', headline: '', url: '', date: '', logo: '' },
+      },
+    ],
+  },
+  {
     type: 'cta',
     label: 'Call to action',
     icon: '⮕',
