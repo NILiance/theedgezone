@@ -82,6 +82,7 @@ export function AppConfigClient({ app }: { app: App }) {
   const [iconUrl, setIconUrl] = useState(app.icon_url)
   const [activeId, setActiveId] = useState<string | null>(() => app.screens[0]?.id ?? null)
   const [device, setDevice] = useState<DeviceId>(DEFAULT_DEVICE)
+  const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<string | null>(null)
 
@@ -120,45 +121,55 @@ export function AppConfigClient({ app }: { app: App }) {
     }
   }
 
+  const tabContent = (
+    <>
+      {tab === 'design' && <DesignTab theme={theme} onChange={(p) => setTheme((t) => ({ ...t, ...p }))} iconUrl={iconUrl} onIcon={setIconUrl} />}
+      {tab === 'screens' && (
+        <ScreensTab appId={app.id} screens={screens} activeId={activeId} onScreens={setScreens} onActive={setActiveId} onEditing={setEditing} onSave={saveBuild} />
+      )}
+      {tab === 'navigation' && <NavigationTab screens={screens} nav={nav} onChange={setNav} />}
+      {tab === 'news' && <NewsTab screens={screens} onScreens={setScreens} onEditing={setEditing} onSave={saveBuild} />}
+      {tab === 'media' && <MediaTab screens={screens} onScreens={setScreens} />}
+      {tab === 'events' && <EventsTab screens={screens} onScreens={setScreens} onEditing={setEditing} onSave={saveBuild} />}
+      {tab === 'shop' && <ShopTab commerce={commerce} onChange={setCommerce} onEditing={setEditing} onSave={saveBuild} />}
+      {tab === 'fans' && <FansTab commerce={commerce} onChange={setCommerce} screens={screens} />}
+      {tab === 'extensions' && <ExtensionsTab installed={extensions} onToggle={toggleExtension} />}
+      {tab === 'earnings' && <EarningsTab appId={app.id} earnings={app.earnings} payout={app.payout} />}
+    </>
+  )
+
   return (
     <div className="space-y-4">
-      {/* grouped tab rail (Build · Extend · Settings) */}
-      <div className="flex flex-wrap gap-2">
-        {TAB_GROUPS.map((g) => (
-          <div key={g.group} className="rounded-[var(--radius)] border border-border bg-panel/40 p-1.5">
-            <p className="pb-1 text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{g.group}</p>
-            <div className="flex gap-1">
-              {g.tabs.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  className={`text-display whitespace-nowrap rounded-[var(--radius-sm)] px-2.5 py-1.5 text-xs font-bold transition-colors ${
-                    tab === t.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-panel hover:text-foreground'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+      {!editing && (
+        <div className="flex flex-wrap gap-2">
+          {TAB_GROUPS.map((g) => (
+            <div key={g.group} className="rounded-[var(--radius)] border border-border bg-panel/40 p-1.5">
+              <p className="pb-1 text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{g.group}</p>
+              <div className="flex gap-1">
+                {g.tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTab(t.id)}
+                    className={`text-display whitespace-nowrap rounded-[var(--radius-sm)] px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                      tab === t.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-panel hover:text-foreground'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {showPreview ? (
+      {editing ? (
+        <div className="min-w-0">{tabContent}</div>
+      ) : showPreview ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-4">
-            {tab === 'design' && <DesignTab theme={theme} onChange={(p) => setTheme((t) => ({ ...t, ...p }))} iconUrl={iconUrl} onIcon={setIconUrl} />}
-            {tab === 'screens' && <ScreensTab appId={app.id} screens={screens} activeId={activeId} onScreens={setScreens} onActive={setActiveId} />}
-            {tab === 'navigation' && <NavigationTab screens={screens} nav={nav} onChange={setNav} />}
-            {tab === 'news' && <NewsTab screens={screens} onScreens={setScreens} />}
-            {tab === 'media' && <MediaTab screens={screens} onScreens={setScreens} />}
-            {tab === 'events' && <EventsTab screens={screens} onScreens={setScreens} />}
-            {tab === 'shop' && <ShopTab commerce={commerce} onChange={setCommerce} />}
-            {tab === 'fans' && <FansTab commerce={commerce} onChange={setCommerce} screens={screens} />}
-            {tab === 'extensions' && <ExtensionsTab installed={extensions} onToggle={toggleExtension} />}
-            {tab === 'earnings' && <EarningsTab appId={app.id} earnings={app.earnings} payout={app.payout} />}
-
+            {tabContent}
             {needsSave && (
               <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-border bg-background/95 py-3 backdrop-blur">
                 <Button onClick={saveBuild} disabled={isPending}>{isPending ? 'Saving…' : 'Save app'}</Button>
@@ -166,20 +177,9 @@ export function AppConfigClient({ app }: { app: App }) {
               </div>
             )}
           </div>
-
           <div>
             <div className="lg:sticky lg:top-6">
-              <AppPreview
-                theme={theme}
-                appName={app.name}
-                iconUrl={iconUrl}
-                screens={screens}
-                nav={nav}
-                activeId={activeId}
-                onSelect={setActiveId}
-                device={device}
-                onDevice={setDevice}
-              />
+              <AppPreview theme={theme} appName={app.name} iconUrl={iconUrl} screens={screens} nav={nav} activeId={activeId} onSelect={setActiveId} device={device} onDevice={setDevice} />
               <p className="mt-3 text-center text-[10px] uppercase tracking-widest text-muted-foreground">Live preview</p>
             </div>
           </div>

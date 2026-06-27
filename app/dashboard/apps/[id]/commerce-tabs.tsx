@@ -6,28 +6,62 @@ import { AssetPicker } from '@/components/site/editor/asset-picker'
 import type { AppScreen } from '@/lib/app-screens'
 import { screenEmoji } from '@/lib/app-screens'
 import type { AppCommerce, AppProduct, AppTier } from '@/lib/app-commerce'
+import { EditorShell } from './editor-shell'
 
-const inputCls = 'w-full rounded-[var(--radius-sm)] border border-border bg-background px-2.5 py-1.5 text-sm'
+const inputCls = 'mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2.5 py-1.5 text-sm'
 const genId = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`
 
 /* ─────────────────────────── Shop ─────────────────────────── */
 
-export function ShopTab({ commerce, onChange }: { commerce: AppCommerce; onChange: (c: AppCommerce) => void }) {
+export function ShopTab({
+  commerce,
+  onChange,
+  onEditing,
+  onSave,
+}: {
+  commerce: AppCommerce
+  onChange: (c: AppCommerce) => void
+  onEditing: (b: boolean) => void
+  onSave: () => void
+}) {
   const products = commerce.products
   const [editing, setEditing] = useState<number | null>(null)
   const setProducts = (next: AppProduct[]) => onChange({ ...commerce, products: next })
+  const open = (i: number) => { setEditing(i); onEditing(true) }
+  const close = () => { setEditing(null); onEditing(false) }
 
   const add = () => {
-    setProducts([
-      ...products,
-      { id: genId('prod'), name: '', description: '', price: '', category: '', image: '', inventory: '', active: true, variants: [] },
-    ])
-    setEditing(products.length)
+    setProducts([...products, { id: genId('prod'), name: '', description: '', price: '', category: '', image: '', inventory: '', active: true, variants: [] }])
+    open(products.length)
   }
   const patch = (i: number, p: Partial<AppProduct>) => setProducts(products.map((x, idx) => (idx === i ? { ...x, ...p } : x)))
-  const remove = (i: number) => {
-    setProducts(products.filter((_, idx) => idx !== i))
-    setEditing(null)
+
+  if (editing !== null && products[editing]) {
+    const p = products[editing]!
+    return (
+      <EditorShell title={p.name ? 'Edit Product' : 'New Product'} backLabel="← Back to Products" saveLabel="Save Product" onBack={close} onSave={() => { onSave(); close() }}>
+        <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-4">
+          <p className="text-display mb-2 font-bold">Product Details</p>
+          <Field label="Name"><input value={p.name} onChange={(e) => patch(editing, { name: e.target.value })} placeholder="Product name" className={inputCls} /></Field>
+          <Field label="Description"><textarea rows={3} value={p.description} onChange={(e) => patch(editing, { description: e.target.value })} placeholder="Product description…" className={inputCls} /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Price ($)"><input type="number" step="0.01" value={p.price} onChange={(e) => patch(editing, { price: e.target.value })} placeholder="19.99" className={inputCls} /></Field>
+            <Field label="Category"><input value={p.category} onChange={(e) => patch(editing, { category: e.target.value })} placeholder="Apparel, Accessories…" className={inputCls} /></Field>
+          </div>
+          <Field label="Image"><AssetPicker value={p.image} onChange={(v) => patch(editing, { image: v })} accept="image/*" /></Field>
+          <div className="grid grid-cols-2 items-end gap-3">
+            <Field label="Inventory"><input type="number" value={p.inventory} onChange={(e) => patch(editing, { inventory: e.target.value })} placeholder="Leave blank for unlimited" className={inputCls} /></Field>
+            <label className="flex items-center gap-2 pb-1.5 text-sm">
+              <input type="checkbox" checked={p.active} onChange={(e) => patch(editing, { active: e.target.checked })} className="h-4 w-4 accent-primary" /> Active
+            </label>
+          </div>
+        </section>
+        <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-4">
+          <p className="text-display mb-2 font-bold">Variants</p>
+          <VariantRows variants={p.variants} onChange={(v) => patch(editing, { variants: v })} />
+        </section>
+      </EditorShell>
+    )
   }
 
   return (
@@ -42,38 +76,14 @@ export function ShopTab({ commerce, onChange }: { commerce: AppCommerce; onChang
         </div>
       ) : (
         products.map((p, i) => (
-          <div key={p.id} className={`rounded-[var(--radius)] border bg-panel/40 ${editing === i ? 'border-primary/50' : 'border-border'}`}>
-            <div className="flex items-center gap-3 p-3">
-              {p.image ? (
-                <img src={p.image} alt="" className="h-10 w-10 rounded-[var(--radius-sm)] object-cover" />
-              ) : (
-                <div className="h-10 w-10 rounded-[var(--radius-sm)] bg-panel-elevated" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-display truncate font-bold">{p.name || 'Untitled'}</p>
-                <p className="text-[11px] text-muted-foreground">${p.price || '0'}{p.category ? ` · ${p.category}` : ''}{p.active ? '' : ' · hidden'}</p>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(editing === i ? null : i)}>{editing === i ? 'Close' : 'Edit'}</Button>
-              <button type="button" onClick={() => remove(i)} className="px-2 text-destructive">✕</button>
+          <div key={p.id} className="flex items-center gap-3 rounded-[var(--radius)] border border-border bg-panel/40 p-3">
+            {p.image ? <img src={p.image} alt="" className="h-10 w-10 rounded-[var(--radius-sm)] object-cover" /> : <div className="h-10 w-10 rounded-[var(--radius-sm)] bg-panel-elevated" />}
+            <div className="min-w-0 flex-1">
+              <p className="text-display truncate font-bold">{p.name || 'Untitled'}</p>
+              <p className="text-[11px] text-muted-foreground">${p.price || '0'}{p.category ? ` · ${p.category}` : ''}{p.active ? '' : ' · hidden'}</p>
             </div>
-            {editing === i && (
-              <div className="space-y-2 border-t border-border p-3">
-                <Field label="Name"><input value={p.name} onChange={(e) => patch(i, { name: e.target.value })} className={inputCls} /></Field>
-                <Field label="Description"><textarea rows={3} value={p.description} onChange={(e) => patch(i, { description: e.target.value })} className={inputCls} /></Field>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Price ($)"><input type="number" step="0.01" value={p.price} onChange={(e) => patch(i, { price: e.target.value })} className={inputCls} /></Field>
-                  <Field label="Category"><input value={p.category} onChange={(e) => patch(i, { category: e.target.value })} placeholder="Apparel…" className={inputCls} /></Field>
-                </div>
-                <Field label="Image"><AssetPicker value={p.image} onChange={(v) => patch(i, { image: v })} accept="image/*" /></Field>
-                <div className="grid grid-cols-2 items-end gap-2">
-                  <Field label="Inventory (blank = unlimited)"><input type="number" value={p.inventory} onChange={(e) => patch(i, { inventory: e.target.value })} className={inputCls} /></Field>
-                  <label className="flex items-center gap-2 pb-1.5 text-sm">
-                    <input type="checkbox" checked={p.active} onChange={(e) => patch(i, { active: e.target.checked })} className="h-4 w-4 accent-primary" /> Active
-                  </label>
-                </div>
-                <VariantRows variants={p.variants} onChange={(v) => patch(i, { variants: v })} />
-              </div>
-            )}
+            <Button size="sm" variant="ghost" onClick={() => open(i)}>Edit</Button>
+            <button type="button" onClick={() => setProducts(products.filter((_, idx) => idx !== i))} className="text-display px-2 text-xs font-bold uppercase tracking-widest text-destructive">Delete</button>
           </div>
         ))
       )}
@@ -83,24 +93,21 @@ export function ShopTab({ commerce, onChange }: { commerce: AppCommerce; onChang
 
 function VariantRows({ variants, onChange }: { variants: AppProduct['variants']; onChange: (v: AppProduct['variants']) => void }) {
   return (
-    <div>
-      <span className="mb-1 block text-xs text-muted-foreground">Variants</span>
-      <div className="space-y-2">
-        {variants.map((v, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input value={v.name} onChange={(e) => onChange(variants.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))} placeholder="Size, Color…" className={`${inputCls} flex-1`} />
-            <input value={v.value} onChange={(e) => onChange(variants.map((x, idx) => (idx === i ? { ...x, value: e.target.value } : x)))} placeholder="XL, Red…" className={`${inputCls} flex-1`} />
-            <input value={v.price_adj} onChange={(e) => onChange(variants.map((x, idx) => (idx === i ? { ...x, price_adj: e.target.value } : x)))} placeholder="+/- $" className={`${inputCls} w-20`} />
-            <button type="button" onClick={() => onChange(variants.filter((_, idx) => idx !== i))} className="text-destructive">✕</button>
-          </div>
-        ))}
-      </div>
-      <Button size="sm" variant="outline" className="mt-2" onClick={() => onChange([...variants, { name: '', value: '', price_adj: '' }])}>+ Add Variant</Button>
+    <div className="space-y-2">
+      {variants.map((v, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <input value={v.name} onChange={(e) => onChange(variants.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))} placeholder="Size, Color…" className={`${inputCls} flex-1`} />
+          <input value={v.value} onChange={(e) => onChange(variants.map((x, idx) => (idx === i ? { ...x, value: e.target.value } : x)))} placeholder="XL, Red…" className={`${inputCls} flex-1`} />
+          <input value={v.price_adj} onChange={(e) => onChange(variants.map((x, idx) => (idx === i ? { ...x, price_adj: e.target.value } : x)))} placeholder="+/- $" className={`${inputCls} w-20`} />
+          <button type="button" onClick={() => onChange(variants.filter((_, idx) => idx !== i))} className="text-destructive">✕</button>
+        </div>
+      ))}
+      <Button size="sm" variant="outline" onClick={() => onChange([...variants, { name: '', value: '', price_adj: '' }])}>+ Add Variant</Button>
     </div>
   )
 }
 
-/* ─────────────────────────── Fans ─────────────────────────── */
+/* ─────────────────────────── Fans (form) ─────────────────────────── */
 
 export function FansTab({ commerce, onChange, screens }: { commerce: AppCommerce; onChange: (c: AppCommerce) => void; screens: AppScreen[] }) {
   const tiers = commerce.subscription_tiers
@@ -180,7 +187,7 @@ export function FansTab({ commerce, onChange, screens }: { commerce: AppCommerce
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block text-sm">
-      <span className="mb-1 block text-xs text-muted-foreground">{label}</span>
+      <span className="block text-xs text-muted-foreground">{label}</span>
       {children}
     </label>
   )
