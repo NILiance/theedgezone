@@ -48,6 +48,58 @@ const BIG_SPORTS_STATES = new Set([
   'TX', 'CA', 'FL', 'NY', 'GA', 'OH', 'PA', 'IL', 'NC', 'AL', 'TN', 'MI',
 ])
 
+// An athlete's NIL market is really their SCHOOL's city, not their hometown.
+// Curated market scores for major programs (the on-load estimate refines the
+// long tail). First match wins, so order specific patterns before broad ones.
+const SCHOOL_MARKETS: Array<[RegExp, number]> = [
+  [/\b(usc|southern california|ucla)\b/, 100], // Los Angeles
+  [/\bsmu\b|southern methodist/, 90], // Dallas
+  [/\btcu\b|texas christian/, 88], // Fort Worth–Dallas
+  [/villanova|\btemple\b|drexel/, 88], // Philadelphia
+  [/texas a&m/, 82], // College Station
+  [/\btexas\b(?!.*(tech|a&m|state|el paso|san antonio|arlington))/, 95], // UT Austin
+  [/ohio state/, 90], // Columbus
+  [/\bmiami\b(?!.*ohio)/, 90], // Miami FL
+  [/washington\b(?!.*state)/, 88], // Seattle
+  [/\blsu\b|louisiana state/, 88], // Baton Rouge
+  [/arizona state|\basu\b/, 85], // Phoenix
+  [/colorado\b(?!.*state)/, 82], // Boulder–Denver
+  [/alabama\b(?!.*(birmingham|huntsville|a&m|state))/, 85], // Tuscaloosa
+  [/\bgeorgia\b(?!.*(tech|state|southern))/, 85], // Athens
+  [/\bflorida\b(?!.*(state|atlantic|international|gulf))/, 85], // Gainesville
+  [/oklahoma\b(?!.*state)/, 85], // Norman
+  [/oregon\b(?!.*state)/, 82], // Eugene
+  [/tennessee\b(?!.*(state|tech|martin|chattanooga))/, 82], // Knoxville
+  [/nebraska/, 82], // Lincoln
+  [/rutgers/, 82], // NJ / NYC metro
+  [/michigan\b(?!.*state)/, 80], // Ann Arbor
+  [/notre dame/, 80],
+  [/penn state/, 80], // State College
+  [/wisconsin/, 80], // Madison
+  [/kentucky\b(?!.*(western|eastern))/, 80], // Lexington
+  [/florida state|\bfsu\b/, 80],
+  [/\bkansas\b(?!.*state)/, 78], // Lawrence
+  [/north carolina\b(?!.*(state|a&t|charlotte|greensboro|wilmington))|\bunc\b/, 78], // Chapel Hill
+  [/\bduke\b/, 78], // Durham
+  [/louisville/, 78],
+  [/auburn/, 78],
+  [/clemson/, 75],
+  [/\biowa\b(?!.*state)/, 76], // Iowa City
+  [/\bbaylor\b/, 75], // Waco
+  [/\butah\b(?!.*state)/, 75],
+  [/syracuse/, 72],
+  [/uconn|\bconnecticut\b/, 72],
+  [/mississippi\b(?!.*state)|ole miss/, 70], // Oxford
+  [/gonzaga/, 65],
+]
+
+function schoolMarket(school?: string | null): number {
+  const s = (school ?? '').toLowerCase()
+  if (!s) return 0
+  for (const [re, score] of SCHOOL_MARKETS) if (re.test(s)) return score
+  return 0
+}
+
 export function autoAthletePopularity(profile: ProfileLike): number {
   let score = 35 // baseline for any signed-in talent
   if ((profile.bio?.length ?? 0) > 200) score += 8

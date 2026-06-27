@@ -43,11 +43,12 @@ MARKET SIZE (0–100) — location-based NIL potential:
 - Below 50: Small/rural, restrictive NIL state, low fan engagement.
 Weigh: city size, corporate HQ presence, media-market rank, NIL-law friendliness, college-sports culture, fewer pro teams = more attention, disposable income.
 
-ADJUSTMENT FACTOR (0–48) — brand-friendliness bonus:
-- 48: Exceptionally charismatic & marketable, clean reputation, already endorsing major brands (Nike/Gatorade), strong social-cause involvement, crossover/international appeal (e.g. Travis Kelce, Livvy Dunne, Caitlin Clark).
-- 30–45: Generally charismatic, minor/no PR issues, some endorsements, some community work.
-- Below 20: Reserved, controversy/legal issues, few endorsements.
-Weigh: charisma, controversy/PR, endorsement fit, social causes, crossover appeal, international reach.`
+ADJUSTMENT FACTOR (0–48) — brand-safety & reputation. PRIMARILY: is this athlete safe and positive for a brand to partner with — no legal issues, no controversy, a good reputation? Default a clean-record athlete with no known problems to ~32–40; do NOT penalize someone just for being lesser-known.
+- 40–48: Clean reputation, zero controversy or legal issues, professional & positive public image, brand-friendly (existing endorsements, charisma, social-cause work, broad/crossover appeal).
+- 25–39: No known problems, generally positive standing; endorsements/charisma still developing.
+- 10–24: Some concern — minor PR issues, polarizing image, or a thin/unknown reputation.
+- Below 10: Serious red flags — legal trouble, suspensions, scandals, or reputation risk.
+Weigh reputation & brand-safety FIRST, then charisma, endorsements, social causes, crossover/international reach.`
 
 function extractJson(text: string): Record<string, unknown> | null {
   const start = text.indexOf('{')
