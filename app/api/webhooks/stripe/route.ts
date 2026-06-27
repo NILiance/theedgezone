@@ -219,6 +219,19 @@ async function handleCheckoutCompleted(
     return
   }
 
+  // In-app Shop purchase (/api/app-checkout) — promote the order to paid.
+  if (metadata.kind === 'app_product') {
+    const orderId = metadata.order_id
+    if (orderId) {
+      const details = session.customer_details
+      await supabase
+        .from('app_product_orders')
+        .update({ status: 'paid', buyer_email: details?.email ?? null, buyer_name: details?.name ?? null })
+        .eq('id', orderId)
+    }
+    return
+  }
+
   // NIL Store merch purchase — promotes the matching store_orders row.
   if (metadata.kind === 'store_merch') {
     await handleStoreOrderCompleted(supabase, session)

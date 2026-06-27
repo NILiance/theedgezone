@@ -55,6 +55,7 @@ export default async function PublicAppPage({ params }: { params: Promise<{ id: 
 
   return (
     <PublicApp
+      appId={app.id}
       theme={theme}
       appName={app.name}
       iconUrl={app.icon_url ?? undefined}

@@ -11,6 +11,7 @@ import type { AppProduct } from '@/lib/app-commerce'
  * fans actually use; the in-builder preview + the Expo WebView point here.
  */
 export function PublicApp({
+  appId,
   theme,
   appName,
   iconUrl,
@@ -18,6 +19,7 @@ export function PublicApp({
   nav,
   products,
 }: {
+  appId: string
   theme: AppTheme
   appName: string
   iconUrl?: string
@@ -27,6 +29,27 @@ export function PublicApp({
 }) {
   const home = screens.find((s) => s.type === 'home')
   const [activeId, setActiveId] = useState<string | null>(home?.id ?? screens[0]?.id ?? null)
+  const [buying, setBuying] = useState<string | null>(null)
+
+  const buyProduct = async (productId: string) => {
+    setBuying(productId)
+    try {
+      const res = await fetch('/api/app-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app_id: appId, product_id: productId, quantity: 1 }),
+      })
+      const json = (await res.json()) as { url?: string; error?: string }
+      if (json.url) window.location.href = json.url
+      else {
+        setBuying(null)
+        alert(json.error || 'Checkout is unavailable right now.')
+      }
+    } catch {
+      setBuying(null)
+      alert('Checkout failed. Please try again.')
+    }
+  }
   const active = screens.find((s) => s.id === activeId) ?? screens[0] ?? null
   const navItems = (nav.length ? nav : autoNav(screens)).filter((n) => n.visible).slice(0, MAX_NAV_ITEMS)
   const isHome = active?.type === 'home'
@@ -54,7 +77,7 @@ export function PublicApp({
 
       <main className="min-h-0 flex-1 overflow-y-auto">
         {active ? (
-          <Screen screen={active} theme={theme} appName={appName} screens={screens} products={products} onSelect={setActiveId} />
+          <Screen screen={active} theme={theme} appName={appName} screens={screens} products={products} onSelect={setActiveId} onBuy={buyProduct} buyingId={buying} />
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center text-sm" style={{ color: theme.muted_color }}>
             This app has no screens yet.
@@ -90,6 +113,8 @@ function Screen({
   screens,
   products,
   onSelect,
+  onBuy,
+  buyingId,
 }: {
   screen: AppScreen
   theme: AppTheme
@@ -97,6 +122,8 @@ function Screen({
   screens: AppScreen[]
   products: AppProduct[]
   onSelect: (id: string) => void
+  onBuy: (id: string) => void
+  buyingId: string | null
 }) {
   const c = (screen.content ?? {}) as Record<string, unknown>
   const radius = theme.border_radius
@@ -157,6 +184,9 @@ function Screen({
                 <div className="p-2">
                   <p className="truncate text-xs font-bold" style={heading}>{p.name || 'Product'}</p>
                   <p className="text-sm font-black" style={{ color: theme.primary }}>${p.price || '0'}</p>
+                  <button type="button" onClick={() => onBuy(p.id)} disabled={buyingId === p.id} className="mt-1.5 w-full rounded-[var(--radius-sm)] py-1.5 text-xs font-bold disabled:opacity-60" style={{ background: theme.primary, color: theme.secondary }}>
+                    {buyingId === p.id ? '…' : 'Buy'}
+                  </button>
                 </div>
               </div>
             ))}
