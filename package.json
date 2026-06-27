@@ -34,6 +34,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "resend": "^6.12.4",
+    "satori": "^0.26.0",
     "sharetribe-flex-integration-sdk": "^1.13.0",
     "sharetribe-flex-sdk": "^1.24.0",
     "sharp": "^0.32.6",

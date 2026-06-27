@@ -34,7 +34,21 @@ export default async function AppConfigPage({ params }: PageProps) {
   )
   const nav = Array.isArray(settings.nav) ? (settings.nav as NavItem[]) : []
   const extensions = Array.isArray(settings.extensions) ? (settings.extensions as string[]) : []
-  const earnings = (settings.earnings ?? {}) as Record<string, number>
+  // Real in-app Shop revenue — paid orders; the talent keeps 85% after the 15%
+  // platform fee (payments land directly in their Stripe Connect account).
+  const { data: paidOrders } = await supabase
+    .from('app_product_orders')
+    .select('amount_cents')
+    .eq('app_id', app.id)
+    .eq('status', 'paid')
+  const merchGross = (paidOrders ?? []).reduce((s, o) => s + (Number(o.amount_cents) || 0), 0)
+  const merchShare = Math.round(merchGross * 0.85)
+  const earnings = {
+    ...((settings.earnings ?? {}) as Record<string, number>),
+    merch_orders: (paidOrders ?? []).length,
+    merch_revenue_cents: merchShare,
+    merch_gross_cents: merchShare,
+  }
   const payout = (settings.payout ?? {}) as { method?: string; handle?: string }
   const commerce = settings.commerce ?? {}
   const integrations = settings.integrations ?? {}

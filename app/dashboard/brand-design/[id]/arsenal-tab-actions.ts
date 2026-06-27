@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import Anthropic from '@anthropic-ai/sdk'
 import type SharpType from 'sharp'
+import { renderTradingCard } from '@/lib/satori-card'
 import { requireUser } from '@/lib/auth'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
@@ -188,7 +189,25 @@ export async function generateTradingCardAction(
   <text x="${W - 40}" y="${H - 30}" font-family="ui-monospace, monospace" font-size="11" text-anchor="end" fill="${p.accent}" opacity="0.7">${escapeXml(style.toUpperCase())} · ${new Date().getFullYear()}</text>
 </svg>`
 
-    const png = await sharp(Buffer.from(cardSvg)).png().toBuffer()
+    // Render via satori (text → vector paths with a real font) so the card is
+    // never tofu on serverless; produces a front + back side-by-side. Falls back
+    // to the legacy single-side SVG if the font can't be fetched.
+    const photoDataUrl = `data:image/png;base64,${photoArea.toString('base64')}`
+    let logoDataUrl: string | undefined
+    if (brand.final_logo_url) {
+      try {
+        const lr = await fetch(brand.final_logo_url)
+        if (lr.ok) logoDataUrl = `data:image/png;base64,${Buffer.from(await lr.arrayBuffer()).toString('base64')}`
+      } catch {
+        /* logo optional on the back */
+      }
+    }
+    let png = await renderTradingCard(
+      { name, subline, school, stats, tagline, photoDataUrl, logoDataUrl, styleLabel: style.toUpperCase() },
+      { bg: p.bg, border: p.border, accent: p.accent, text: p.text },
+      sharp
+    )
+    if (!png) png = await sharp(Buffer.from(cardSvg)).png().toBuffer()
     const path = `${brandId}/addons/trading-card-${style}-${Date.now()}.png`
     const url = await uploadToBucket(path, png, 'image/png')
 

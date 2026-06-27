@@ -57,6 +57,13 @@ function isImageUrl(url: string | null): boolean {
   return /\.(png|jpe?g|webp|gif|svg|avif|bmp)$/.test(clean)
 }
 
+// HTML creations (logo animations, email signatures) can render live in a
+// sandboxed iframe instead of falling back to a "Click Download" placeholder.
+function isHtmlUrl(url: string | null): boolean {
+  if (!url) return false
+  return /\.html?$/.test(url.split('?')[0]!.toLowerCase())
+}
+
 /**
  * Your Creations — grid of every asset the talent has generated for this
  * brand. Each tile carries an image preview + Download + Request Quote
@@ -137,12 +144,13 @@ function CreationTile({
   }
 
   const showImage = isImageUrl(creation.url)
+  const showHtml = !showImage && isHtmlUrl(creation.url)
   const placeholderIcon = KIND_ICON[creation.kind] ?? '📄'
   return (
     <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
       <div
-        className={`flex aspect-square items-center justify-center ${
-          showImage ? 'bg-white' : 'bg-panel-elevated'
+        className={`relative flex aspect-square items-center justify-center overflow-hidden ${
+          showImage || showHtml ? 'bg-white' : 'bg-panel-elevated'
         }`}
       >
         {showImage && creation.url ? (
@@ -151,6 +159,16 @@ function CreationTile({
             src={creation.url}
             alt={subLabel}
             className="max-h-full max-w-full object-contain"
+          />
+        ) : showHtml && creation.url ? (
+          // Self-contained HTML+CSS (no scripts) — sandbox="" is safe and the
+          // CSS animation still plays. pointer-events-none keeps it a preview.
+          <iframe
+            src={creation.url}
+            title={subLabel}
+            sandbox=""
+            scrolling="no"
+            className="pointer-events-none h-full w-full border-0"
           />
         ) : (
           <div className="flex flex-col items-center gap-2 px-3 text-center">
