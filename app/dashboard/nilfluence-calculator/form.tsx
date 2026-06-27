@@ -90,7 +90,7 @@ export function CalculatorForm({
       athlete_popularity: autoPopularity.athlete,
       team_popularity: autoPopularity.team,
       market_size: autoPopularity.market,
-      adjustment_factor: 0,
+      adjustment_factor: autoPopularity.adjustment,
       // Monetization inputs (spreadsheet B32 / B34). Defaults mirror the sheet.
       profit_per_product: (li?.['profit_per_product'] as number | undefined) ?? 45,
       purchase_conversion_rate:

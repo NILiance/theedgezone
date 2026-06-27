@@ -136,13 +136,28 @@ export function autoMarketSize(profile: ProfileLike): number {
   const state = (profile.us_state ?? '').trim().toUpperCase()
   if (BIG_SPORTS_STATES.has(state)) score += 15
   else if (state) score += 5
-  return clampPct(score)
+  // An athlete's NIL market is really their SCHOOL's city — take whichever is
+  // higher (the hometown signal or the school's market).
+  return clampPct(Math.max(score, schoolMarket(profile.school)))
+}
+
+export function autoAdjustmentFactor(profile: ProfileLike): number {
+  // Brand-safety / reputation baseline: assume a clean, professional athlete
+  // with no known issues. The on-load estimate sharpens this for recognizable
+  // athletes (real reputations, endorsements, controversies).
+  let score = 30
+  if (profile.phyllo_user_id) score += 4 // connected, verifiable presence
+  const socials = Object.values(profile.socials ?? {}).filter(Boolean).length
+  score += Math.min(socials * 2, 8)
+  if ((profile.achievements?.length ?? 0) > 200) score += 2
+  return Math.max(0, Math.min(48, Math.round(score)))
 }
 
 export interface AutoPopularity {
   athlete: number
   team: number
   market: number
+  adjustment: number
   notes: { athlete: string; team: string; market: string }
 }
 
@@ -150,12 +165,13 @@ export function autoPopularityFromProfile(profile: ProfileLike): AutoPopularity 
   const athlete = autoAthletePopularity(profile)
   const team = autoTeamPopularity(profile)
   const market = autoMarketSize(profile)
+  const adjustment = autoAdjustmentFactor(profile)
   const notes = {
     athlete: explainAthlete(profile),
     team: explainTeam(profile),
     market: explainMarket(profile),
   }
-  return { athlete, team, market, notes }
+  return { athlete, team, market, adjustment, notes }
 }
 
 function explainAthlete(p: ProfileLike): string {
