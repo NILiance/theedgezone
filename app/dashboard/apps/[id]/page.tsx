@@ -33,6 +33,9 @@ export default async function AppConfigPage({ params }: PageProps) {
     (app.theme_mode as 'dark' | 'light') ?? 'dark'
   )
   const nav = Array.isArray(settings.nav) ? (settings.nav as NavItem[]) : []
+  const extensions = Array.isArray(settings.extensions) ? (settings.extensions as string[]) : []
+  const earnings = (settings.earnings ?? {}) as Record<string, number>
+  const payout = (settings.payout ?? {}) as { method?: string; handle?: string }
 
   return (
     <div className="space-y-6">
@@ -88,11 +91,14 @@ export default async function AppConfigPage({ params }: PageProps) {
           theme,
           nav,
           screens: Array.isArray(app.screens) ? (app.screens as AppScreen[]) : [],
+          extensions,
           store_listing:
             ((app as { store_listing?: Record<string, unknown> }).store_listing as Record<
               string,
               unknown
             >) ?? {},
+          earnings,
+          payout,
         }}
       />
     </div>

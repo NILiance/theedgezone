@@ -63,7 +63,34 @@ export const SCREEN_TYPES: ScreenTypeDef[] = [
   { type: 'live', label: 'Live', icon: 'radio', pattern: 'web', description: 'Livestream page (embedded)', defaultTitle: 'Live', defaultContent: { url: '' } },
   { type: 'exclusive', label: 'Exclusive', icon: 'lock-closed', pattern: 'list', description: 'Subscriber-only content', defaultTitle: 'Exclusive', defaultContent: listContent },
   { type: 'shoutouts', label: 'Shoutouts', icon: 'megaphone', pattern: 'text', description: 'Personalized video requests', defaultTitle: 'Shoutouts', defaultContent: { body: '' } },
+  { type: 'profile', label: 'Profile', icon: 'person', pattern: 'profile', description: 'Bio, stats, achievements', defaultTitle: 'Profile', defaultContent: { headline: '', bio: '', image: '', stats: [], achievements: '' } },
+  { type: 'media_hub', label: 'Media Hub', icon: 'images', pattern: 'gallery', description: 'Photos, videos & audio', defaultTitle: 'Media', defaultContent: { images: [] } },
+  { type: 'affiliates', label: 'Affiliates', icon: 'pricetag', pattern: 'links', description: 'Affiliate links', defaultTitle: 'Shop My Picks', defaultContent: linksContent },
+  { type: 'tip_jar', label: 'Tip Jar', icon: 'card', pattern: 'web', description: 'Tips & donations', defaultTitle: 'Tip Jar', defaultContent: { url: '' } },
 ]
+
+/** Screen categories, in legacy display order. */
+export const SCREEN_CATEGORIES = ['Essential', 'Content', 'Commerce', 'Fan Engagement', 'Utility'] as const
+
+const SCREEN_CATEGORY: Record<string, (typeof SCREEN_CATEGORIES)[number]> = {
+  home: 'Essential', profile: 'Essential', bio: 'Essential', about: 'Essential', contact: 'Essential', gallery: 'Essential', photos: 'Essential', links: 'Essential',
+  blog: 'Content', news: 'Content', videos: 'Content', highlights: 'Content', audio: 'Content', music: 'Content', podcast: 'Content', media_hub: 'Content', social: 'Content',
+  shop: 'Commerce', tickets: 'Commerce', merch: 'Commerce', subscriptions: 'Commerce', affiliates: 'Commerce', sponsors: 'Commerce', tip_jar: 'Commerce',
+  fan_wall: 'Fan Engagement', exclusive: 'Fan Engagement', polls: 'Fan Engagement', leaderboard: 'Fan Engagement', live: 'Fan Engagement', shoutouts: 'Fan Engagement',
+  events: 'Utility', faq: 'Utility', schedule: 'Utility', stats: 'Utility', web: 'Utility',
+}
+
+export function screenCategory(type: string): string {
+  return SCREEN_CATEGORY[type] ?? 'Utility'
+}
+
+/** Screen-type defs grouped by category, for the categorized picker. */
+export function screenTypesByCategory(): { category: string; defs: ScreenTypeDef[] }[] {
+  return SCREEN_CATEGORIES.map((category) => ({
+    category,
+    defs: SCREEN_TYPES.filter((d) => screenCategory(d.type) === category),
+  })).filter((g) => g.defs.length > 0)
+}
 
 const BY_TYPE = new Map(SCREEN_TYPES.map((s) => [s.type, s]))
 

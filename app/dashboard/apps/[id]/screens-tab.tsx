@@ -4,9 +4,10 @@ import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { AssetPicker } from '@/components/site/editor/asset-picker'
 import {
-  SCREEN_TYPES,
-  screenDef,
   screenPattern,
+  screenEmoji,
+  screenCategory,
+  screenTypesByCategory,
   type AppScreen,
   type ScreenTypeDef,
 } from '@/lib/app-screens'
@@ -64,17 +65,24 @@ export function ScreensTab({
       </div>
 
       {picking && (
-        <div className="grid grid-cols-2 gap-2 rounded-[var(--radius)] border border-border bg-panel/40 p-3 sm:grid-cols-3">
-          {SCREEN_TYPES.map((def) => (
-            <button
-              key={def.type}
-              type="button"
-              onClick={() => add(def)}
-              className="rounded-[var(--radius-sm)] border border-border bg-panel-elevated/40 p-2 text-left hover:border-primary/40"
-            >
-              <p className="text-display text-xs font-bold">{def.label}</p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">{def.description}</p>
-            </button>
+        <div className="space-y-3 rounded-[var(--radius)] border border-border bg-panel/40 p-3">
+          {screenTypesByCategory().map((grp) => (
+            <div key={grp.category}>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-primary">{grp.category}</p>
+              <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {grp.defs.map((def) => (
+                  <button
+                    key={def.type}
+                    type="button"
+                    onClick={() => add(def)}
+                    className="rounded-[var(--radius-sm)] border border-border bg-panel-elevated/40 p-2 text-left hover:border-primary/40"
+                  >
+                    <p className="text-display text-xs font-bold">{screenEmoji(def.icon)} {def.label}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{def.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -88,11 +96,12 @@ export function ScreensTab({
               className={`rounded-[var(--radius)] border bg-panel/40 ${open ? 'border-primary/50' : 'border-border'}`}
             >
               <div className="flex items-center gap-2 p-3">
-                <button type="button" onClick={() => onActive(sc.id)} className="flex flex-1 items-center gap-2 text-left">
-                  <span className="text-display rounded-[var(--radius-sm)] bg-panel-elevated px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {screenDef(sc.type)?.label ?? sc.type}
+                <button type="button" onClick={() => onActive(sc.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+                  <span className="text-lg">{screenEmoji(sc.icon)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-display block truncate font-bold">{sc.title}</span>
+                    <span className="block text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">{screenCategory(sc.type)}</span>
                   </span>
-                  <span className="text-display flex-1 truncate font-bold">{sc.title}</span>
                 </button>
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="px-1 text-muted-foreground disabled:opacity-30">↑</button>
                 <button type="button" onClick={() => move(i, 1)} disabled={i === screens.length - 1} className="px-1 text-muted-foreground disabled:opacity-30">↓</button>

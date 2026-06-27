@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import type { AppTheme } from '@/lib/app-theme'
 import { type AppScreen, type NavItem, screenEmoji, screenPattern, MAX_NAV_ITEMS } from '@/lib/app-screens'
+import { type DeviceId, type NotchStyle, deviceSpec, DEVICES } from '@/lib/app-devices'
 
 /**
  * Live phone-frame preview of a talent's app. Renders the active screen + the
@@ -18,6 +19,8 @@ export function AppPreview({
   nav,
   activeId,
   onSelect,
+  device = 'iphone15',
+  onDevice,
 }: {
   theme: AppTheme
   appName: string
@@ -26,26 +29,44 @@ export function AppPreview({
   nav: NavItem[]
   activeId: string | null
   onSelect: (id: string) => void
+  device?: DeviceId
+  onDevice?: (d: DeviceId) => void
 }) {
+  const spec = deviceSpec(device)
   const active = screens.find((s) => s.id === activeId) ?? screens[0] ?? null
   const navItems = (nav.length ? nav : autoNav(screens)).filter((n) => n.visible).slice(0, MAX_NAV_ITEMS)
   const isHome = active?.type === 'home'
 
   const frame: CSSProperties = {
-    width: 300,
-    height: 620,
+    width: spec.w,
+    height: spec.h,
     background: theme.bg_color,
     color: theme.text_color,
     fontFamily: `'${theme.font_body}', system-ui, sans-serif`,
-    borderRadius: 44,
+    borderRadius: spec.radius,
   }
 
   return (
-    <div className="mx-auto" style={{ width: 300 }}>
-      <div className="relative shadow-2xl ring-8 ring-black" style={frame}>
-        {/* notch */}
-        <div className="absolute left-1/2 top-2 z-20 h-5 w-28 -translate-x-1/2 rounded-full bg-black" />
-        <div className="flex h-full flex-col overflow-hidden" style={{ borderRadius: 36 }}>
+    <div className="mx-auto" style={{ width: spec.w }}>
+      {onDevice && (
+        <div className="mb-3 flex justify-center gap-1">
+          {DEVICES.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => onDevice(d.id)}
+              className={`rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors ${
+                device === d.id ? 'bg-foreground text-background' : 'bg-panel-elevated text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="relative shadow-2xl ring-[6px] ring-black" style={frame}>
+        <Notch style={spec.notch} />
+        <div className="flex h-full flex-col overflow-hidden" style={{ borderRadius: Math.max(0, spec.radius - 6) }}>
           {/* status bar */}
           <div
             className="flex shrink-0 items-center justify-between px-5 pt-3 pb-1 text-[10px] font-semibold"
@@ -303,23 +324,31 @@ function HomeScreen({
 
   return (
     <div>
-      {/* splash */}
-      <div className="relative flex h-72 items-stretch overflow-hidden">
+      {/* full-bleed splash with name + nav-grid overlay */}
+      <div className="relative flex min-h-[440px] flex-col overflow-hidden">
         {splash[0] ? (
           <img src={splash[0]} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ filter: Number(effects.blur) ? `blur(${Number(effects.blur)}px)` : undefined }} />
         ) : (
           <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${theme.primary}, ${theme.secondary})` }} />
         )}
-        {/* tint */}
         {tintAmt > 0 && <div className="absolute inset-0" style={{ background: String(effects.tint ?? '#000'), opacity: tintAmt }} />}
-        {/* gradient */}
-        {gradient === 'bottom-fade' && <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 60%)' }} />}
-        {gradient === 'top-fade' && <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.85), transparent 60%)' }} />}
+        {gradient === 'bottom-fade' && <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent 55%)' }} />}
+        {gradient === 'top-fade' && <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.9), transparent 55%)' }} />}
         {Number(effects.vignette) > 0 && (
-          <div className="absolute inset-0" style={{ boxShadow: `inset 0 0 60px rgba(0,0,0,${Number(effects.vignette)})` }} />
+          <div className="absolute inset-0" style={{ boxShadow: `inset 0 0 70px rgba(0,0,0,${Number(effects.vignette)})` }} />
         )}
+
+        {/* splash carousel arrows */}
+        {splash.length > 1 && (
+          <>
+            <div className="absolute left-2 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-sm text-black">‹</div>
+            <div className="absolute right-2 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-sm text-black">›</div>
+          </>
+        )}
+
+        {/* name */}
         {showName && (
-          <div className="relative flex w-full flex-col p-5" style={{ justifyContent: justify }}>
+          <div className="relative z-10 flex flex-1 flex-col p-5" style={{ justifyContent: justify }}>
             <p
               className="leading-none"
               style={{
@@ -336,29 +365,28 @@ function HomeScreen({
             </p>
           </div>
         )}
-      </div>
 
-      {/* nav grid */}
-      {showGrid && gridScreens.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 p-4">
-          {gridScreens.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => onSelect(s.id)}
-              className="flex flex-col items-center gap-1 py-3"
-              style={{ background: theme.card_bg, borderRadius: theme.border_radius }}
-            >
-              <span className="text-xl">{screenEmoji(s.icon)}</span>
-              <span className="max-w-full truncate px-1 text-[9px] font-semibold" style={{ color: theme.text_color }}>{s.title}</span>
-            </button>
-          ))}
-        </div>
-      )}
+        {/* nav-grid overlay */}
+        {showGrid && gridScreens.length > 0 && (
+          <div className="relative z-10 grid shrink-0 grid-cols-2 gap-x-6 gap-y-3 px-6 pb-7 pt-4">
+            {gridScreens.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => onSelect(s.id)}
+                className="truncate text-left text-sm font-bold uppercase tracking-wide"
+                style={{ color: '#fff', textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}
+              >
+                {s.title}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* announcements */}
       {announcements.filter((a) => a.title || a.body).length > 0 && (
-        <div className="space-y-2 px-4 pb-4">
+        <div className="space-y-2 p-4">
           {announcements
             .filter((a) => a.title || a.body)
             .map((a, i) => (
@@ -371,6 +399,17 @@ function HomeScreen({
       )}
     </div>
   )
+}
+
+function Notch({ style }: { style: NotchStyle }) {
+  if (style === 'punch-hole') {
+    return <div className="absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-full bg-black" style={{ width: 10, height: 10 }} />
+  }
+  if (style === 'camera-bar') {
+    return <div className="absolute left-1/2 top-1.5 z-30 -translate-x-1/2 rounded-full bg-black" style={{ width: 50, height: 6 }} />
+  }
+  // dynamic-island
+  return <div className="absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-full bg-black" style={{ width: 90, height: 22 }} />
 }
 
 function nameWeight(style: string): number {

@@ -87,11 +87,14 @@ export async function updateAppBuild(formData: FormData): Promise<{ ok: boolean;
   let theme: Record<string, unknown> = {}
   let nav: unknown
   let screens: unknown
+  let extensions: unknown
   try {
     theme = JSON.parse(String(formData.get('theme') ?? '{}')) as Record<string, unknown>
     nav = JSON.parse(String(formData.get('nav') ?? '[]'))
     screens = JSON.parse(String(formData.get('screens') ?? '[]'))
+    extensions = JSON.parse(String(formData.get('extensions') ?? '[]'))
     if (!Array.isArray(nav) || !Array.isArray(screens) || typeof theme !== 'object') throw new Error('bad')
+    if (!Array.isArray(extensions)) extensions = []
   } catch {
     return { ok: false, message: 'Invalid build payload.' }
   }
@@ -105,7 +108,7 @@ export async function updateAppBuild(formData: FormData): Promise<{ ok: boolean;
     .single()
   if (!app || app.user_id !== user.id) return { ok: false, message: 'App not found' }
 
-  const settings = { ...((app.settings ?? {}) as Record<string, unknown>), theme, nav }
+  const settings = { ...((app.settings ?? {}) as Record<string, unknown>), theme, nav, extensions }
   const hex = /^#[0-9a-fA-F]{6}$/
   const update: Record<string, unknown> = {
     settings,
@@ -153,6 +156,27 @@ export async function updateAppScreens(formData: FormData): Promise<{
     .eq('user_id', user.id)
   if (error) return { ok: false, message: error.message }
   revalidatePath(`/dashboard/apps/${parsed.data.app_id}`)
+  return { ok: true }
+}
+
+/** Saves the talent's payout method (Earnings tab) into settings.payout. */
+export async function updateAppPayout(formData: FormData): Promise<{ ok: boolean; message?: string }> {
+  const user = await requireUser()
+  const appId = String(formData.get('app_id') ?? '')
+  if (!appId) return { ok: false, message: 'Missing app id' }
+  const method = String(formData.get('method') ?? '')
+  const handle = String(formData.get('handle') ?? '')
+  const supabase = await createClient()
+  const { data: app } = await supabase
+    .from('talent_apps')
+    .select('settings, user_id')
+    .eq('id', appId)
+    .single()
+  if (!app || app.user_id !== user.id) return { ok: false, message: 'App not found' }
+  const settings = { ...((app.settings ?? {}) as Record<string, unknown>), payout: { method, handle } }
+  const { error } = await supabase.from('talent_apps').update({ settings }).eq('id', appId).eq('user_id', user.id)
+  if (error) return { ok: false, message: error.message }
+  revalidatePath(`/dashboard/apps/${appId}`)
   return { ok: true }
 }
 

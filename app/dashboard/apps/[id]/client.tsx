@@ -5,14 +5,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateAppSettings, updateAppBuild } from '../actions'
-import type { AppScreen, NavItem } from '@/lib/app-screens'
+import { type AppScreen, type NavItem, screenDef } from '@/lib/app-screens'
 import type { AppTheme } from '@/lib/app-theme'
+import { type DeviceId, DEFAULT_DEVICE } from '@/lib/app-devices'
+import type { AppExtension } from '@/lib/app-extensions'
 import { AppPreview, autoNav } from '@/components/apps/app-preview'
 import { DesignTab } from './design-tab'
 import { ScreensTab } from './screens-tab'
 import { NavigationTab } from './navigation-tab'
 import { SubmissionTab } from './submission-tab'
 import { PublishTab } from './publish-tab'
+import { ExtensionsTab } from './extensions-tab'
+import { EarningsTab } from './earnings-tab'
 
 interface App {
   id: string
@@ -25,24 +29,44 @@ interface App {
   theme: AppTheme
   nav: NavItem[]
   screens: AppScreen[]
+  extensions: string[]
   store_listing: Record<string, unknown>
+  earnings: Record<string, number>
+  payout: { method?: string; handle?: string }
 }
 
-type Tab = 'design' | 'screens' | 'navigation' | 'settings' | 'submission' | 'publish'
+type Tab = 'screens' | 'design' | 'navigation' | 'extensions' | 'settings' | 'submission' | 'earnings' | 'publish'
+
+const TAB_GROUPS: { group: string; tabs: { id: Tab; label: string }[] }[] = [
+  { group: 'Build', tabs: [{ id: 'screens', label: '📱 Screens' }, { id: 'design', label: '🎨 Design' }, { id: 'navigation', label: '≡ Navigation' }] },
+  { group: 'Extend', tabs: [{ id: 'extensions', label: '🧩 Extensions' }] },
+  {
+    group: 'Settings',
+    tabs: [
+      { id: 'settings', label: '⚙ Settings' },
+      { id: 'submission', label: '📋 Store' },
+      { id: 'earnings', label: '💰 Earnings' },
+      { id: 'publish', label: '🚀 Publish' },
+    ],
+  },
+]
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 
 export function AppConfigClient({ app }: { app: App }) {
-  const [tab, setTab] = useState<Tab>('design')
+  const [tab, setTab] = useState<Tab>('screens')
   const [theme, setTheme] = useState<AppTheme>(() => clone(app.theme))
   const [screens, setScreens] = useState<AppScreen[]>(() => clone(app.screens))
   const [nav, setNav] = useState<NavItem[]>(() => (app.nav.length ? clone(app.nav) : autoNav(app.screens)))
+  const [extensions, setExtensions] = useState<string[]>(() => clone(app.extensions ?? []))
   const [iconUrl, setIconUrl] = useState(app.icon_url)
   const [activeId, setActiveId] = useState<string | null>(() => app.screens[0]?.id ?? null)
+  const [device, setDevice] = useState<DeviceId>(DEFAULT_DEVICE)
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<string | null>(null)
 
-  const isBuild = tab === 'design' || tab === 'screens' || tab === 'navigation'
+  const showPreview = ['screens', 'design', 'navigation', 'extensions', 'earnings'].includes(tab)
+  const needsSave = ['screens', 'design', 'navigation', 'extensions'].includes(tab)
 
   const saveBuild = () => {
     setStatus(null)
@@ -51,6 +75,7 @@ export function AppConfigClient({ app }: { app: App }) {
     fd.set('theme', JSON.stringify(theme))
     fd.set('nav', JSON.stringify(nav))
     fd.set('screens', JSON.stringify(screens))
+    fd.set('extensions', JSON.stringify(extensions))
     fd.set('icon_url', iconUrl)
     startTransition(async () => {
       const res = await updateAppBuild(fd)
@@ -58,53 +83,61 @@ export function AppConfigClient({ app }: { app: App }) {
     })
   }
 
+  // Install/uninstall an extension; installing one that carries a screen adds it.
+  const toggleExtension = (ext: AppExtension, install: boolean) => {
+    setExtensions((prev) => (install ? Array.from(new Set([...prev, ext.id])) : prev.filter((id) => id !== ext.id)))
+    const screenType = ext.screen
+    if (install && screenType) {
+      setScreens((prev) => {
+        if (prev.some((s) => s.type === screenType)) return prev
+        const def = screenDef(screenType)
+        if (!def) return prev
+        const id = `${screenType}-${Math.random().toString(36).slice(2, 7)}`
+        return [...prev, { id, title: def.defaultTitle, icon: def.icon, type: def.type, content: clone(def.defaultContent) }]
+      })
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1 rounded-[var(--radius-sm)] bg-panel-elevated/50 p-1">
-        {(
-          [
-            ['design', 'Design'],
-            ['screens', `Screens (${screens.length})`],
-            ['navigation', 'Navigation'],
-            ['settings', 'Settings'],
-            ['submission', 'Store submission'],
-            ['publish', 'Publish'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`text-display rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-bold uppercase tracking-widest transition-colors ${
-              tab === key
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-panel hover:text-foreground'
-            }`}
-          >
-            {label}
-          </button>
+      {/* grouped tab rail (Build · Extend · Settings) */}
+      <div className="flex flex-wrap gap-2">
+        {TAB_GROUPS.map((g) => (
+          <div key={g.group} className="rounded-[var(--radius)] border border-border bg-panel/40 p-1.5">
+            <p className="pb-1 text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{g.group}</p>
+            <div className="flex gap-1">
+              {g.tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  className={`text-display whitespace-nowrap rounded-[var(--radius-sm)] px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                    tab === t.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-panel hover:text-foreground'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
-      {isBuild ? (
+      {showPreview ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-4">
-            {tab === 'design' && (
-              <DesignTab theme={theme} onChange={(p) => setTheme((t) => ({ ...t, ...p }))} iconUrl={iconUrl} onIcon={setIconUrl} />
-            )}
-            {tab === 'screens' && (
-              <ScreensTab appId={app.id} screens={screens} activeId={activeId} onScreens={setScreens} onActive={setActiveId} />
-            )}
+            {tab === 'design' && <DesignTab theme={theme} onChange={(p) => setTheme((t) => ({ ...t, ...p }))} iconUrl={iconUrl} onIcon={setIconUrl} />}
+            {tab === 'screens' && <ScreensTab appId={app.id} screens={screens} activeId={activeId} onScreens={setScreens} onActive={setActiveId} />}
             {tab === 'navigation' && <NavigationTab screens={screens} nav={nav} onChange={setNav} />}
+            {tab === 'extensions' && <ExtensionsTab installed={extensions} onToggle={toggleExtension} />}
+            {tab === 'earnings' && <EarningsTab appId={app.id} earnings={app.earnings} payout={app.payout} />}
 
-            <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-border bg-background/95 py-3 backdrop-blur">
-              <Button onClick={saveBuild} disabled={isPending}>
-                {isPending ? 'Saving…' : 'Save app'}
-              </Button>
-              {status && (
-                <p className={`text-xs ${status === 'Saved.' ? 'text-success' : 'text-destructive'}`}>{status}</p>
-              )}
-            </div>
+            {needsSave && (
+              <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-border bg-background/95 py-3 backdrop-blur">
+                <Button onClick={saveBuild} disabled={isPending}>{isPending ? 'Saving…' : 'Save app'}</Button>
+                {status && <p className={`text-xs ${status === 'Saved.' ? 'text-success' : 'text-destructive'}`}>{status}</p>}
+              </div>
+            )}
           </div>
 
           <div>
@@ -117,23 +150,17 @@ export function AppConfigClient({ app }: { app: App }) {
                 nav={nav}
                 activeId={activeId}
                 onSelect={setActiveId}
+                device={device}
+                onDevice={setDevice}
               />
-              <p className="mt-3 text-center text-[10px] uppercase tracking-widest text-muted-foreground">
-                Live preview · tap a tab
-              </p>
+              <p className="mt-3 text-center text-[10px] uppercase tracking-widest text-muted-foreground">Live preview</p>
             </div>
           </div>
         </div>
       ) : tab === 'settings' ? (
         <SettingsTab app={app} />
       ) : tab === 'publish' ? (
-        <PublishTab
-          appId={app.id}
-          appName={app.name}
-          packageId={app.package_id}
-          theme={theme}
-          storeListing={app.store_listing}
-        />
+        <PublishTab appId={app.id} appName={app.name} packageId={app.package_id} theme={theme} storeListing={app.store_listing} />
       ) : (
         <SubmissionTab appId={app.id} storeListing={app.store_listing} />
       )}
