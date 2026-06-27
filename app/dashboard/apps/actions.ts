@@ -156,6 +156,38 @@ export async function updateAppScreens(formData: FormData): Promise<{
   return { ok: true }
 }
 
+/** Merges publish fields (status, store links, privacy policy) into store_listing. */
+export async function updateAppPublish(
+  formData: FormData
+): Promise<{ ok: boolean; message?: string }> {
+  const user = await requireUser()
+  const appId = String(formData.get('app_id') ?? '')
+  if (!appId) return { ok: false, message: 'Missing app id' }
+  let patch: Record<string, unknown> = {}
+  try {
+    const parsed = JSON.parse(String(formData.get('patch') ?? '{}'))
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) patch = parsed
+  } catch {
+    return { ok: false, message: 'Invalid publish payload.' }
+  }
+  const supabase = await createClient()
+  const { data: app } = await supabase
+    .from('talent_apps')
+    .select('store_listing, user_id')
+    .eq('id', appId)
+    .single()
+  if (!app || app.user_id !== user.id) return { ok: false, message: 'App not found' }
+  const store_listing = { ...((app.store_listing ?? {}) as Record<string, unknown>), ...patch }
+  const { error } = await supabase
+    .from('talent_apps')
+    .update({ store_listing })
+    .eq('id', appId)
+    .eq('user_id', user.id)
+  if (error) return { ok: false, message: error.message }
+  revalidatePath(`/dashboard/apps/${appId}`)
+  return { ok: true }
+}
+
 export async function updateAppStoreListing(
   formData: FormData
 ): Promise<{ ok: boolean; message?: string }> {

@@ -12,6 +12,7 @@ import { DesignTab } from './design-tab'
 import { ScreensTab } from './screens-tab'
 import { NavigationTab } from './navigation-tab'
 import { SubmissionTab } from './submission-tab'
+import { PublishTab } from './publish-tab'
 
 interface App {
   id: string
@@ -27,7 +28,7 @@ interface App {
   store_listing: Record<string, unknown>
 }
 
-type Tab = 'design' | 'screens' | 'navigation' | 'settings' | 'submission'
+type Tab = 'design' | 'screens' | 'navigation' | 'settings' | 'submission' | 'publish'
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 
@@ -67,6 +68,7 @@ export function AppConfigClient({ app }: { app: App }) {
             ['navigation', 'Navigation'],
             ['settings', 'Settings'],
             ['submission', 'Store submission'],
+            ['publish', 'Publish'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -91,7 +93,7 @@ export function AppConfigClient({ app }: { app: App }) {
               <DesignTab theme={theme} onChange={(p) => setTheme((t) => ({ ...t, ...p }))} iconUrl={iconUrl} onIcon={setIconUrl} />
             )}
             {tab === 'screens' && (
-              <ScreensTab screens={screens} activeId={activeId} onScreens={setScreens} onActive={setActiveId} />
+              <ScreensTab appId={app.id} screens={screens} activeId={activeId} onScreens={setScreens} onActive={setActiveId} />
             )}
             {tab === 'navigation' && <NavigationTab screens={screens} nav={nav} onChange={setNav} />}
 
@@ -124,6 +126,14 @@ export function AppConfigClient({ app }: { app: App }) {
         </div>
       ) : tab === 'settings' ? (
         <SettingsTab app={app} />
+      ) : tab === 'publish' ? (
+        <PublishTab
+          appId={app.id}
+          appName={app.name}
+          packageId={app.package_id}
+          theme={theme}
+          storeListing={app.store_listing}
+        />
       ) : (
         <SubmissionTab appId={app.id} storeListing={app.store_listing} />
       )}

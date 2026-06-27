@@ -58,6 +58,11 @@ export const SCREEN_TYPES: ScreenTypeDef[] = [
   { type: 'faq', label: 'FAQ', icon: 'help-circle', pattern: 'list', description: 'Frequently asked questions', defaultTitle: 'FAQ', defaultContent: listContent },
   { type: 'contact', label: 'Contact', icon: 'mail', pattern: 'text', description: 'How to reach you', defaultTitle: 'Contact', defaultContent: { body: '' } },
   { type: 'web', label: 'Web page', icon: 'globe', pattern: 'web', description: 'Any embedded URL', defaultTitle: 'Web', defaultContent: { url: '' } },
+  { type: 'subscriptions', label: 'Subscriptions', icon: 'card', pattern: 'list', description: 'Membership tiers', defaultTitle: 'Membership', defaultContent: listContent },
+  { type: 'audio', label: 'Audio', icon: 'headset', pattern: 'video', description: 'Audio tracks', defaultTitle: 'Audio', defaultContent: videoContent },
+  { type: 'live', label: 'Live', icon: 'radio', pattern: 'web', description: 'Livestream page (embedded)', defaultTitle: 'Live', defaultContent: { url: '' } },
+  { type: 'exclusive', label: 'Exclusive', icon: 'lock-closed', pattern: 'list', description: 'Subscriber-only content', defaultTitle: 'Exclusive', defaultContent: listContent },
+  { type: 'shoutouts', label: 'Shoutouts', icon: 'megaphone', pattern: 'text', description: 'Personalized video requests', defaultTitle: 'Shoutouts', defaultContent: { body: '' } },
 ]
 
 const BY_TYPE = new Map(SCREEN_TYPES.map((s) => [s.type, s]))
@@ -115,6 +120,11 @@ const ICON_EMOJI: Record<string, string> = {
   'help-circle': '❓',
   mail: '✉️',
   globe: '🌐',
+  card: '💳',
+  headset: '🎧',
+  radio: '📡',
+  'lock-closed': '🔒',
+  megaphone: '📣',
 }
 
 export function screenEmoji(iconName?: string): string {

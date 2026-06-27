@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { AssetPicker } from '@/components/site/editor/asset-picker'
 import {
@@ -10,6 +10,7 @@ import {
   type AppScreen,
   type ScreenTypeDef,
 } from '@/lib/app-screens'
+import { GenerateButton } from './generate-button'
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 const inputCls = 'mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm'
@@ -20,11 +21,13 @@ const inputCls = 'mt-1 w-full rounded-[var(--radius-sm)] border border-border bg
  * legacy-faithful editors; the rest use pattern editors.
  */
 export function ScreensTab({
+  appId,
   screens,
   activeId,
   onScreens,
   onActive,
 }: {
+  appId: string
   screens: AppScreen[]
   activeId: string | null
   onScreens: (s: AppScreen[]) => void
@@ -97,7 +100,7 @@ export function ScreensTab({
               </div>
               {open && (
                 <div className="border-t border-border p-3">
-                  <ScreenForm screen={sc} onChange={(p) => patch(i, p)} />
+                  <ScreenForm appId={appId} screen={sc} onChange={(p) => patch(i, p)} />
                 </div>
               )}
             </div>
@@ -113,7 +116,7 @@ export function ScreensTab({
   )
 }
 
-function ScreenForm({ screen, onChange }: { screen: AppScreen; onChange: (patch: Partial<AppScreen>) => void }) {
+function ScreenForm({ appId, screen, onChange }: { appId: string; screen: AppScreen; onChange: (patch: Partial<AppScreen>) => void }) {
   const content = (screen.content ?? {}) as Record<string, unknown>
   const setContent = (patch: Record<string, unknown>) => onChange({ content: { ...content, ...patch } })
 
@@ -127,7 +130,7 @@ function ScreenForm({ screen, onChange }: { screen: AppScreen; onChange: (patch:
       {screen.type === 'home' ? (
         <HomeEditor content={content} setContent={setContent} />
       ) : (
-        <PatternEditor screen={screen} content={content} setContent={setContent} />
+        <PatternEditor appId={appId} screen={screen} content={content} setContent={setContent} />
       )}
     </div>
   )
@@ -186,10 +189,12 @@ function HomeEditor({
 }
 
 function PatternEditor({
+  appId,
   screen,
   content,
   setContent,
 }: {
+  appId: string
   screen: AppScreen
   content: Record<string, unknown>
   setContent: (patch: Record<string, unknown>) => void
@@ -207,13 +212,22 @@ function PatternEditor({
           <div className="mt-1"><AssetPicker value={String(content.image ?? '')} onChange={(v) => setContent({ image: v })} accept="image/*" /></div>
         </div>
         <Text label="Headline" value={String(content.headline ?? '')} onChange={(v) => setContent({ headline: v })} />
-        <Area label="Bio" value={String(content.bio ?? '')} onChange={(v) => setContent({ bio: v })} />
+        <Area label="Bio" value={String(content.bio ?? '')} onChange={(v) => setContent({ bio: v })} action={<GenerateButton appId={appId} field="bio" onResult={(t) => setContent({ bio: t })} />} />
         <Repeater label="Stats" rows={stats} fields={[['label', 'Label'], ['value', 'Value']]} onChange={(v) => setContent({ stats: v })} />
-        <Area label="Achievements (one per line)" value={String(content.achievements ?? '')} onChange={(v) => setContent({ achievements: v })} />
+        <Area label="Achievements (one per line)" value={String(content.achievements ?? '')} onChange={(v) => setContent({ achievements: v })} action={<GenerateButton appId={appId} field="achievements" onResult={(t) => setContent({ achievements: t })} />} />
       </div>
     )
   }
-  if (pattern === 'text') return <Area label="Body text" value={String(content.body ?? '')} onChange={(v) => setContent({ body: v })} rows={6} />
+  if (pattern === 'text')
+    return (
+      <Area
+        label="Body text"
+        value={String(content.body ?? '')}
+        onChange={(v) => setContent({ body: v })}
+        rows={6}
+        action={<GenerateButton appId={appId} field={screen.type === 'contact' ? 'contact_intro' : 'about'} onResult={(t) => setContent({ body: t })} />}
+      />
+    )
   if (pattern === 'web')
     return <Text label="Embedded page URL" value={String(content.url ?? '')} onChange={(v) => setContent({ url: v })} placeholder="https://…" mono />
   if (pattern === 'links') return <Repeater label="Links" rows={items} fields={[['label', 'Label'], ['url', 'URL']]} onChange={(v) => setContent({ items: v })} />
@@ -232,12 +246,15 @@ function Text({ label, value, onChange, placeholder, mono }: { label: string; va
     </label>
   )
 }
-function Area({ label, value, onChange, rows = 4 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
+function Area({ label, value, onChange, rows = 4, action }: { label: string; value: string; onChange: (v: string) => void; rows?: number; action?: ReactNode }) {
   return (
-    <label className="block text-sm">
-      <span className="block text-xs text-muted-foreground">{label}</span>
+    <div className="text-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        {action}
+      </div>
       <textarea rows={rows} value={value} onChange={(e) => onChange(e.target.value)} className={inputCls} />
-    </label>
+    </div>
   )
 }
 function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
