@@ -252,7 +252,12 @@ export function getProductActions(
         ? [{ label: 'Open Design Studio', href: `/dashboard/brand-design/${entityId}` }]
         : [{ label: 'Design Studio', href: '/dashboard/brand-design' }]
     case 'start-a-podcast':
-      return [{ label: 'Open Podcast Studio', href: '#' }]
+      return entityId
+        ? [
+            { label: 'Open Podcast Studio', href: `/dashboard/podcasts/${entityId}` },
+            { label: 'All Podcasts', href: '/dashboard/podcasts' },
+          ]
+        : [{ label: 'My Podcasts', href: '/dashboard/podcasts' }]
     case 'create-an-online-store':
       return entityId
         ? [

@@ -59,6 +59,8 @@ export async function provisionOrder(
       return provisionTalentApp(supabase, order.user_id, order.id)
     case 'create-an-online-store':
       return provisionStore(supabase, order.user_id, order.id)
+    case 'start-a-podcast':
+      return provisionPodcast(supabase, order.user_id, order.id)
     default:
       return { status: 'paid' }
   }

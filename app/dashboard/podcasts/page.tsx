@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { provisionPodcast } from '@/lib/provisioning'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BuildFromPicker } from '@/components/dashboard/build-from-picker'
 import { createPodcast } from './actions'
@@ -15,6 +17,31 @@ export default async function PodcastsIndexPage() {
     .select('id, slug, title, description, status, created_at, rss_url, cover_url')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
+
+  // Self-heal: a paid "start-a-podcast" order that never provisioned (the
+  // provisioning switch used to be missing its case) gets its podcast created
+  // on first visit, so the post-purchase "Open Podcast Studio" link resolves.
+  if (!podcasts || podcasts.length === 0) {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('product_slug', 'start-a-podcast')
+      .is('provisioned_entity_id', null)
+      .not('status', 'in', '("refunded","cancelled")')
+      .limit(1)
+      .maybeSingle()
+    if (order) {
+      const res = await provisionPodcast(supabase, user.id, order.id)
+      if (res.status === 'ready' && res.entity_id) {
+        await supabase
+          .from('orders')
+          .update({ provisioned_entity_id: res.entity_id })
+          .eq('id', order.id)
+        redirect(`/dashboard/podcasts/${res.entity_id}`)
+      }
+    }
+  }
 
   return (
     <div className="space-y-8">
