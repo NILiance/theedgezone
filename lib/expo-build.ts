@@ -72,6 +72,7 @@ export async function buildExpoZip(
           '@expo/vector-icons': '^14.0.0',
           'react-native-safe-area-context': '4.10.5',
           'react-native-screens': '3.31.1',
+          'react-native-webview': '13.8.6',
           ...(input.push_enabled
             ? {
                 'expo-notifications': '~0.28.0',
@@ -80,9 +81,6 @@ export async function buildExpoZip(
               }
             : {}),
           ...(input.iap_enabled ? { 'react-native-iap': '^12.15.0' } : {}),
-          ...(input.screens.some((s) => screenPattern(s.type) === 'web')
-            ? { 'react-native-webview': '13.8.6' }
-            : {}),
         },
       },
       null,
@@ -185,7 +183,10 @@ export const IAP_PRODUCTS = ${JSON.stringify(input.iap_products ?? [], null, 2)}
     renderAppJs(input)
   )
 
-  // ── Screens ──────────────────────────────────────────────────────
+  // App.js is a thin native shell that loads the live Edge Zone app (PWA) in a
+  // WebView — edits in the dashboard appear instantly, no rebuild. These
+  // per-screen native files are kept as an optional scaffold if a dev later
+  // wants to hand-build native screens; the shipped app doesn't import them.
   const srcFolder = zip.folder('src')!
   const screensFolder = srcFolder.folder('screens')!
   for (const screen of input.screens) {
@@ -211,10 +212,16 @@ export const IAP_PRODUCTS = ${JSON.stringify(input.iap_products ?? [], null, 2)}
       '',
       'Use [EAS Submit](https://docs.expo.dev/submit/introduction/) once you have an Apple Developer + Google Play account.',
       '',
+      '## How it works',
+      '',
+      'This is a thin native shell that loads your live Edge Zone app in a WebView.',
+      'Edit your screens in the dashboard — they update instantly, no rebuild needed.',
+      '',
       '## Files of note',
       '',
-      '- `App.js` — root navigator',
-      '- `src/screens/*` — individual screens',
+      '- `App.js` — loads your live app (the WebView shell)',
+      '- `src/config.js` — your app id + Edge Zone URL',
+      '- `src/screens/*` — optional native-screen scaffold (not used by default)',
       '- `app.json` — bundle ids, version, icons',
       '- `package.json` — Expo + RN versions',
       '',
@@ -251,43 +258,36 @@ function pascal(s: string): string {
 }
 
 function renderAppJs(input: ExpoBuildInput): string {
-  const tabs = input.screens
-    .map((s) => {
-      const component = pascal(s.id) + 'Screen'
-      return `        <Tab.Screen name="${s.title}" component={${component}} />`
-    })
-    .join('\n')
-  const imports = input.screens
-    .map((s) => `import ${pascal(s.id)}Screen from './src/screens/${pascal(s.id)}Screen'`)
-    .join('\n')
-
-  const pushImport = input.push_enabled ? `import { useEffect } from 'react'\nimport { registerForPushNotifications } from './src/push'\n` : ''
+  const pushImport = input.push_enabled
+    ? `import { useEffect } from 'react'\nimport { registerForPushNotifications } from './src/push'\n`
+    : ''
   const pushHook = input.push_enabled
     ? `  useEffect(() => { registerForPushNotifications().catch(() => {}) }, [])\n`
     : ''
-  return `import 'react-native-gesture-handler'
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native'
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
-${pushImport}${imports}
+  const statusStyle = input.theme_mode === 'dark' ? 'light' : 'dark'
+  return `import { StatusBar } from 'expo-status-bar'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { WebView } from 'react-native-webview'
+${pushImport}import { EDGEZONE_API_URL, EDGEZONE_APP_ID } from './src/config'
 
-const Tab = createBottomTabNavigator()
-
-const theme = {
-  ...(${input.theme_mode === 'dark' ? 'DarkTheme' : 'DefaultTheme'}),
-  colors: {
-    ...(${input.theme_mode === 'dark' ? 'DarkTheme' : 'DefaultTheme'}.colors),
-    primary: '${input.primary_color}',
-    background: '${input.secondary_color}',
-  },
-}
+// Your app loads live from Edge Zone — edit it in the dashboard and changes
+// appear instantly, no rebuild required.
+const APP_URL = EDGEZONE_API_URL + '/a/' + EDGEZONE_APP_ID
 
 export default function App() {
 ${pushHook}  return (
-    <NavigationContainer theme={theme}>
-      <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: '${input.primary_color}' }}>
-${tabs}
-      </Tab.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '${input.secondary_color}' }} edges={['top']}>
+        <StatusBar style="${statusStyle}" />
+        <WebView
+          source={{ uri: APP_URL }}
+          style={{ flex: 1, backgroundColor: '${input.secondary_color}' }}
+          originWhitelist={['*']}
+          startInLoadingState
+          allowsInlineMediaPlayback
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
   )
 }
 `
