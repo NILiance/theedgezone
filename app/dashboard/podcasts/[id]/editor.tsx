@@ -105,7 +105,7 @@ export function PodcastEditor({ podcast, episodes }: { podcast: Podcast; episode
             />
           </label>
           <label className="block text-sm">
-            <span className="block text-xs text-muted-foreground">Player primary color</span>
+            <span className="block text-xs text-muted-foreground">Site &amp; player accent color</span>
             <input
               type="color"
               name="primary_color"
@@ -114,7 +114,7 @@ export function PodcastEditor({ podcast, episodes }: { podcast: Podcast; episode
             />
           </label>
           <label className="block text-sm">
-            <span className="block text-xs text-muted-foreground">Player background color</span>
+            <span className="block text-xs text-muted-foreground">Site &amp; player background color</span>
             <input
               type="color"
               name="secondary_color"
