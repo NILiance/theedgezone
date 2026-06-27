@@ -83,10 +83,14 @@ export function CalculatorForm({
       yt_likes: seed('youtube').likes_per_post || platforms.youtube?.likes_per_post || 0,
       yt_comments: seed('youtube').comments_per_post || platforms.youtube?.comments_per_post || 0,
       yt_shares: seed('youtube').shares_per_post || platforms.youtube?.shares_per_post || 0,
-      athlete_popularity: (li?.['athlete_popularity'] as number | undefined) ?? autoPopularity.athlete,
-      team_popularity: (li?.['team_popularity'] as number | undefined) ?? autoPopularity.team,
-      market_size: (li?.['market_size'] as number | undefined) ?? autoPopularity.market,
-      adjustment_factor: (li?.['adjustment_factor'] as number | undefined) ?? 0,
+      // Popularity + adjustment always re-derive from the CURRENT profile (so
+      // changing team / position / market refreshes them); the on-load estimate
+      // then refines them. We intentionally do NOT restore these from the last
+      // saved calculation — otherwise stale values would stick.
+      athlete_popularity: autoPopularity.athlete,
+      team_popularity: autoPopularity.team,
+      market_size: autoPopularity.market,
+      adjustment_factor: 0,
       // Monetization inputs (spreadsheet B32 / B34). Defaults mirror the sheet.
       profit_per_product: (li?.['profit_per_product'] as number | undefined) ?? 45,
       purchase_conversion_rate:
