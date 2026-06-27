@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { LocalTime } from '@/components/ui/local-time'
 import { autoPopularityFromProfile } from '@/lib/nilfluence-autocalc'
+import { getResolvedSocial } from '@/lib/nilfluence-server'
 import { CalculatorForm } from './form'
 
 export const metadata = { title: 'NILfluence Calculator' }
@@ -19,6 +20,9 @@ export default async function NilfluenceCalculatorPage() {
     .maybeSingle()
   const profileLike = (profile ?? {}) as Parameters<typeof autoPopularityFromProfile>[0]
   const autoPop = autoPopularityFromProfile(profileLike)
+  // Social numbers, Phyllo-first then the talent's Profile→Social input, to
+  // seed the calculator so it matches the score on their profile.
+  const seedSocial = await getResolvedSocial(supabase, user.id)
 
   // Pull the most recent calculation to hydrate the form with prior inputs.
   const { data: latest } = await supabase
@@ -69,6 +73,7 @@ export default async function NilfluenceCalculatorPage() {
         lastBms={lastBms as Record<string, unknown> | null}
         autoPopularity={autoPop}
         autoCalc={!hasSavedPopularity}
+        seedSocial={seedSocial}
       />
 
       {(recent ?? []).length > 0 && (

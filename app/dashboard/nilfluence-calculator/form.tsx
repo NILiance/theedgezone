@@ -1,7 +1,12 @@
 'use client'
 
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
-import { computeNilfluence, computeBMS, type NilfluenceResult } from '@/lib/nilfluence'
+import {
+  computeNilfluence,
+  computeBMS,
+  type NilfluenceResult,
+  type PlatformInput,
+} from '@/lib/nilfluence'
 import type { AutoPopularity } from '@/lib/nilfluence-autocalc'
 import { ScoreRing } from '@/components/dashboard/score-ring'
 import { Button } from '@/components/ui/button'
@@ -35,32 +40,49 @@ interface FormProps {
   autoPopularity: AutoPopularity
   /** Auto-refine the four contextual inputs on load (when not already saved). */
   autoCalc: boolean
+  /** Social numbers resolved Phyllo-first then from Profile→Social, to seed. */
+  seedSocial: Record<string, PlatformInput>
 }
 
-export function CalculatorForm({ lastInputs, lastBms, autoPopularity, autoCalc }: FormProps) {
+export function CalculatorForm({
+  lastInputs,
+  lastBms,
+  autoPopularity,
+  autoCalc,
+  seedSocial,
+}: FormProps) {
   const [state, action, pending] = useActionState<CalcState, FormData>(runCalculator, {})
 
   const initial = useMemo<Record<string, number>>(() => {
     const platforms = (lastInputs ?? {}) as Record<string, SavedPlatform>
     const li = lastInputs as Record<string, unknown> | null
     const bms = lastBms as Record<string, number> | null
+    // Social: prefer the resolved Phyllo → Profile→Social numbers, then the
+    // last saved calculation, then 0.
+    const seed = (p: string): PlatformInput =>
+      seedSocial[p] ?? {
+        followers: 0,
+        likes_per_post: 0,
+        comments_per_post: 0,
+        shares_per_post: 0,
+      }
     return {
-      ig_followers: platforms.instagram?.followers ?? 0,
-      ig_likes: platforms.instagram?.likes_per_post ?? 0,
-      ig_comments: platforms.instagram?.comments_per_post ?? 0,
-      ig_shares: platforms.instagram?.shares_per_post ?? 0,
-      tt_followers: platforms.tiktok?.followers ?? 0,
-      tt_likes: platforms.tiktok?.likes_per_post ?? 0,
-      tt_comments: platforms.tiktok?.comments_per_post ?? 0,
-      tt_shares: platforms.tiktok?.shares_per_post ?? 0,
-      tw_followers: platforms.twitter?.followers ?? 0,
-      tw_likes: platforms.twitter?.likes_per_post ?? 0,
-      tw_comments: platforms.twitter?.comments_per_post ?? 0,
-      tw_shares: platforms.twitter?.shares_per_post ?? 0,
-      yt_subscribers: platforms.youtube?.followers ?? 0,
-      yt_likes: platforms.youtube?.likes_per_post ?? 0,
-      yt_comments: platforms.youtube?.comments_per_post ?? 0,
-      yt_shares: platforms.youtube?.shares_per_post ?? 0,
+      ig_followers: seed('instagram').followers || platforms.instagram?.followers || 0,
+      ig_likes: seed('instagram').likes_per_post || platforms.instagram?.likes_per_post || 0,
+      ig_comments: seed('instagram').comments_per_post || platforms.instagram?.comments_per_post || 0,
+      ig_shares: seed('instagram').shares_per_post || platforms.instagram?.shares_per_post || 0,
+      tt_followers: seed('tiktok').followers || platforms.tiktok?.followers || 0,
+      tt_likes: seed('tiktok').likes_per_post || platforms.tiktok?.likes_per_post || 0,
+      tt_comments: seed('tiktok').comments_per_post || platforms.tiktok?.comments_per_post || 0,
+      tt_shares: seed('tiktok').shares_per_post || platforms.tiktok?.shares_per_post || 0,
+      tw_followers: seed('twitter').followers || platforms.twitter?.followers || 0,
+      tw_likes: seed('twitter').likes_per_post || platforms.twitter?.likes_per_post || 0,
+      tw_comments: seed('twitter').comments_per_post || platforms.twitter?.comments_per_post || 0,
+      tw_shares: seed('twitter').shares_per_post || platforms.twitter?.shares_per_post || 0,
+      yt_subscribers: seed('youtube').followers || platforms.youtube?.followers || 0,
+      yt_likes: seed('youtube').likes_per_post || platforms.youtube?.likes_per_post || 0,
+      yt_comments: seed('youtube').comments_per_post || platforms.youtube?.comments_per_post || 0,
+      yt_shares: seed('youtube').shares_per_post || platforms.youtube?.shares_per_post || 0,
       athlete_popularity: (li?.['athlete_popularity'] as number | undefined) ?? autoPopularity.athlete,
       team_popularity: (li?.['team_popularity'] as number | undefined) ?? autoPopularity.team,
       market_size: (li?.['market_size'] as number | undefined) ?? autoPopularity.market,
@@ -73,7 +95,7 @@ export function CalculatorForm({ lastInputs, lastBms, autoPopularity, autoCalc }
       bms_d: bms?.d ?? 0,
       bms_o: bms?.o ?? 0,
     }
-  }, [lastInputs, lastBms, autoPopularity])
+  }, [lastInputs, lastBms, autoPopularity, seedSocial])
 
   const [snapshot, setSnapshot] = useState<Record<string, number>>(initial)
 
