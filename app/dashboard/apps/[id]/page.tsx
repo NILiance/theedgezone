@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { formatEastern } from '@/lib/format-date'
+import { resolveAppTheme } from '@/lib/app-theme'
+import type { AppScreen, NavItem } from '@/lib/app-screens'
 import { AppConfigClient } from './client'
 
 interface PageProps {
@@ -24,6 +26,13 @@ export default async function AppConfigPage({ params }: PageProps) {
 
   const settings = (app.settings ?? {}) as Record<string, unknown>
   const contactEmail = typeof settings.contact_email === 'string' ? settings.contact_email : ''
+  const theme = resolveAppTheme(
+    settings.theme,
+    app.primary_color,
+    app.secondary_color,
+    (app.theme_mode as 'dark' | 'light') ?? 'dark'
+  )
+  const nav = Array.isArray(settings.nav) ? (settings.nav as NavItem[]) : []
 
   return (
     <div className="space-y-6">
@@ -75,19 +84,10 @@ export default async function AppConfigPage({ params }: PageProps) {
           description: app.description ?? '',
           package_id: app.package_id ?? '',
           icon_url: app.icon_url ?? '',
-          primary_color: app.primary_color,
-          secondary_color: app.secondary_color,
-          theme_mode: (app.theme_mode as 'dark' | 'light') ?? 'dark',
           contact_email: contactEmail,
-          screens: Array.isArray(app.screens)
-            ? (app.screens as Array<{
-                id: string
-                title: string
-                icon?: string
-                type: string
-                content?: Record<string, unknown>
-              }>)
-            : [],
+          theme,
+          nav,
+          screens: Array.isArray(app.screens) ? (app.screens as AppScreen[]) : [],
           store_listing:
             ((app as { store_listing?: Record<string, unknown> }).store_listing as Record<
               string,

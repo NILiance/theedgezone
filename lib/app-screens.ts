@@ -32,9 +32,9 @@ const listContent = { items: [{ title: '', subtitle: '', detail: '' }] }
 const videoContent = { items: [{ title: '', url: '' }] }
 
 export const SCREEN_TYPES: ScreenTypeDef[] = [
-  { type: 'home', label: 'Home', icon: 'home', pattern: 'profile', description: 'Hero, headline + intro', defaultTitle: 'Home', defaultContent: { headline: '', bio: '', image: '' } },
+  { type: 'home', label: 'Home', icon: 'home', pattern: 'profile', description: 'Splash + name + nav grid', defaultTitle: 'Home', defaultContent: { splash_images: [], heading: '', name_style: 'bold', name_size: 100, name_position: 'center', show_name: true, show_nav_grid: true, effects: { tint: '#000000', tint_amount: 0.35, blur: 0, vignette: 0.2, gradient: 'bottom-fade', text_color: '#ffffff', text_effect: 'shadow' }, announcements: [] } },
   { type: 'about', label: 'About', icon: 'information-circle', pattern: 'text', description: 'Long-form about text', defaultTitle: 'About', defaultContent: { body: '' } },
-  { type: 'bio', label: 'Bio', icon: 'person', pattern: 'profile', description: 'Photo + biography', defaultTitle: 'Bio', defaultContent: { headline: '', bio: '', image: '' } },
+  { type: 'bio', label: 'Bio', icon: 'person', pattern: 'profile', description: 'Photo, bio, stats', defaultTitle: 'Bio', defaultContent: { headline: '', bio: '', image: '', stats: [], achievements: '' } },
   { type: 'schedule', label: 'Schedule', icon: 'calendar', pattern: 'list', description: 'Upcoming games / events', defaultTitle: 'Schedule', defaultContent: listContent },
   { type: 'events', label: 'Events', icon: 'star', pattern: 'list', description: 'Appearances + meetups', defaultTitle: 'Events', defaultContent: listContent },
   { type: 'shop', label: 'Shop', icon: 'cart', pattern: 'web', description: 'Your store (embedded)', defaultTitle: 'Shop', defaultContent: { url: '' } },
@@ -69,3 +69,57 @@ export function screenDef(type: string): ScreenTypeDef | undefined {
 export function screenPattern(type: string): ScreenPattern {
   return BY_TYPE.get(type)?.pattern ?? 'text'
 }
+
+/** A configured screen in a talent's app. */
+export interface AppScreen {
+  id: string
+  title: string
+  icon?: string
+  type: string
+  content?: Record<string, unknown>
+}
+
+/** A bottom-tab-bar entry referencing a screen (legacy nav model). */
+export interface NavItem {
+  screen_id: string
+  label: string
+  icon: string
+  visible: boolean
+}
+
+/** Ionicons name → emoji, so the web preview can show nav/screen icons. */
+const ICON_EMOJI: Record<string, string> = {
+  home: '🏠',
+  'information-circle': 'ℹ️',
+  person: '👤',
+  calendar: '📅',
+  star: '⭐',
+  cart: '🛒',
+  ticket: '🎟️',
+  shirt: '👕',
+  videocam: '🎥',
+  flash: '⚡',
+  images: '🖼️',
+  camera: '📷',
+  'share-social': '🔗',
+  link: '🔗',
+  pricetag: '🏷️',
+  'musical-notes': '🎵',
+  newspaper: '📰',
+  create: '✍️',
+  mic: '🎙️',
+  'stats-chart': '📊',
+  podium: '🏆',
+  people: '👥',
+  'bar-chart': '📊',
+  'help-circle': '❓',
+  mail: '✉️',
+  globe: '🌐',
+}
+
+export function screenEmoji(iconName?: string): string {
+  return (iconName && ICON_EMOJI[iconName]) || '📱'
+}
+
+/** Max bottom-nav items shown in a generated app (legacy: 5). */
+export const MAX_NAV_ITEMS = 5

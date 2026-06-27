@@ -26,13 +26,11 @@ const settingsSchema = z.object({
     .min(3)
     .max(120)
     .regex(/^[a-z][a-z0-9_.-]*$/i, 'Use letters, numbers, dots, dashes only'),
-  icon_url: z.string().url().max(800).optional(),
-  primary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  secondary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  theme_mode: z.enum(['dark', 'light']),
   contact_email: z.string().email().max(160).optional(),
 })
 
+// Settings tab now owns only app metadata; colors/icon/mode live in Design (saved
+// via updateAppBuild), so this no longer touches them.
 export async function updateAppSettings(formData: FormData): Promise<{
   ok: boolean
   message?: string
@@ -44,10 +42,6 @@ export async function updateAppSettings(formData: FormData): Promise<{
     tagline: formData.get('tagline') || undefined,
     description: formData.get('description') || undefined,
     package_id: formData.get('package_id'),
-    icon_url: formData.get('icon_url') || undefined,
-    primary_color: formData.get('primary_color'),
-    secondary_color: formData.get('secondary_color'),
-    theme_mode: formData.get('theme_mode') || 'dark',
     contact_email: formData.get('contact_email') || undefined,
   })
   if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
@@ -73,14 +67,58 @@ export async function updateAppSettings(formData: FormData): Promise<{
       tagline: parsed.data.tagline ?? null,
       description: parsed.data.description ?? null,
       package_id: parsed.data.package_id,
-      icon_url: parsed.data.icon_url ?? null,
-      primary_color: parsed.data.primary_color,
-      secondary_color: parsed.data.secondary_color,
-      theme_mode: parsed.data.theme_mode,
       settings,
     })
     .eq('id', parsed.data.app_id)
   revalidatePath(`/dashboard/apps/${parsed.data.app_id}`)
+  return { ok: true }
+}
+
+/**
+ * Unified save for the visual builder — persists the Design theme, the bottom
+ * nav, and the screens together. Theme lives in settings.theme + nav in
+ * settings.nav; primary/secondary/mode columns are kept in sync for the Expo
+ * generator and other readers.
+ */
+export async function updateAppBuild(formData: FormData): Promise<{ ok: boolean; message?: string }> {
+  const user = await requireUser()
+  const appId = String(formData.get('app_id') ?? '')
+  if (!appId) return { ok: false, message: 'Missing app id' }
+  let theme: Record<string, unknown> = {}
+  let nav: unknown
+  let screens: unknown
+  try {
+    theme = JSON.parse(String(formData.get('theme') ?? '{}')) as Record<string, unknown>
+    nav = JSON.parse(String(formData.get('nav') ?? '[]'))
+    screens = JSON.parse(String(formData.get('screens') ?? '[]'))
+    if (!Array.isArray(nav) || !Array.isArray(screens) || typeof theme !== 'object') throw new Error('bad')
+  } catch {
+    return { ok: false, message: 'Invalid build payload.' }
+  }
+  const iconUrl = String(formData.get('icon_url') ?? '').trim()
+
+  const supabase = await createClient()
+  const { data: app } = await supabase
+    .from('talent_apps')
+    .select('id, settings, user_id')
+    .eq('id', appId)
+    .single()
+  if (!app || app.user_id !== user.id) return { ok: false, message: 'App not found' }
+
+  const settings = { ...((app.settings ?? {}) as Record<string, unknown>), theme, nav }
+  const hex = /^#[0-9a-fA-F]{6}$/
+  const update: Record<string, unknown> = {
+    settings,
+    screens: screens as Record<string, unknown>[],
+    theme_mode: theme.mode === 'light' ? 'light' : 'dark',
+    icon_url: iconUrl || null,
+  }
+  if (typeof theme.primary === 'string' && hex.test(theme.primary)) update.primary_color = theme.primary
+  if (typeof theme.secondary === 'string' && hex.test(theme.secondary)) update.secondary_color = theme.secondary
+
+  const { error } = await supabase.from('talent_apps').update(update).eq('id', appId).eq('user_id', user.id)
+  if (error) return { ok: false, message: error.message }
+  revalidatePath(`/dashboard/apps/${appId}`)
   return { ok: true }
 }
 
