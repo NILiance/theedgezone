@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { resolveAppTheme } from '@/lib/app-theme'
 import { resolveCommerce } from '@/lib/app-commerce'
 import type { AppScreen, NavItem } from '@/lib/app-screens'
+import { applyFeeds } from '@/lib/app-feeds'
 import { PublicApp } from '@/components/apps/public-app'
 
 export const dynamic = 'force-dynamic'
@@ -52,6 +53,8 @@ export default async function PublicAppPage({ params }: { params: Promise<{ id: 
   const screens = Array.isArray(app.screens) ? (app.screens as AppScreen[]) : []
   const nav = Array.isArray(settings.nav) ? (settings.nav as NavItem[]) : []
   const commerce = resolveCommerce(settings.commerce)
+  const integrations = (settings.integrations ?? {}) as Record<string, { url?: string }>
+  const screensWithFeeds = await applyFeeds(screens, integrations)
 
   return (
     <PublicApp
@@ -59,7 +62,7 @@ export default async function PublicAppPage({ params }: { params: Promise<{ id: 
       theme={theme}
       appName={app.name}
       iconUrl={app.icon_url ?? undefined}
-      screens={screens}
+      screens={screensWithFeeds}
       nav={nav}
       products={commerce.products}
     />

@@ -37,6 +37,7 @@ export default async function AppConfigPage({ params }: PageProps) {
   const earnings = (settings.earnings ?? {}) as Record<string, number>
   const payout = (settings.payout ?? {}) as { method?: string; handle?: string }
   const commerce = settings.commerce ?? {}
+  const integrations = settings.integrations ?? {}
 
   return (
     <div className="space-y-6">
@@ -105,6 +106,7 @@ export default async function AppConfigPage({ params }: PageProps) {
           screens: Array.isArray(app.screens) ? (app.screens as AppScreen[]) : [],
           extensions,
           commerce,
+          integrations,
           store_listing:
             ((app as { store_listing?: Record<string, unknown> }).store_listing as Record<
               string,

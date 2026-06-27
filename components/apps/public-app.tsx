@@ -137,16 +137,23 @@ function Screen({
     return (
       <div className="space-y-4 p-4">
         {posts.length === 0 && <Placeholder theme={theme}>No posts yet.</Placeholder>}
-        {posts.map((p, i) => (
-          <article key={i} className="overflow-hidden" style={card}>
-            {p.image && <img src={p.image} alt="" className="h-44 w-full object-cover" />}
-            <div className="p-4">
-              <h2 className="text-lg" style={heading}>{p.title || 'Untitled'}</h2>
-              {p.date && <p className="mt-0.5 text-xs" style={{ color: theme.muted_color }}>{p.date}</p>}
-              {p.body && <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: theme.text_color }}>{p.body}</p>}
-            </div>
-          </article>
-        ))}
+        {posts.map((p, i) => {
+          const inner = (
+            <>
+              {p.image && <img src={p.image} alt="" className="h-44 w-full object-cover" />}
+              <div className="p-4">
+                <h2 className="text-lg" style={heading}>{p.title || 'Untitled'}</h2>
+                {p.date && <p className="mt-0.5 text-xs" style={{ color: theme.muted_color }}>{p.date}</p>}
+                {p.body && <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: theme.text_color }}>{p.body}</p>}
+              </div>
+            </>
+          )
+          return p.link ? (
+            <a key={i} href={p.link} target="_blank" rel="noopener noreferrer" className="block overflow-hidden" style={card}>{inner}</a>
+          ) : (
+            <div key={i} className="overflow-hidden" style={card}>{inner}</div>
+          )
+        })}
       </div>
     )
   }

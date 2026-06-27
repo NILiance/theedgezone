@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { APP_EXTENSIONS, extensionCategories, type AppExtension } from '@/lib/app-extensions'
+import { APP_INTEGRATIONS, type AppIntegrations } from '@/lib/app-integrations'
 
 /**
  * Extension Store — the legacy's 68-extension catalog with search + category
@@ -11,14 +12,19 @@ import { APP_EXTENSIONS, extensionCategories, type AppExtension } from '@/lib/ap
 export function ExtensionsTab({
   installed,
   onToggle,
+  integrations,
+  onIntegration,
 }: {
   installed: string[]
   onToggle: (ext: AppExtension, install: boolean) => void
+  integrations: AppIntegrations
+  onIntegration: (id: string, url: string) => void
 }) {
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const cats = extensionCategories()
   const q = search.trim().toLowerCase()
+  const connectable = APP_INTEGRATIONS.filter((i) => installed.includes(i.id))
 
   const shown = APP_EXTENSIONS.filter((x) => {
     if (filter === 'installed') {
@@ -44,6 +50,26 @@ export function ExtensionsTab({
         </div>
         <p className="text-display text-sm font-bold text-success">{installed.length} installed</p>
       </div>
+
+      {connectable.length > 0 && (
+        <div className="rounded-[var(--radius)] border border-primary/30 bg-panel/40 p-4">
+          <p className="text-eyebrow text-primary">Connected sources</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">Paste a source URL — its content syncs into your app live.</p>
+          <div className="mt-3 space-y-2.5">
+            {connectable.map((i) => (
+              <label key={i.id} className="block text-sm">
+                <span className="block text-xs text-muted-foreground">{i.icon} {i.label} — {i.help}</span>
+                <input
+                  value={integrations[i.id]?.url ?? ''}
+                  onChange={(e) => onIntegration(i.id, e.target.value)}
+                  placeholder={i.placeholder}
+                  className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 font-mono text-xs"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       <input
         value={search}

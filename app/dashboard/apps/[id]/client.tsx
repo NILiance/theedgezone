@@ -20,6 +20,7 @@ import { EarningsTab } from './earnings-tab'
 import { NewsTab, MediaTab, EventsTab } from './content-tabs'
 import { ShopTab, FansTab } from './commerce-tabs'
 import { type AppCommerce, resolveCommerce } from '@/lib/app-commerce'
+import type { AppIntegrations } from '@/lib/app-integrations'
 
 interface App {
   id: string
@@ -34,6 +35,7 @@ interface App {
   screens: AppScreen[]
   extensions: string[]
   commerce: unknown
+  integrations: unknown
   store_listing: Record<string, unknown>
   earnings: Record<string, number>
   payout: { method?: string; handle?: string }
@@ -79,6 +81,9 @@ export function AppConfigClient({ app }: { app: App }) {
   const [nav, setNav] = useState<NavItem[]>(() => (app.nav.length ? clone(app.nav) : autoNav(app.screens)))
   const [extensions, setExtensions] = useState<string[]>(() => clone(app.extensions ?? []))
   const [commerce, setCommerce] = useState<AppCommerce>(() => resolveCommerce(app.commerce))
+  const [integrations, setIntegrations] = useState<AppIntegrations>(
+    () => (app.integrations && typeof app.integrations === 'object' ? (app.integrations as AppIntegrations) : {})
+  )
   const [iconUrl, setIconUrl] = useState(app.icon_url)
   const [activeId, setActiveId] = useState<string | null>(() => app.screens[0]?.id ?? null)
   const [device, setDevice] = useState<DeviceId>(DEFAULT_DEVICE)
@@ -98,6 +103,7 @@ export function AppConfigClient({ app }: { app: App }) {
     fd.set('screens', JSON.stringify(screens))
     fd.set('extensions', JSON.stringify(extensions))
     fd.set('commerce', JSON.stringify(commerce))
+    fd.set('integrations', JSON.stringify(integrations))
     fd.set('icon_url', iconUrl)
     startTransition(async () => {
       const res = await updateAppBuild(fd)
@@ -132,7 +138,14 @@ export function AppConfigClient({ app }: { app: App }) {
       {tab === 'events' && <EventsTab screens={screens} onScreens={setScreens} onEditing={setEditing} onSave={saveBuild} />}
       {tab === 'shop' && <ShopTab commerce={commerce} onChange={setCommerce} onEditing={setEditing} onSave={saveBuild} />}
       {tab === 'fans' && <FansTab commerce={commerce} onChange={setCommerce} screens={screens} />}
-      {tab === 'extensions' && <ExtensionsTab installed={extensions} onToggle={toggleExtension} />}
+      {tab === 'extensions' && (
+        <ExtensionsTab
+          installed={extensions}
+          onToggle={toggleExtension}
+          integrations={integrations}
+          onIntegration={(id, url) => setIntegrations((p) => ({ ...p, [id]: { url } }))}
+        />
+      )}
       {tab === 'earnings' && <EarningsTab appId={app.id} earnings={app.earnings} payout={app.payout} />}
     </>
   )
