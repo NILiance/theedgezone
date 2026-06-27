@@ -371,7 +371,7 @@ export function CalculatorForm({
               <div className="mt-3 grid w-full grid-cols-2 gap-2 text-center text-xs">
                 <Stat label="Reach" value={liveResult.result.total_followers.toLocaleString()} />
                 <Stat
-                  label="ER"
+                  label="Engagement"
                   value={`${(liveResult.result.total_engagement_rate * 100).toFixed(2)}%`}
                 />
                 <div className="col-span-2">
