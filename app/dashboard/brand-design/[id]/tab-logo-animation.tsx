@@ -16,6 +16,8 @@ export function LogoAnimationTab({ brandId, hasFinal }: { brandId: string; hasFi
   const [style, setStyle] = useState('zoom')
   const [duration, setDuration] = useState(1600)
   const [loop, setLoop] = useState(false)
+  // Remounting the preview (changing key) restarts the animation from frame 0.
+  const [replayKey, setReplayKey] = useState(0)
   useRefreshOnNewUrl(state.url)
 
   if (!hasFinal) {
@@ -89,14 +91,43 @@ export function LogoAnimationTab({ brandId, hasFinal }: { brandId: string; hasFi
       {state.url && (
         <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3 rounded-[var(--radius)] border border-success/40 bg-success/5 p-5 text-center">
           <p className="text-display text-sm font-bold text-success">✓ Animation ready</p>
-          <a
-            href={state.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
-          >
-            Open in new tab →
-          </a>
+          <div className="flex aspect-square w-56 items-center justify-center overflow-hidden rounded-[var(--radius)] border border-border bg-white">
+            {state.url.split('?')[0]!.toLowerCase().endsWith('.gif') ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={replayKey}
+                src={state.url}
+                alt="Logo animation"
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <iframe
+                key={replayKey}
+                src={state.url}
+                title="Logo animation"
+                sandbox=""
+                scrolling="no"
+                className="pointer-events-none h-full w-full border-0"
+              />
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setReplayKey((k) => k + 1)}
+              className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-panel"
+            >
+              ↻ Replay
+            </button>
+            <a
+              href={state.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+            >
+              Open in new tab →
+            </a>
+          </div>
           <p className="text-[10px] text-muted-foreground">
             The new tile is also in Your Creations below.
           </p>

@@ -146,6 +146,12 @@ function CreationTile({
   const showImage = isImageUrl(creation.url)
   const showHtml = !showImage && isHtmlUrl(creation.url)
   const placeholderIcon = KIND_ICON[creation.kind] ?? '📄'
+  // Logo animations (GIF, or legacy HTML) can be replayed — remounting the
+  // <img>/<iframe> via a changing key restarts the animation from frame 0
+  // (served from cache, so no re-download).
+  const [replayKey, setReplayKey] = useState(0)
+  const isGif = showImage && (creation.url ?? '').split('?')[0]!.toLowerCase().endsWith('.gif')
+  const canReplay = creation.kind === 'logo_animation' || isGif
   return (
     <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
       <div
@@ -156,6 +162,7 @@ function CreationTile({
         {showImage && creation.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            key={replayKey}
             src={creation.url}
             alt={subLabel}
             className="max-h-full max-w-full object-contain"
@@ -164,6 +171,7 @@ function CreationTile({
           // Self-contained HTML+CSS (no scripts) — sandbox="" is safe and the
           // CSS animation still plays. pointer-events-none keeps it a preview.
           <iframe
+            key={replayKey}
             src={creation.url}
             title={subLabel}
             sandbox=""
@@ -190,6 +198,15 @@ function CreationTile({
           {KIND_LABEL[creation.kind] ?? creation.kind}
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {canReplay && (
+            <button
+              type="button"
+              onClick={() => setReplayKey((k) => k + 1)}
+              className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-panel"
+            >
+              ↻ Replay
+            </button>
+          )}
           {creation.url && (
             <a
               href={creation.url}
