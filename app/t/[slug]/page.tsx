@@ -8,6 +8,7 @@ import { nilianceProfileUrl, slugify } from '@/lib/niliance-urls'
 import { computeNilfluence } from '@/lib/nilfluence'
 import { autoPopularityFromProfile } from '@/lib/nilfluence-autocalc'
 import { getResolvedSocial } from '@/lib/nilfluence-server'
+import { BrandRoiCalculator } from './brand-roi'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -373,6 +374,14 @@ export default async function PublicTalentProfile({ params }: PageProps) {
                   </p>
                 )}
               </div>
+              {score != null && (
+                <BrandRoiCalculator
+                  name={profile.display_name ?? 'this athlete'}
+                  followers={followers ?? 0}
+                  er={er ?? 0}
+                  postValue={postValue ?? 0}
+                />
+              )}
             </div>
           </aside>
         </div>
