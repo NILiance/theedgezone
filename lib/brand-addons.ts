@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type SharpType from 'sharp'
 import { env } from '@/lib/env'
 import { createServiceClient } from '@/lib/supabase/server'
+import { renderLogoGif } from './logo-gif'
 
 // Lazy-load sharp to keep this module importable from server-component
 // pages even when sharp's native binding is unavailable at module init.
@@ -176,14 +177,24 @@ button:hover{background:#f3f4f6;}</style></head><body>
 </body></html>`
 
   const ts = Date.now()
-  const svgPath = `${brandId}/addons/logo-animation-${styleKey}-${ts}.svg`
   const htmlPath = `${brandId}/addons/logo-animation-${styleKey}-${ts}.html`
-  await uploadToStorage(svgPath, svg, 'image/svg+xml')
-  // The HTML wrapper is what we expose as the primary URL — the SVG is
-  // inline so the talent can right-click the HTML and download both.
-  const url = await uploadToStorage(htmlPath, html, 'text/html')
+  // Keep the self-contained HTML page as a fallback (and for browsers /
+  // screen-recording), but the primary deliverable is a real animated GIF so
+  // Download yields a playable file (not code) and the Your Creations tile
+  // shows it animating live.
+  const htmlUrl = await uploadToStorage(htmlPath, html, 'text/html')
   void loopMode
-  return { url }
+  try {
+    const gifBuf = await renderLogoGif(png, styleKey, {
+      durationMs: duration,
+      loop: options.loop,
+    })
+    const gifPath = `${brandId}/addons/logo-animation-${styleKey}-${ts}.gif`
+    const gifUrl = await uploadToStorage(gifPath, gifBuf, 'image/gif')
+    return { url: gifUrl }
+  } catch {
+    return { url: htmlUrl }
+  }
 }
 
 // ── Brand voice doc ─────────────────────────────────────────────────────────
