@@ -12,6 +12,7 @@ import {
   type ScreenTypeDef,
 } from '@/lib/app-screens'
 import { GenerateButton } from './generate-button'
+import { TemplatePicker } from './template-picker'
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 const inputCls = 'mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm'
@@ -53,6 +54,18 @@ export function ScreensTab({
     const next = [...screens]
     ;[next[i], next[j]] = [next[j]!, next[i]!]
     onScreens(next)
+  }
+
+  if (screens.length === 0 && !picking) {
+    return (
+      <TemplatePicker
+        onApply={(s) => {
+          onScreens(s)
+          if (s[0]) onActive(s[0].id)
+        }}
+        onScratch={() => setPicking(true)}
+      />
+    )
   }
 
   return (

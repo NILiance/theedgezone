@@ -17,6 +17,9 @@ import { SubmissionTab } from './submission-tab'
 import { PublishTab } from './publish-tab'
 import { ExtensionsTab } from './extensions-tab'
 import { EarningsTab } from './earnings-tab'
+import { NewsTab, MediaTab, EventsTab } from './content-tabs'
+import { ShopTab, FansTab } from './commerce-tabs'
+import { type AppCommerce, resolveCommerce } from '@/lib/app-commerce'
 
 interface App {
   id: string
@@ -30,15 +33,31 @@ interface App {
   nav: NavItem[]
   screens: AppScreen[]
   extensions: string[]
+  commerce: unknown
   store_listing: Record<string, unknown>
   earnings: Record<string, number>
   payout: { method?: string; handle?: string }
 }
 
-type Tab = 'screens' | 'design' | 'navigation' | 'extensions' | 'settings' | 'submission' | 'earnings' | 'publish'
+type Tab =
+  | 'screens'
+  | 'design'
+  | 'navigation'
+  | 'news'
+  | 'media'
+  | 'events'
+  | 'shop'
+  | 'fans'
+  | 'extensions'
+  | 'settings'
+  | 'submission'
+  | 'earnings'
+  | 'publish'
 
 const TAB_GROUPS: { group: string; tabs: { id: Tab; label: string }[] }[] = [
   { group: 'Build', tabs: [{ id: 'screens', label: '📱 Screens' }, { id: 'design', label: '🎨 Design' }, { id: 'navigation', label: '≡ Navigation' }] },
+  { group: 'Content', tabs: [{ id: 'news', label: '📰 News' }, { id: 'media', label: '🎬 Media' }, { id: 'events', label: '📅 Events' }] },
+  { group: 'Commerce', tabs: [{ id: 'shop', label: '🛒 Shop' }, { id: 'fans', label: '⭐ Fans' }] },
   { group: 'Extend', tabs: [{ id: 'extensions', label: '🧩 Extensions' }] },
   {
     group: 'Settings',
@@ -59,14 +78,16 @@ export function AppConfigClient({ app }: { app: App }) {
   const [screens, setScreens] = useState<AppScreen[]>(() => clone(app.screens))
   const [nav, setNav] = useState<NavItem[]>(() => (app.nav.length ? clone(app.nav) : autoNav(app.screens)))
   const [extensions, setExtensions] = useState<string[]>(() => clone(app.extensions ?? []))
+  const [commerce, setCommerce] = useState<AppCommerce>(() => resolveCommerce(app.commerce))
   const [iconUrl, setIconUrl] = useState(app.icon_url)
   const [activeId, setActiveId] = useState<string | null>(() => app.screens[0]?.id ?? null)
   const [device, setDevice] = useState<DeviceId>(DEFAULT_DEVICE)
   const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState<string | null>(null)
 
-  const showPreview = ['screens', 'design', 'navigation', 'extensions', 'earnings'].includes(tab)
-  const needsSave = ['screens', 'design', 'navigation', 'extensions'].includes(tab)
+  const FORM_TABS = ['settings', 'submission', 'publish']
+  const showPreview = !FORM_TABS.includes(tab)
+  const needsSave = !FORM_TABS.includes(tab) && tab !== 'earnings'
 
   const saveBuild = () => {
     setStatus(null)
@@ -76,6 +97,7 @@ export function AppConfigClient({ app }: { app: App }) {
     fd.set('nav', JSON.stringify(nav))
     fd.set('screens', JSON.stringify(screens))
     fd.set('extensions', JSON.stringify(extensions))
+    fd.set('commerce', JSON.stringify(commerce))
     fd.set('icon_url', iconUrl)
     startTransition(async () => {
       const res = await updateAppBuild(fd)
@@ -129,6 +151,11 @@ export function AppConfigClient({ app }: { app: App }) {
             {tab === 'design' && <DesignTab theme={theme} onChange={(p) => setTheme((t) => ({ ...t, ...p }))} iconUrl={iconUrl} onIcon={setIconUrl} />}
             {tab === 'screens' && <ScreensTab appId={app.id} screens={screens} activeId={activeId} onScreens={setScreens} onActive={setActiveId} />}
             {tab === 'navigation' && <NavigationTab screens={screens} nav={nav} onChange={setNav} />}
+            {tab === 'news' && <NewsTab screens={screens} onScreens={setScreens} />}
+            {tab === 'media' && <MediaTab screens={screens} onScreens={setScreens} />}
+            {tab === 'events' && <EventsTab screens={screens} onScreens={setScreens} />}
+            {tab === 'shop' && <ShopTab commerce={commerce} onChange={setCommerce} />}
+            {tab === 'fans' && <FansTab commerce={commerce} onChange={setCommerce} screens={screens} />}
             {tab === 'extensions' && <ExtensionsTab installed={extensions} onToggle={toggleExtension} />}
             {tab === 'earnings' && <EarningsTab appId={app.id} earnings={app.earnings} payout={app.payout} />}
 

@@ -88,13 +88,16 @@ export async function updateAppBuild(formData: FormData): Promise<{ ok: boolean;
   let nav: unknown
   let screens: unknown
   let extensions: unknown
+  let commerce: unknown
   try {
     theme = JSON.parse(String(formData.get('theme') ?? '{}')) as Record<string, unknown>
     nav = JSON.parse(String(formData.get('nav') ?? '[]'))
     screens = JSON.parse(String(formData.get('screens') ?? '[]'))
     extensions = JSON.parse(String(formData.get('extensions') ?? '[]'))
+    commerce = JSON.parse(String(formData.get('commerce') ?? '{}'))
     if (!Array.isArray(nav) || !Array.isArray(screens) || typeof theme !== 'object') throw new Error('bad')
     if (!Array.isArray(extensions)) extensions = []
+    if (!commerce || typeof commerce !== 'object' || Array.isArray(commerce)) commerce = {}
   } catch {
     return { ok: false, message: 'Invalid build payload.' }
   }
@@ -108,7 +111,7 @@ export async function updateAppBuild(formData: FormData): Promise<{ ok: boolean;
     .single()
   if (!app || app.user_id !== user.id) return { ok: false, message: 'App not found' }
 
-  const settings = { ...((app.settings ?? {}) as Record<string, unknown>), theme, nav, extensions }
+  const settings = { ...((app.settings ?? {}) as Record<string, unknown>), theme, nav, extensions, commerce }
   const hex = /^#[0-9a-fA-F]{6}$/
   const update: Record<string, unknown> = {
     settings,

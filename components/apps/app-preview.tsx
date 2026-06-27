@@ -176,6 +176,42 @@ function ScreenBody({
 
   if (screen.type === 'home') return <HomeScreen content={c} theme={theme} appName={appName} screens={screens} onSelect={onSelect} />
 
+  if (screen.type === 'blog' || screen.type === 'news') {
+    const posts = Array.isArray(c.posts) ? (c.posts as Record<string, string>[]) : []
+    return (
+      <div className="space-y-3 p-4">
+        {posts.length === 0 && <p className="text-xs" style={{ color: theme.muted_color }}>Posts appear here.</p>}
+        {posts.map((p, i) => (
+          <div key={i} className="overflow-hidden" style={card}>
+            {p.image && <img src={p.image} alt="" className="h-28 w-full object-cover" />}
+            <div className="p-3">
+              <p className="text-sm font-bold" style={heading}>{p.title || 'Untitled'}</p>
+              {p.date && <p className="text-[10px]" style={{ color: theme.muted_color }}>{p.date}</p>}
+              {p.body && <p className="mt-1 line-clamp-3 text-xs" style={{ color: theme.text_color }}>{p.body}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (screen.type === 'events') {
+    const events = Array.isArray(c.events) ? (c.events as Record<string, string>[]) : []
+    return (
+      <div className="space-y-2 p-4">
+        {events.length === 0 && <p className="text-xs" style={{ color: theme.muted_color }}>Events appear here.</p>}
+        {events.map((ev, i) => (
+          <div key={i} className="px-3 py-2.5" style={card}>
+            <p className="text-xs font-bold" style={heading}>{ev.title || 'Event'}</p>
+            <p className="text-[10px]" style={{ color: theme.muted_color }}>
+              {[ev.date, ev.time, ev.location && `📍 ${ev.location}`].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const pattern = screenPattern(screen.type)
   const items = Array.isArray(c.items) ? (c.items as Record<string, string>[]) : []
   const images = Array.isArray(c.images) ? (c.images as string[]) : []
