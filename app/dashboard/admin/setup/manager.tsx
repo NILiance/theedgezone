@@ -23,6 +23,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   integration: 'Integrations',
   config: 'Configuration',
   pricing: 'Pricing',
+  mobile: 'Mobile app (Expo / EAS)',
   go_live: 'Go live (test → active)',
   general: 'General',
 }
@@ -33,6 +34,7 @@ const CATEGORY_ORDER = [
   'integration',
   'config',
   'pricing',
+  'mobile',
   'go_live',
   'general',
 ]
