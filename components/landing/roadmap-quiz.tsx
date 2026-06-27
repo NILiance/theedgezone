@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { generatePublicRoadmapPlan } from '@/app/roadmap/actions'
 
 const PERSONAS = [
   { id: 'hs_talent', icon: '🏈', title: 'High School Talent', sub: 'Preparing for college & NIL' },
@@ -102,6 +104,39 @@ export function RoadmapQuiz() {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({ priorities: [] })
   const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+  const [, startTransition] = useTransition()
+
+  const startOver = () => {
+    setAnswers({ priorities: [] })
+    setStep(0)
+    setGenerating(false)
+    setError(null)
+  }
+
+  // Build the plan from the answers and send the visitor to their roadmap.
+  const submit = (budgetId: string) => {
+    const finalAnswers = { ...answers, budget: budgetId }
+    setAnswers(finalAnswers)
+    setError(null)
+    setGenerating(true)
+    startTransition(async () => {
+      const res = await generatePublicRoadmapPlan({
+        persona: finalAnswers.persona ?? '',
+        sport: finalAnswers.sport ?? '',
+        social: finalAnswers.social ?? '',
+        priorities: finalAnswers.priorities,
+        budget: budgetId,
+      })
+      if (res.ok && res.token) {
+        router.push(`/roadmap/plan/${res.token}`)
+      } else {
+        setError(res.message ?? 'Could not build your roadmap.')
+        setGenerating(false)
+      }
+    })
+  }
 
   const set = (key: keyof Answers, value: string) => {
     setAnswers((a) => ({ ...a, [key]: value }))
@@ -125,26 +160,30 @@ export function RoadmapQuiz() {
         <h3 className="text-display mt-4 text-2xl font-black text-foreground">
           Building your personalized roadmap…
         </h3>
-        <p className="mt-3 text-muted-foreground">
-          Based on your answers, your personalized step-by-step roadmap will appear in your
-          dashboard once you create an account.
-        </p>
-        <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Button size="lg">
-            <a href="/sign-up">CREATE YOUR FREE ACCOUNT →</a>
-          </Button>
-          <button
-            type="button"
-            onClick={() => {
-              setAnswers({ priorities: [] })
-              setStep(0)
-              setGenerating(false)
-            }}
-            className="text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
-          >
-            Start over
-          </button>
-        </div>
+        {error ? (
+          <div className="mt-6 flex flex-col items-center gap-4">
+            <p className="text-sm text-muted-foreground">
+              We couldn&apos;t build your roadmap just now. Create a free account and we&apos;ll have
+              it waiting in your dashboard.
+            </p>
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+              <Button size="lg">
+                <a href="/sign-up">CREATE YOUR FREE ACCOUNT →</a>
+              </Button>
+              <button
+                type="button"
+                onClick={startOver}
+                className="text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+              >
+                Start over
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 animate-pulse text-muted-foreground">
+            Crunching your answers and mapping your step-by-step plan…
+          </p>
+        )}
       </div>
     )
   }
@@ -297,10 +336,7 @@ export function RoadmapQuiz() {
               <button
                 key={b.id}
                 type="button"
-                onClick={() => {
-                  setAnswers((a) => ({ ...a, budget: b.id }))
-                  setGenerating(true)
-                }}
+                onClick={() => submit(b.id)}
                 className="rounded-[var(--radius-sm)] border border-border bg-background/50 p-4 text-center transition-colors hover:border-primary"
               >
                 <p className="text-display text-lg font-black text-foreground">{b.title}</p>
