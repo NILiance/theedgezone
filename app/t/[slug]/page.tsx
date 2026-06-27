@@ -5,6 +5,13 @@ import { ScoreRing } from '@/components/dashboard/score-ring'
 import { MarketingNav } from '@/components/landing/marketing-nav'
 import { Footer } from '@/components/landing/footer'
 import { nilianceProfileUrl, slugify } from '@/lib/niliance-urls'
+import { computeNilfluence } from '@/lib/nilfluence'
+import { autoPopularityFromProfile } from '@/lib/nilfluence-autocalc'
+import {
+  resolveSocialInputs,
+  type PhylloStatRow,
+  type SocialMetrics,
+} from '@/lib/nilfluence-social'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -133,17 +140,67 @@ export default async function PublicTalentProfile({ params }: PageProps) {
     // skip
   }
 
-  const score = (latestScore?.result as { nilfluence?: { nilfluence_score?: number } } | null)
-    ?.nilfluence?.nilfluence_score
-  const followers = (
-    latestScore?.result as { nilfluence?: { total_followers?: number } } | null
-  )?.nilfluence?.total_followers
-  const er = (
-    latestScore?.result as { nilfluence?: { total_engagement_rate?: number } } | null
-  )?.nilfluence?.total_engagement_rate
-  const postValue = (
-    latestScore?.result as { nilfluence?: { approximate_post_value?: number } } | null
-  )?.nilfluence?.approximate_post_value
+  const savedNil = (
+    latestScore?.result as {
+      nilfluence?: {
+        nilfluence_score?: number
+        total_followers?: number
+        total_engagement_rate?: number
+        approximate_post_value?: number
+      }
+    } | null
+  )?.nilfluence
+
+  let score = savedNil?.nilfluence_score
+  let followers = savedNil?.total_followers
+  let er = savedNil?.total_engagement_rate
+  let postValue = savedNil?.approximate_post_value
+
+  // No saved calculation yet — compute a baseline from the profile + any
+  // cached social stats so the profile always shows a score.
+  if (score == null) {
+    // Social: Phyllo first, then the talent's manual Profile → Social numbers.
+    let phylloRows: PhylloStatRow[] = []
+    try {
+      const { data } = await supabase
+        .from('phyllo_social_stats')
+        .select('platform, followers, avg_likes, avg_comments, avg_shares')
+        .eq('user_id', userId)
+      if (Array.isArray(data)) phylloRows = data as PhylloStatRow[]
+    } catch {
+      // table not present — treat as no Phyllo data
+    }
+    let manual: SocialMetrics = {}
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('social_metrics')
+        .eq('id', userId)
+        .maybeSingle()
+      const raw = (data as { social_metrics?: unknown } | null)?.social_metrics
+      if (raw && typeof raw === 'object') manual = raw as SocialMetrics
+    } catch {
+      // column not present yet
+    }
+    const social = resolveSocialInputs(phylloRows, manual)
+    const auto = autoPopularityFromProfile(
+      profile as Parameters<typeof autoPopularityFromProfile>[0]
+    )
+    const fb = computeNilfluence({
+      instagram: social.instagram,
+      tiktok: social.tiktok,
+      twitter: social.twitter,
+      youtube: social.youtube,
+      athlete_popularity: auto.athlete,
+      team_popularity: auto.team,
+      market_size: auto.market,
+      adjustment_factor: Math.round(Math.min(48, auto.athlete * 0.4)),
+    })
+    score = fb.nilfluence_score
+    followers = fb.total_followers
+    er = fb.total_engagement_rate
+    postValue = fb.approximate_post_value
+  }
 
   const socials = (profile.socials as Record<string, string> | null) ?? {}
   const primary = profile.brand_primary_color ?? '#E63946'

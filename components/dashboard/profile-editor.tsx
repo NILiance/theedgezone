@@ -109,6 +109,7 @@ interface ProfileEditorProps {
     bio: string | null
     achievements: string | null
     socials: Record<string, string>
+    social_metrics?: Record<string, { followers?: number; er?: number }> | null
     selected_goals: string[]
     agency_name: string | null
     agent_name: string | null
@@ -615,21 +616,75 @@ function StoryForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
 // ── SOCIAL ────────────────────────────────────────────────────────────────
 function SocialForm({ profile }: { profile: ProfileEditorProps['profile'] }) {
   const [state, action, pending] = useActionState<SectionState, FormData>(saveSocial, undefined)
+  const metrics = profile.social_metrics ?? {}
+  const scoring = [
+    { key: 'instagram', label: 'Instagram', icon: '📷', followerLabel: 'Followers' },
+    { key: 'tiktok', label: 'TikTok', icon: '🎵', followerLabel: 'Followers' },
+    { key: 'twitter', label: 'X / Twitter', icon: '🐦', followerLabel: 'Followers' },
+    { key: 'youtube', label: 'YouTube', icon: '▶️', followerLabel: 'Subscribers' },
+  ]
+  const other = [
+    { key: 'facebook', label: 'Facebook', icon: '📘' },
+    { key: 'linkedin', label: 'LinkedIn', icon: '💼' },
+    { key: 'snapchat', label: 'Snapchat', icon: '👻' },
+  ]
   return (
     <form action={action}>
-      <SectionShell state={state} pending={pending}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[
-            { key: 'instagram', label: 'Instagram', icon: '📷' },
-            { key: 'tiktok', label: 'TikTok', icon: '🎵' },
-            { key: 'twitter', label: 'X / Twitter', icon: '🐦' },
-            { key: 'youtube', label: 'YouTube', icon: '▶️' },
-            { key: 'facebook', label: 'Facebook', icon: '📘' },
-            { key: 'linkedin', label: 'LinkedIn', icon: '💼' },
-            { key: 'snapchat', label: 'Snapchat', icon: '👻' },
-          ].map((s) => (
+      <SectionShell state={state} pending={pending} saveLabel="Save social profile">
+        <p className="text-sm text-muted-foreground">
+          Add your handle, follower count, and engagement rate for each platform. We use live data
+          when your accounts are connected, and these numbers otherwise — they power your NILfluence
+          score.
+        </p>
+        <div className="mt-4 space-y-3">
+          {scoring.map((s) => (
+            <div
+              key={s.key}
+              className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-3"
+            >
+              <p className="text-display text-sm font-bold">
+                {s.icon} {s.label}
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                <FormField label="Handle">
+                  <Input
+                    name={s.key}
+                    defaultValue={profile.socials[s.key] ?? ''}
+                    placeholder="@yourhandle"
+                  />
+                </FormField>
+                <FormField label={s.followerLabel}>
+                  <Input
+                    name={`${s.key}_followers`}
+                    type="number"
+                    min={0}
+                    defaultValue={metrics[s.key]?.followers ?? ''}
+                    placeholder="0"
+                  />
+                </FormField>
+                <FormField label="Engagement rate (%)">
+                  <Input
+                    name={`${s.key}_er`}
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    defaultValue={metrics[s.key]?.er ?? ''}
+                    placeholder="0"
+                  />
+                </FormField>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-eyebrow mt-5 text-muted-foreground">Other handles</p>
+        <div className="mt-2 grid gap-4 sm:grid-cols-2">
+          {other.map((s) => (
             <FormField key={s.key} label={`${s.icon} ${s.label} handle`}>
-              <Input name={s.key} defaultValue={profile.socials[s.key] ?? ''} placeholder="@yourhandle" />
+              <Input
+                name={s.key}
+                defaultValue={profile.socials[s.key] ?? ''}
+                placeholder="@yourhandle"
+              />
             </FormField>
           ))}
         </div>

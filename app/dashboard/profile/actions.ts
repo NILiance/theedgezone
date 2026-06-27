@@ -331,6 +331,9 @@ const SOCIAL_PLATFORMS = [
   'snapchat',
 ] as const
 
+// Platforms whose follower count + engagement rate feed the NILfluence score.
+const METRIC_PLATFORMS = ['instagram', 'tiktok', 'twitter', 'youtube'] as const
+
 export async function saveSocial(_prev: SectionState, formData: FormData): Promise<SectionState> {
   const user = await requireUser()
   const socials: Record<string, string> = {}
@@ -339,12 +342,22 @@ export async function saveSocial(_prev: SectionState, formData: FormData): Promi
     if (value) socials[platform] = value
   }
 
+  // Manual followers + engagement-rate fallback (used when Phyllo isn't on).
+  const social_metrics: Record<string, { followers: number; er: number }> = {}
+  for (const p of METRIC_PLATFORMS) {
+    const followers = Math.max(0, Number(formData.get(`${p}_followers`) ?? 0) || 0)
+    const er = Math.max(0, Number(formData.get(`${p}_er`) ?? 0) || 0)
+    if (followers > 0 || er > 0) social_metrics[p] = { followers, er }
+  }
+
   const supabase = await createClient()
   const { error } = await supabase.from('profiles').update({ socials }).eq('id', user.id)
   if (error) return { error: error.message }
+  // social_metrics column may not be applied yet — best-effort, ignore its error.
+  await supabase.from('profiles').update({ social_metrics }).eq('id', user.id)
   void syncProfile({ userId: user.id })
   revalidatePath('/dashboard', 'layout')
-  return { success: 'Social handles saved.' }
+  return { success: 'Social profile saved.' }
 }
 
 // ── CONTACTS ──────────────────────────────────────────────────────────────

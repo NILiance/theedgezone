@@ -184,6 +184,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           bio: (p.bio as string | null) ?? null,
           achievements: (p.achievements as string | null) ?? null,
           socials,
+          social_metrics:
+            (p.social_metrics as Record<string, { followers?: number; er?: number }> | null) ??
+            null,
           selected_goals,
           agency_name: (p.agency_name as string | null) ?? null,
           agent_name: (p.agent_name as string | null) ?? null,
