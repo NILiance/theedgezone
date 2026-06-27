@@ -271,22 +271,24 @@ export function CalculatorForm({
             </div>
           </section>
 
-          {/* Monetization — spreadsheet "Total Engagement" inputs */}
+          {/* Brand ROI — spreadsheet monetization block. Enter two inputs;
+              post value, break-even, revenue, and ROI compute below. */}
           <section className="rounded-[var(--radius)] border border-border bg-panel/40 p-5">
-            <p className="text-eyebrow text-primary">Monetization (optional)</p>
+            <p className="text-eyebrow text-primary">Brand ROI (optional)</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Drives the post value, break-even, and ROI projection below.
+              Enter your profit per product and the estimated purchase rate of total engagements —
+              post value, break-even, revenue, and ROI calculate in the breakdown below.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <FieldNumber
                 name="profit_per_product"
-                label="Profit per product ($)"
+                label="Profit per product sold ($)"
                 value={snapshot.profit_per_product ?? 0}
                 onChange={update}
               />
               <FieldNumber
                 name="purchase_conversion_rate"
-                label="Conversion rate (%)"
+                label="Purchase rate (% of total engagements)"
                 value={snapshot.purchase_conversion_rate ?? 0}
                 step={0.5}
                 onChange={update}
@@ -465,10 +467,10 @@ function FullBreakdown({ result, score }: { result: NilfluenceResult; score: num
           />
         </div>
 
-        {/* Monetization */}
+        {/* Brand ROI */}
         <div>
           <p className="text-display mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Monetization
+            Brand ROI
           </p>
           {m ? (
             <Table
