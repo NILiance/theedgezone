@@ -8,6 +8,7 @@ import {
   type PlatformInput,
 } from '@/lib/nilfluence'
 import type { AutoPopularity } from '@/lib/nilfluence-autocalc'
+import { roiTier, ROI_DISCLAIMER } from '@/lib/roi-tier'
 import { ScoreRing } from '@/components/dashboard/score-ring'
 import { Button } from '@/components/ui/button'
 import { runCalculator, type CalcState } from './actions'
@@ -490,7 +491,25 @@ function FullBreakdown({ result, score }: { result: NilfluenceResult; score: num
                 ]}
                 highlightLast
               />
-              <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+              <div
+                className="mt-2 flex items-center justify-between rounded-[var(--radius-sm)] border px-3 py-2"
+                style={{
+                  borderColor: `${roiTier(m.roi).color}66`,
+                  backgroundColor: `${roiTier(m.roi).color}14`,
+                }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  ROI rating
+                </span>
+                <span
+                  className="text-display text-sm font-black uppercase tracking-widest"
+                  style={{ color: roiTier(m.roi).color }}
+                >
+                  {roiTier(m.roi).label}
+                </span>
+              </div>
+              <p className="mt-2 text-[10px] leading-snug text-muted-foreground">{ROI_DISCLAIMER}</p>
+              <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
                 Approx. post value is based on an industry average of $10 per 1,000 followers at 1%
                 engagement.
               </p>

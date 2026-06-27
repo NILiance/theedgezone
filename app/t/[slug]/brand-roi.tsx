@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { roiTier, ROI_DISCLAIMER, type RoiTier } from '@/lib/roi-tier'
 
 /**
  * Public, brand-facing ROI calculator shown under a talent's NILfluence score.
@@ -29,6 +30,7 @@ export function BrandRoiCalculator({
   const net = revenue - postValue
   const roi = revenue > 0 ? (revenue - postValue) / revenue : 0
   const breakeven = profit > 0 ? postValue / profit : 0
+  const tier = roiTier(roi)
 
   const usd = (v: number) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
   const num = (v: number, d = 0) => v.toLocaleString(undefined, { maximumFractionDigits: d })
@@ -75,8 +77,9 @@ export function BrandRoiCalculator({
         <Row label="Est. products sold" value={num(productsSold)} />
         <Row label="Projected revenue" value={usd(revenue)} />
         <Row label="Projected profit" value={usd(net)} />
-        <Row label="ROI" value={`${(roi * 100).toFixed(1)}%`} highlight />
+        <Row label="ROI" value={`${(roi * 100).toFixed(1)}%`} highlight tier={tier} />
       </div>
+      <p className="text-[10px] leading-snug text-muted-foreground">{ROI_DISCLAIMER}</p>
       <p className="text-[10px] leading-snug text-muted-foreground">
         Estimate from this athlete&rsquo;s reach + engagement. Post value uses an industry average of
         $10 per 1,000 followers at 1% engagement.
@@ -94,7 +97,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function Row({
+  label,
+  value,
+  highlight,
+  tier,
+}: {
+  label: string
+  value: string
+  highlight?: boolean
+  tier?: RoiTier
+}) {
   return (
     <div
       className={`flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-[11px] last:border-b-0 ${
@@ -102,8 +115,20 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
       }`}
     >
       <span className="text-muted-foreground">{label}</span>
-      <span className={`text-display font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>
-        {value}
+      <span className="flex items-center gap-2">
+        {tier && (
+          <span
+            className="text-display rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest"
+            style={{ color: tier.color, backgroundColor: `${tier.color}1f` }}
+          >
+            {tier.label}
+          </span>
+        )}
+        <span
+          className={`text-display font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}
+        >
+          {value}
+        </span>
       </span>
     </div>
   )
