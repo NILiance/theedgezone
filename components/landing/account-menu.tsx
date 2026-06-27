@@ -16,6 +16,7 @@ interface AccountMenuProps {
 const ITEMS = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Profile', href: '/dashboard/profile' },
+  { label: 'NILfluence Calculator', href: '/dashboard/nilfluence-calculator' },
 ]
 
 export function AccountMenu({ displayName, isAdmin }: AccountMenuProps) {
