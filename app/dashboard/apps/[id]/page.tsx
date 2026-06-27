@@ -54,6 +54,11 @@ export default async function AppConfigPage({ params }: PageProps) {
             {app.tagline && <p className="text-sm text-muted-foreground">{app.tagline}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
+            <a href={`/a/${app.id}`} target="_blank" rel="noopener noreferrer">
+              <button className="text-display rounded-[var(--radius-sm)] border border-primary bg-primary px-4 py-2 text-sm font-bold uppercase tracking-widest text-primary-foreground hover:opacity-90">
+                👁 Preview app
+              </button>
+            </a>
             <Link
               href="/dashboard/support"
               className="text-display rounded-[var(--radius-sm)] border border-border bg-panel/40 px-4 py-2 text-sm font-bold uppercase tracking-widest hover:bg-panel"
