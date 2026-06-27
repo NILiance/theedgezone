@@ -87,7 +87,6 @@ export function AppConfigClient({ app }: { app: App }) {
   const [status, setStatus] = useState<string | null>(null)
 
   const FORM_TABS = ['settings', 'submission', 'publish']
-  const showPreview = !FORM_TABS.includes(tab)
   const needsSave = !FORM_TABS.includes(tab) && tab !== 'earnings'
 
   const saveBuild = () => {
@@ -164,32 +163,37 @@ export function AppConfigClient({ app }: { app: App }) {
         </div>
       )}
 
-      {editing ? (
-        <div className="min-w-0">{tabContent}</div>
-      ) : showPreview ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {FORM_TABS.includes(tab) ? (
+        tab === 'settings' ? (
+          <SettingsTab app={app} />
+        ) : tab === 'publish' ? (
+          <PublishTab appId={app.id} appName={app.name} packageId={app.package_id} theme={theme} storeListing={app.store_listing} />
+        ) : (
+          <SubmissionTab appId={app.id} storeListing={app.store_listing} />
+        )
+      ) : (
+        // tabContent stays in a stable tree position so the active tab never
+        // remounts when `editing` toggles — only the wrapper class + the preview
+        // sibling change.
+        <div className={editing ? 'min-w-0' : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]'}>
           <div className="min-w-0 space-y-4">
             {tabContent}
-            {needsSave && (
+            {!editing && needsSave && (
               <div className="sticky bottom-0 z-10 flex items-center gap-3 border-t border-border bg-background/95 py-3 backdrop-blur">
                 <Button onClick={saveBuild} disabled={isPending}>{isPending ? 'Saving…' : 'Save app'}</Button>
                 {status && <p className={`text-xs ${status === 'Saved.' ? 'text-success' : 'text-destructive'}`}>{status}</p>}
               </div>
             )}
           </div>
-          <div>
-            <div className="lg:sticky lg:top-6">
-              <AppPreview theme={theme} appName={app.name} iconUrl={iconUrl} screens={screens} nav={nav} activeId={activeId} onSelect={setActiveId} device={device} onDevice={setDevice} />
-              <p className="mt-3 text-center text-[10px] uppercase tracking-widest text-muted-foreground">Live preview</p>
+          {!editing && (
+            <div>
+              <div className="lg:sticky lg:top-6">
+                <AppPreview theme={theme} appName={app.name} iconUrl={iconUrl} screens={screens} nav={nav} activeId={activeId} onSelect={setActiveId} device={device} onDevice={setDevice} />
+                <p className="mt-3 text-center text-[10px] uppercase tracking-widest text-muted-foreground">Live preview</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      ) : tab === 'settings' ? (
-        <SettingsTab app={app} />
-      ) : tab === 'publish' ? (
-        <PublishTab appId={app.id} appName={app.name} packageId={app.package_id} theme={theme} storeListing={app.store_listing} />
-      ) : (
-        <SubmissionTab appId={app.id} storeListing={app.store_listing} />
       )}
     </div>
   )
