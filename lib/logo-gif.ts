@@ -99,9 +99,21 @@ export async function renderLogoGif(
     let lh = fit
     if (t.rotate) {
       layerBuf = await sharp(layerBuf).rotate(t.rotate, { background: transparent }).png().toBuffer()
-      const meta = await sharp(layerBuf).metadata()
+      let meta = await sharp(layerBuf).metadata()
       lw = meta.width ?? fit
       lh = meta.height ?? fit
+      // A rotated square's bounding box grows (up to side×√2 at 45°) and can
+      // exceed the canvas — Sharp's composite rejects an overlay larger than
+      // the base, which would fail the whole GIF. Clamp it back inside.
+      if (lw > SIZE || lh > SIZE) {
+        layerBuf = await sharp(layerBuf)
+          .resize(SIZE, SIZE, { fit: 'inside', background: transparent })
+          .png()
+          .toBuffer()
+        meta = await sharp(layerBuf).metadata()
+        lw = meta.width ?? SIZE
+        lh = meta.height ?? SIZE
+      }
     }
 
     const left = Math.round((SIZE - lw) / 2 + t.dx)
