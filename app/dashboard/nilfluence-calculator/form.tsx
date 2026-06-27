@@ -473,18 +473,24 @@ function FullBreakdown({ result, score }: { result: NilfluenceResult; score: num
             Brand ROI
           </p>
           {m ? (
-            <Table
-              rows={[
-                ['Approx. post value', usd(result.approximate_post_value)],
-                ['Profit per product', usd(m.profit_per_product)],
-                ['Products to break even', n(m.products_to_breakeven, 1)],
-                ['Est. products sold', n(m.estimated_products_sold, 0)],
-                ['Projected revenue', usd(m.revenue)],
-                ['Projected profit', usd(m.revenue - result.approximate_post_value)],
-                ['ROI (margin)', pct(m.roi)],
-              ]}
-              highlightLast
-            />
+            <>
+              <Table
+                rows={[
+                  ['Approx. post value', usd(result.approximate_post_value)],
+                  ['Profit per product', usd(m.profit_per_product)],
+                  ['Products to break even', n(m.products_to_breakeven, 1)],
+                  ['Est. products sold', n(m.estimated_products_sold, 0)],
+                  ['Projected revenue', usd(m.revenue)],
+                  ['Projected profit', usd(m.revenue - result.approximate_post_value)],
+                  ['ROI (margin)', pct(m.roi)],
+                ]}
+                highlightLast
+              />
+              <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+                Approx. post value is based on an industry average of $10 per 1,000 followers at 1%
+                engagement.
+              </p>
+            </>
           ) : (
             <p className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-3 text-xs text-muted-foreground">
               Enter a profit per product above to project break-even, revenue, and ROI.
