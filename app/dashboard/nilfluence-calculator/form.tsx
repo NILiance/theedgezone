@@ -383,7 +383,7 @@ export function CalculatorForm({
                 </div>
               </div>
             </div>
-            {(snapshot.bms_i || snapshot.bms_d || snapshot.bms_o) && (
+            {(snapshot.bms_i > 0 || snapshot.bms_d > 0 || snapshot.bms_o > 0) && (
               <div className="rounded-[var(--radius)] border border-border bg-panel/40 p-5 shadow-elevated">
                 <p className="text-eyebrow text-accent">Brand Match</p>
                 <p className="text-display mt-2 text-3xl font-black text-accent">
