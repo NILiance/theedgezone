@@ -20,130 +20,213 @@ const STYLES = [
   { value: 'custom', name: 'Custom Colors' },
 ]
 
+interface Palette {
+  bg: string
+  border: string
+  accent: string
+  text: string
+}
+
+function readableText(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex)
+  if (!m) return '#ffffff'
+  const n = parseInt(m[1]!, 16)
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+  return lum > 0.6 ? '#111111' : '#ffffff'
+}
+
+function stylePalette(
+  style: string,
+  bg: string,
+  accent: string,
+  brandPrimary: string,
+  brandSecondary: string
+): Palette {
+  switch (style) {
+    case 'vintage':
+      return { bg: '#1a0f08', border: '#caa86a', accent: '#caa86a', text: '#fff' }
+    case 'holographic':
+      return { bg: '#0a0a0e', border: '#a78bfa', accent: '#22d3ee', text: '#fff' }
+    case 'premium_gold':
+      return { bg: '#101010', border: '#FFD700', accent: '#FFD700', text: '#fff' }
+    case 'custom':
+      return { bg, border: accent, accent, text: readableText(bg) }
+    default:
+      return { bg: brandPrimary || '#0b1e3f', border: brandSecondary || '#ffd166', accent: brandSecondary || '#ffd166', text: '#fff' }
+  }
+}
+
 export function TradingCardTab({
   brandId,
   hasFinal,
   tiers,
   cards,
   orderSuccess,
+  brandName,
+  logoUrl,
+  brandPrimary,
+  brandSecondary,
 }: {
   brandId: string
   hasFinal: boolean
   tiers: OrderTier[]
   cards: OrderableCard[]
   orderSuccess?: boolean
+  brandName: string
+  logoUrl: string
+  brandPrimary: string
+  brandSecondary: string
 }) {
   const [state, action, pending] = useActionState<TradingCardActionState, FormData>(
     generateTradingCardAction,
     {}
   )
   const [style, setStyle] = useState('modern')
+  const [bg, setBg] = useState('#0b1e3f')
+  const [accent, setAccent] = useState('#ffd166')
+  const [flipped, setFlipped] = useState(false)
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [f, setF] = useState({
+    name: brandName || '',
+    subline: '',
+    school: '',
+    stats: '',
+    tagline: '',
+    handle: '',
+    website: '',
+  })
   useRefreshOnNewUrl(state.url)
+
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setF((p) => ({ ...p, [k]: e.target.value }))
+
+  function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const r = new FileReader()
+    r.onload = () => setPhoto(r.result as string)
+    r.readAsDataURL(file)
+  }
 
   if (!hasFinal) return <LockedNotice label="Trading Card" />
 
+  const p = stylePalette(style, bg, accent, brandPrimary, brandSecondary)
+  const inputCls =
+    'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
+  const labelCls =
+    'text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground'
+
   return (
     <div>
-      <h2 className="text-display text-center text-3xl font-black">Autograph Trading Card</h2>
+      <h2 className="text-display text-center text-3xl font-black">Trading Card Designer</h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground">
-        Upload your best action photo, add optional stats and a tagline, and pick a style or your
-        own colors. Every card is generated <strong>front and back</strong>. Once you love it, order
-        printed copies below.
+        Design the front and back live — flip the card to edit the back. Upload your photo, set
+        your text and colors, then Generate a print-ready front + back. Order copies below.
       </p>
 
-      <form
-        action={action}
-        className="mx-auto mt-6 grid max-w-2xl gap-3"
-      >
-        <input type="hidden" name="brand_id" value={brandId} />
-        <label className="block">
-          <span className="text-display block text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Your Photo (required)
-          </span>
-          <input
-            type="file"
-            name="photo"
-            accept="image/png,image/jpeg"
-            required
-            className="mt-1 block w-full rounded-md border border-border bg-panel-elevated px-3 py-2 text-sm text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-[var(--radius-sm)] file:border file:border-border file:bg-panel-elevated file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-foreground hover:file:bg-primary hover:file:text-primary-foreground"
-          />
-        </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            type="text"
-            name="stats"
-            placeholder="Key stats (e.g., 1,200 rush yards)"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            name="tagline"
-            placeholder="Tagline (e.g., Built Different)"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-        </div>
-        <label className="block">
-          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Card Style
-          </span>
-          <select
-            name="style"
-            value={style}
-            onChange={(e) => setStyle(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          >
-            {STYLES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {style === 'custom' && (
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_300px]">
+        {/* Controls */}
+        <form action={action} className="grid gap-3">
+          <input type="hidden" name="brand_id" value={brandId} />
+          <input type="hidden" name="style" value={style} />
+          <input type="hidden" name="bg_color" value={bg} />
+          <input type="hidden" name="accent_color" value={accent} />
+          <input type="hidden" name="name" value={f.name} />
+          <input type="hidden" name="subline" value={f.subline} />
+          <input type="hidden" name="school" value={f.school} />
+          <input type="hidden" name="stats" value={f.stats} />
+          <input type="hidden" name="tagline" value={f.tagline} />
+          <input type="hidden" name="handle" value={f.handle} />
+          <input type="hidden" name="website" value={f.website} />
+
+          <label className="block">
+            <span className={labelCls}>Action Photo (front, required)</span>
+            <input
+              type="file"
+              name="photo"
+              accept="image/png,image/jpeg"
+              required
+              onChange={onPhoto}
+              className="mt-1 block w-full rounded-md border border-border bg-panel-elevated px-3 py-2 text-sm text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-[var(--radius-sm)] file:border file:border-border file:bg-panel-elevated file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-foreground hover:file:bg-primary hover:file:text-primary-foreground"
+            />
+          </label>
+
+          <p className="text-display text-[10px] font-bold uppercase tracking-widest text-primary">
+            Front
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Card color
-              </span>
-              <input
-                type="color"
-                name="bg_color"
-                defaultValue="#0b1e3f"
-                className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1"
-              />
-            </label>
-            <label className="block">
-              <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Accent / border
-              </span>
-              <input
-                type="color"
-                name="accent_color"
-                defaultValue="#ffd166"
-                className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1"
-              />
-            </label>
+            <input value={f.name} onChange={set('name')} placeholder="Name" className={inputCls} />
+            <input value={f.subline} onChange={set('subline')} placeholder="Position · Sport" className={inputCls} />
+            <input value={f.school} onChange={set('school')} placeholder="School / Team" className={inputCls} />
+            <input value={f.stats} onChange={set('stats')} placeholder="Key stats" className={inputCls} />
+            <input value={f.tagline} onChange={set('tagline')} placeholder="Tagline" className={`${inputCls} sm:col-span-2`} />
           </div>
-        )}
-        <div className="mt-2 flex justify-center">
+
+          <p className="text-display mt-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+            Back <span className="font-normal normal-case text-muted-foreground">(logo + name auto-included)</span>
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input value={f.handle} onChange={set('handle')} placeholder="@handle" className={inputCls} />
+            <input value={f.website} onChange={set('website')} placeholder="website.com" className={inputCls} />
+          </div>
+
+          <label className="block">
+            <span className={labelCls}>Card Style</span>
+            <select
+              name="style_view"
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            >
+              {STYLES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {style === 'custom' && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className={labelCls}>Card color</span>
+                <input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1" />
+              </label>
+              <label className="block">
+                <span className={labelCls}>Accent / border</span>
+                <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1" />
+              </label>
+            </div>
+          )}
+
+          <div className="mt-1 flex justify-center">
+            <button
+              type="submit"
+              disabled={pending}
+              className="text-display rounded-[var(--radius-sm)] bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
+            >
+              {pending ? 'Generating…' : 'Generate Card'}
+            </button>
+          </div>
+        </form>
+
+        {/* Live preview with 3D flip */}
+        <div className="flex flex-col items-center gap-3">
+          <CardFlip flipped={flipped} palette={p} photo={photo} logoUrl={logoUrl} f={f} style={style} />
           <button
-            type="submit"
-            disabled={pending}
-            className="text-display rounded-[var(--radius-sm)] bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
+            type="button"
+            onClick={() => setFlipped((v) => !v)}
+            className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-panel"
           >
-            {pending ? 'Generating Preview…' : 'Generate Preview'}
+            ↻ Flip to {flipped ? 'front' : 'back'}
           </button>
+          <p className="text-center text-[10px] text-muted-foreground">Live preview — the generated card is print-ready.</p>
         </div>
-      </form>
+      </div>
 
       {state.url && (
         <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3 rounded-[var(--radius)] border border-success/40 bg-success/5 p-5 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={state.url}
-            alt="Generated trading card front and back"
-            className="max-h-[400px] w-auto rounded-md border border-border"
-          />
+          <img src={state.url} alt="Generated trading card front and back" className="max-h-[400px] w-auto rounded-md border border-border" />
           <p className="text-[10px] text-muted-foreground">
             Front + back, side by side. Saved to Your Creations below — download or order from there.
           </p>
@@ -151,12 +234,88 @@ export function TradingCardTab({
       )}
       {state.error && <p className="mt-4 text-center text-xs text-destructive">{state.error}</p>}
 
-      <TradingCardOrderPanel
-        brandId={brandId}
-        tiers={tiers}
-        cards={cards}
-        orderSuccess={orderSuccess}
-      />
+      <TradingCardOrderPanel brandId={brandId} tiers={tiers} cards={cards} orderSuccess={orderSuccess} />
+    </div>
+  )
+}
+
+function CardFlip({
+  flipped,
+  palette,
+  photo,
+  logoUrl,
+  f,
+  style,
+}: {
+  flipped: boolean
+  palette: Palette
+  photo: string | null
+  logoUrl: string
+  f: { name: string; subline: string; school: string; stats: string; tagline: string; handle: string; website: string }
+  style: string
+}) {
+  return (
+    <div style={{ perspective: 1200 }} className="w-[260px]">
+      <div
+        className="relative h-[364px] w-full transition-transform duration-500"
+        style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+      >
+        {/* Front */}
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
+          <CardShell palette={palette}>
+            <p className="text-display text-center text-lg font-black leading-none" style={{ color: palette.text }}>
+              {(f.name || 'YOUR NAME').toUpperCase()}
+            </p>
+            {f.subline && <p className="text-center text-[10px] font-bold uppercase tracking-widest" style={{ color: palette.accent }}>{f.subline}</p>}
+            {f.school && <p className="text-center text-[9px] text-white/60">{f.school}</p>}
+            <div className="mt-1 aspect-square w-full overflow-hidden rounded-md bg-black/40">
+              {photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={photo} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-[9px] text-white/40">action photo</div>
+              )}
+            </div>
+            {f.stats && (
+              <p className="text-[10px]" style={{ color: palette.accent }}>
+                <span className="font-bold">STATS </span>
+                <span style={{ color: palette.text }}>{f.stats}</span>
+              </p>
+            )}
+            {f.tagline && <p className="text-center text-xs font-bold italic" style={{ color: palette.accent }}>&ldquo;{f.tagline}&rdquo;</p>}
+            <p className="mt-auto text-right text-[7px]" style={{ color: palette.accent, opacity: 0.6 }}>{style.toUpperCase()}</p>
+          </CardShell>
+        </div>
+        {/* Back */}
+        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+          <CardShell palette={palette}>
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="" className="h-20 w-20 object-contain" />
+              ) : null}
+              <p className="text-display text-center text-base font-black" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
+              {f.subline && <p className="text-center text-[9px] font-bold uppercase tracking-widest" style={{ color: palette.accent }}>{f.subline}</p>}
+              {f.tagline && <p className="text-center text-[11px] italic" style={{ color: palette.text, opacity: 0.9 }}>&ldquo;{f.tagline}&rdquo;</p>}
+            </div>
+            <div className="text-center">
+              {f.handle && <p className="text-xs font-bold" style={{ color: palette.accent }}>{f.handle}</p>}
+              {f.website && <p className="text-[10px]" style={{ color: palette.text }}>{f.website}</p>}
+            </div>
+          </CardShell>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CardShell({ palette, children }: { palette: Palette; children: React.ReactNode }) {
+  return (
+    <div
+      className="flex h-full w-full flex-col gap-1 rounded-xl p-3"
+      style={{ background: palette.bg, border: `3px solid ${palette.border}` }}
+    >
+      {children}
     </div>
   )
 }

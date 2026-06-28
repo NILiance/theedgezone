@@ -359,6 +359,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
             brandPrimary={brand.primary_color}
             brandSecondary={brand.secondary_color}
             finalLogoUrl={brand.final_logo_url}
+            brandName={brand.brand_name ?? ''}
             tradingCardTiers={tradingCardTiers}
             orderableCards={orderableCards}
             tcOrderSuccess={tcOrderSuccess}
@@ -1015,6 +1016,7 @@ function ArsenalView({
   brandPrimary,
   brandSecondary,
   finalLogoUrl,
+  brandName,
   tradingCardTiers,
   orderableCards,
   tcOrderSuccess,
@@ -1030,6 +1032,7 @@ function ArsenalView({
   brandPrimary: string | null
   brandSecondary: string | null
   finalLogoUrl: string | null
+  brandName: string
   tradingCardTiers: Array<{ qty: number; price_cents: number; label: string }>
   orderableCards: Array<{ id: string; url: string; style?: string | null }>
   tcOrderSuccess: boolean
@@ -1123,6 +1126,10 @@ function ArsenalView({
             tiers={tradingCardTiers}
             cards={orderableCards}
             orderSuccess={tcOrderSuccess}
+            brandName={brandName}
+            logoUrl={finalLogoUrl ?? ''}
+            brandPrimary={brandPrimary ?? '#0b1e3f'}
+            brandSecondary={brandSecondary ?? '#ffd166'}
           />
           <YourCreations
             brandId={brandId}

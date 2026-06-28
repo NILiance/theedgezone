@@ -193,9 +193,15 @@ export async function generateTradingCardAction(
       .png()
       .toBuffer()
 
-    const name = (brand.brand_name ?? 'ATHLETE').toUpperCase()
-    const subline = [brand.athletic_position, brand.sport].filter(Boolean).join(' · ')
-    const school = brand.school ?? ''
+    // Editable from the card editor — fall back to the brand row.
+    const fName = String(form.get('name') ?? '').trim()
+    const fSub = String(form.get('subline') ?? '').trim()
+    const fSchool = String(form.get('school') ?? '').trim()
+    const name = (fName || brand.brand_name || 'ATHLETE').toUpperCase()
+    const subline = fSub || [brand.athletic_position, brand.sport].filter(Boolean).join(' · ')
+    const school = fSchool || brand.school || ''
+    const handle = String(form.get('handle') ?? '').trim()
+    const website = String(form.get('website') ?? '').trim()
 
     const cardSvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
@@ -225,7 +231,7 @@ export async function generateTradingCardAction(
       }
     }
     let png = await renderTradingCard(
-      { name, subline, school, stats, tagline, photoDataUrl, logoDataUrl, styleLabel: style.toUpperCase() },
+      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, styleLabel: style.toUpperCase() },
       { bg: p.bg, border: p.border, accent: p.accent, text: p.text },
       sharp
     )
