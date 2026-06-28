@@ -41,6 +41,29 @@ function readableText(hex: string): string {
   return lum > 0.6 ? '#111111' : '#ffffff'
 }
 
+// CSS approximation of each generated effect, so the live preview visibly
+// changes as the talent switches effects (the real backdrop is generated).
+function effectCss(effect: string, accent: string, bg: string): string {
+  switch (effect) {
+    case 'color_burst':
+      return `radial-gradient(circle at 50% 38%, ${accent} 0%, ${bg} 58%)`
+    case 'explosion':
+      return `radial-gradient(circle at 50% 42%, ${accent} 0%, ${accent} 6%, ${bg} 46%), conic-gradient(from 0deg at 50% 42%, ${accent}66, ${bg}00 20%, ${accent}66 40%, ${bg}00 60%, ${accent}66 80%, ${bg}00)`
+    case 'gradient_glow':
+      return `linear-gradient(135deg, ${accent} 0%, ${bg} 72%)`
+    case 'particles':
+      return `radial-gradient(${accent}cc 1.5px, transparent 1.6px) 0 0 / 15px 15px, ${bg}`
+    case 'light_streaks':
+      return `repeating-linear-gradient(115deg, ${bg} 0 13px, ${accent}55 13px 17px)`
+    case 'smoke':
+      return `radial-gradient(130% 90% at 28% 18%, ${accent}88, ${bg} 68%)`
+    case 'geometric':
+      return `conic-gradient(from 30deg at 50% 50%, ${accent}, ${bg}, ${accent}, ${bg}, ${accent})`
+    default:
+      return bg
+  }
+}
+
 export function TradingCardTab({
   brandId,
   hasFinal,
@@ -317,7 +340,7 @@ export function TradingCardTab({
             logoUrl={previewLogo}
             f={f}
             stats={cleanStats}
-            effectActive={effect !== 'none'}
+            effect={effect}
           />
           <button
             type="button"
@@ -353,7 +376,7 @@ function CardFlip({
   logoUrl,
   f,
   stats,
-  effectActive,
+  effect,
 }: {
   flipped: boolean
   palette: Palette
@@ -361,7 +384,7 @@ function CardFlip({
   logoUrl: string
   f: { name: string; subline: string; school: string; tagline: string; handle: string; website: string }
   stats: Stat[]
-  effectActive: boolean
+  effect: string
 }) {
   const year = new Date().getFullYear()
   return (
@@ -372,7 +395,7 @@ function CardFlip({
       >
         {/* Front */}
         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
-          <CardShell palette={palette} effectActive={effectActive}>
+          <CardShell palette={palette} effect={effect}>
             <p className="text-display text-center text-lg font-black leading-none" style={{ color: palette.text }}>
               {(f.name || 'YOUR NAME').toUpperCase()}
             </p>
@@ -392,7 +415,7 @@ function CardFlip({
         </div>
         {/* Back */}
         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-          <CardShell palette={palette} effectActive={effectActive}>
+          <CardShell palette={palette} effect={effect}>
             <div className="flex flex-1 flex-col items-center justify-center gap-1.5">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -425,20 +448,18 @@ function CardFlip({
 
 function CardShell({
   palette,
-  effectActive,
+  effect,
   children,
 }: {
   palette: Palette
-  effectActive: boolean
+  effect: string
   children: React.ReactNode
 }) {
   return (
     <div
       className="flex h-full w-full flex-col gap-1 rounded-xl p-3"
       style={{
-        background: effectActive
-          ? `radial-gradient(circle at 30% 18%, ${palette.accent}, ${palette.bg} 70%)`
-          : palette.bg,
+        background: effect !== 'none' ? effectCss(effect, palette.accent, palette.bg) : palette.bg,
         border: `3px solid ${palette.border}`,
       }}
     >
