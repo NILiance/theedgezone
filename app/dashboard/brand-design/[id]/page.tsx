@@ -1171,6 +1171,8 @@ function ArsenalView({
             brandId={brandId}
             hasFinal={hasFinal}
             brandPrimary={brandPrimary}
+            brandName={brandName}
+            logoUrl={finalLogoUrl ?? ''}
           />
           <YourCreations
             brandId={brandId}

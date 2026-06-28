@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type SharpType from 'sharp'
 import { renderTradingCard } from '@/lib/satori-card'
 import { makeLogoTransparent } from '@/lib/logo-transparent'
+import { buildEmailSignatureHtml, buildEmailSignaturePage } from '@/lib/email-signature-html'
 import { requireUser } from '@/lib/auth'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
@@ -518,9 +519,13 @@ export async function generateEmailSigAction(
   const email =
     (userRes && 'user' in userRes ? userRes?.user?.email : undefined) ?? user.email ?? ''
 
+  const name = String(form.get('name') ?? '').trim() || profile?.display_name || brand.brand_name || ''
   const title = String(form.get('title') ?? '').trim() || profile?.athletic_position || ''
+  const sport = String(form.get('sport') ?? '').trim() || profile?.sport || ''
+  const school = String(form.get('school') ?? '').trim() || profile?.school || ''
   const phone = String(form.get('phone') ?? '').trim() || profile?.phone || ''
   const website = String(form.get('website') ?? '').trim() || profile?.website_url || ''
+  const sigEmail = String(form.get('email') ?? '').trim() || email
   const bg = sanitizeHex(String(form.get('bg_color') ?? '#ffffff'), '#ffffff')
   const nameColor = sanitizeHex(
     String(form.get('name_color') ?? brand.primary_color ?? '#111111'),
@@ -531,50 +536,36 @@ export async function generateEmailSigAction(
     String(form.get('link_color') ?? brand.primary_color ?? '#3aa7ff'),
     '#3aa7ff'
   )
-  const socials = (profile?.socials as Record<string, string> | null) ?? {}
+  // Socials from the editor's handle fields, else the profile.
+  const socialFromForm: Record<string, string> = {}
+  const addSocial = (label: string, base: string, field: string) => {
+    const v = String(form.get(field) ?? '').trim()
+    if (v) socialFromForm[label] = /^https?:\/\//i.test(v) ? v : `${base}${v.replace(/^@/, '')}`
+  }
+  addSocial('Instagram', 'https://instagram.com/', 'ig')
+  addSocial('X', 'https://x.com/', 'x')
+  addSocial('TikTok', 'https://tiktok.com/@', 'tiktok')
+  addSocial('LinkedIn', 'https://linkedin.com/in/', 'linkedin')
+  const socials = Object.keys(socialFromForm).length
+    ? socialFromForm
+    : ((profile?.socials as Record<string, string> | null) ?? {})
 
-  const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,sans-serif;font-size:13px;color:${bodyColor};line-height:1.4;background:${bg};padding:12px;">
-  <tr>
-    ${brand.final_logo_url ? `<td style="padding-right:16px;border-right:3px solid ${nameColor};vertical-align:top;"><img src="${esc(brand.final_logo_url)}" width="72" height="72" alt="" style="display:block;border:0;background:${bg};"/></td>` : ''}
-    <td style="padding-left:16px;vertical-align:top;">
-      <p style="margin:0 0 2px;font-size:16px;font-weight:bold;color:${nameColor};">${esc(profile?.display_name ?? brand.brand_name ?? '')}</p>
-      ${title ? `<p style="margin:0 0 4px;color:${bodyColor};">${esc(title)}${profile?.sport ? ' · ' + esc(profile.sport) : ''}</p>` : profile?.sport ? `<p style="margin:0 0 4px;color:${bodyColor};">${esc(profile.sport)}</p>` : ''}
-      ${profile?.school ? `<p style="margin:0 0 6px;color:${bodyColor};">${esc(profile.school)}</p>` : ''}
-      ${email ? `<p style="margin:0;"><a href="mailto:${esc(email)}" style="color:${linkColor};text-decoration:none;">${esc(email)}</a></p>` : ''}
-      ${phone ? `<p style="margin:2px 0 0;color:${bodyColor};">${esc(phone)}</p>` : ''}
-      ${website ? `<p style="margin:2px 0 0;"><a href="${esc(website)}" style="color:${linkColor};text-decoration:none;">${esc(website.replace(/^https?:\/\//, ''))}</a></p>` : ''}
-      ${
-        Object.entries(socials).filter(([, v]) => v).length > 0
-          ? `<p style="margin:6px 0 0;">${Object.entries(socials)
-              .filter(([, v]) => v)
-              .slice(0, 4)
-              .map(
-                ([k, v]) =>
-                  `<a href="${esc(v)}" style="color:${linkColor};text-decoration:none;margin-right:8px;font-size:12px;">${esc(k)}</a>`
-              )
-              .join('')}</p>`
-          : ''
-      }
-    </td>
-  </tr>
-</table>`
-
-  const wrapper = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Email signature</title>
-<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f6f8;color:#111;padding:48px 24px;margin:0;}
-.wrap{max-width:680px;margin:0 auto;}
-.demo{background:${bg};padding:24px;border-radius:8px;border:1px solid #e5e7eb;}
-.copy{background:#0a0e14;color:#fff;padding:16px;border-radius:8px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all;}
-h1{font-size:22px;font-weight:900;letter-spacing:-.01em;margin:0 0 8px;}
-h2{font-size:11px;text-transform:uppercase;letter-spacing:.18em;color:#777;margin:32px 0 12px;}
-p.lead{color:#555;line-height:1.5;}
-</style></head><body><div class="wrap">
-<h1>Your email signature</h1>
-<p class="lead">Paste this HTML into Gmail (Settings → General → Signature) or Outlook (File → Options → Mail → Signatures).</p>
-<h2>Preview</h2>
-<div class="demo">${html}</div>
-<h2>HTML to copy</h2>
-<div class="copy">${esc(html)}</div>
-</div></body></html>`
+  const html = buildEmailSignatureHtml({
+    name,
+    title,
+    sport,
+    school,
+    email: sigEmail,
+    phone,
+    website,
+    socials,
+    logoUrl: brand.final_logo_url ?? undefined,
+    bg,
+    nameColor,
+    bodyColor,
+    linkColor,
+  })
+  const wrapper = buildEmailSignaturePage(html, bg)
 
   const path = `${brandId}/addons/email-signature-${Date.now()}.html`
   const url = await uploadToBucket(path, Buffer.from(wrapper, 'utf-8'), 'text/html')

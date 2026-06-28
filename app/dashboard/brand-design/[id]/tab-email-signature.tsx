@@ -6,164 +6,202 @@ import {
   generateEmailSigAction,
   type EmailSigActionState,
 } from './arsenal-tab-actions'
+import { buildEmailSignatureHtml } from '@/lib/email-signature-html'
 
-const LIGHT = {
-  bg: '#ffffff',
-  name: '#111111',
-  body: '#444444',
-  link: '#3aa7ff',
-}
-const DARK = {
-  bg: '#0a0e14',
-  name: '#ffffff',
-  body: '#cccccc',
-  link: '#caa86a',
+const LIGHT = { bg: '#ffffff', name: '#111111', body: '#444444', link: '#3aa7ff' }
+const DARK = { bg: '#0a0e14', name: '#ffffff', body: '#cccccc', link: '#caa86a' }
+
+function socialUrls(ig: string, x: string, tiktok: string, linkedin: string): Record<string, string> {
+  const m: Record<string, string> = {}
+  const add = (label: string, base: string, v: string) => {
+    const t = v.trim()
+    if (t) m[label] = /^https?:\/\//i.test(t) ? t : `${base}${t.replace(/^@/, '')}`
+  }
+  add('Instagram', 'https://instagram.com/', ig)
+  add('X', 'https://x.com/', x)
+  add('TikTok', 'https://tiktok.com/@', tiktok)
+  add('LinkedIn', 'https://linkedin.com/in/', linkedin)
+  return m
 }
 
 export function EmailSignatureTab({
   brandId,
   hasFinal,
   brandPrimary,
+  brandName,
+  logoUrl,
 }: {
   brandId: string
   hasFinal: boolean
   brandPrimary: string | null
+  brandName: string
+  logoUrl: string
 }) {
   const [state, action, pending] = useActionState<EmailSigActionState, FormData>(
     generateEmailSigAction,
     {}
   )
   const [bg, setBg] = useState(LIGHT.bg)
-  const [name, setName] = useState(brandPrimary ?? LIGHT.name)
+  const [nameColor, setNameColor] = useState(brandPrimary ?? LIGHT.name)
   const [body, setBody] = useState(LIGHT.body)
   const [link, setLink] = useState(brandPrimary ?? LIGHT.link)
+  const [f, setF] = useState({
+    name: brandName || '',
+    title: '',
+    sport: '',
+    school: '',
+    email: '',
+    phone: '',
+    website: '',
+    ig: '',
+    x: '',
+    tiktok: '',
+    linkedin: '',
+  })
+  const [copied, setCopied] = useState(false)
   useRefreshOnNewUrl(state.url)
+
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setF((p) => ({ ...p, [k]: e.target.value }))
 
   const applyPreset = (preset: 'light' | 'dark') => {
     const p = preset === 'light' ? LIGHT : DARK
     setBg(p.bg)
-    setName(brandPrimary ?? p.name)
+    setNameColor(brandPrimary ?? p.name)
     setBody(p.body)
     setLink(brandPrimary ?? p.link)
   }
 
   if (!hasFinal) return <LockedNotice label="Email Signature" />
 
+  const html = buildEmailSignatureHtml({
+    name: f.name || 'Your Name',
+    title: f.title,
+    sport: f.sport,
+    school: f.school,
+    email: f.email,
+    phone: f.phone,
+    website: f.website,
+    socials: socialUrls(f.ig, f.x, f.tiktok, f.linkedin),
+    logoUrl: logoUrl || undefined,
+    bg,
+    nameColor,
+    bodyColor: body,
+    linkColor: link,
+  })
+
+  async function copyHtml() {
+    try {
+      await navigator.clipboard.writeText(html)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const inputCls = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
+
   return (
     <div>
-      <h2 className="text-display text-center text-3xl font-black">Email Signature Generator</h2>
+      <h2 className="text-display text-center text-3xl font-black">Email Signature Designer</h2>
       <p className="mx-auto mt-2 max-w-3xl text-center text-sm text-muted-foreground">
-        Create a professional email signature with your logo, name, and social links. Copy the
-        HTML and paste it into Gmail, Outlook, or any email client.
+        Build your signature live — edit the fields and watch the preview update. Copy the HTML
+        into Gmail or Outlook, or save it to Your Creations.
       </p>
 
-      <form action={action} className="mx-auto mt-6 grid max-w-3xl gap-4">
-        <input type="hidden" name="brand_id" value={brandId} />
-        <input type="hidden" name="bg_color" value={bg} />
-        <input type="hidden" name="name_color" value={name} />
-        <input type="hidden" name="body_color" value={body} />
-        <input type="hidden" name="link_color" value={link} />
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {/* Editor */}
+        <form action={action} className="grid gap-3">
+          <input type="hidden" name="brand_id" value={brandId} />
+          <input type="hidden" name="bg_color" value={bg} />
+          <input type="hidden" name="name_color" value={nameColor} />
+          <input type="hidden" name="body_color" value={body} />
+          <input type="hidden" name="link_color" value={link} />
+          <input type="hidden" name="name" value={f.name} />
+          <input type="hidden" name="sport" value={f.sport} />
+          <input type="hidden" name="email" value={f.email} />
+          <input type="hidden" name="school" value={f.school} />
+          <input type="hidden" name="ig" value={f.ig} />
+          <input type="hidden" name="x" value={f.x} />
+          <input type="hidden" name="tiktok" value={f.tiktok} />
+          <input type="hidden" name="linkedin" value={f.linkedin} />
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            type="text"
-            name="title"
-            placeholder="Title (e.g., Student Athlete)"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <input
-            type="tel"
-            name="phone"
-            placeholder="Phone (optional)"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-        </div>
-        <input
-          type="url"
-          name="website"
-          placeholder="Website or Linktree URL (optional)"
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input value={f.name} onChange={set('name')} placeholder="Name" className={inputCls} />
+            <input name="title" value={f.title} onChange={set('title')} placeholder="Title (e.g. Student Athlete)" className={inputCls} />
+            <input value={f.sport} onChange={set('sport')} placeholder="Sport" className={inputCls} />
+            <input value={f.school} onChange={set('school')} placeholder="School / Team" className={inputCls} />
+            <input value={f.email} onChange={set('email')} type="email" placeholder="Email" className={inputCls} />
+            <input name="phone" value={f.phone} onChange={set('phone')} type="tel" placeholder="Phone" className={inputCls} />
+          </div>
+          <input name="website" value={f.website} onChange={set('website')} type="url" placeholder="Website or Linktree" className={inputCls} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input value={f.ig} onChange={set('ig')} placeholder="Instagram @handle" className={inputCls} />
+            <input value={f.x} onChange={set('x')} placeholder="X @handle" className={inputCls} />
+            <input value={f.tiktok} onChange={set('tiktok')} placeholder="TikTok @handle" className={inputCls} />
+            <input value={f.linkedin} onChange={set('linkedin')} placeholder="LinkedIn /in/handle" className={inputCls} />
+          </div>
 
-        <div className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
-          <ColorPicker label="Background" value={bg} onChange={setBg} />
-          <ColorPicker label="Name" value={name} onChange={setName} />
-          <ColorPicker label="Content" value={body} onChange={setBody} />
-          <ColorPicker label="Links / Social" value={link} onChange={setLink} />
-          <div className="flex items-end gap-2">
+          <div className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
+            <ColorPicker label="Background" value={bg} onChange={setBg} />
+            <ColorPicker label="Name" value={nameColor} onChange={setNameColor} />
+            <ColorPicker label="Content" value={body} onChange={setBody} />
+            <ColorPicker label="Links" value={link} onChange={setLink} />
             <div>
               <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Presets
               </span>
               <div className="mt-1 flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => applyPreset('dark')}
-                  className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
-                >
-                  Dark
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset('light')}
-                  className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
-                >
-                  Light
-                </button>
+                <button type="button" onClick={() => applyPreset('dark')} className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest">Dark</button>
+                <button type="button" onClick={() => applyPreset('light')} className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest">Light</button>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="mt-2 flex justify-center">
-          <button
-            type="submit"
-            disabled={pending}
-            className="text-display rounded-[var(--radius-sm)] bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
-          >
-            {pending ? 'Generating…' : 'Generate Signature'}
-          </button>
-        </div>
-      </form>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <button
+              type="submit"
+              disabled={pending}
+              className="text-display rounded-[var(--radius-sm)] bg-primary px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50"
+            >
+              {pending ? 'Saving…' : 'Save Signature'}
+            </button>
+            <button
+              type="button"
+              onClick={copyHtml}
+              className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-4 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-panel"
+            >
+              {copied ? '✓ Copied' : '⧉ Copy HTML'}
+            </button>
+          </div>
+          {state.error && <p className="text-xs text-destructive">{state.error}</p>}
+          {state.url && !pending && <p className="text-[10px] text-success">✓ Saved to Your Creations below.</p>}
+        </form>
 
-      {state.url && (
-        <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3 rounded-[var(--radius)] border border-success/40 bg-success/5 p-5 text-center">
-          <p className="text-display text-sm font-bold text-success">✓ Signature ready</p>
-          <a
-            href={state.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
-          >
-            Open preview + copy HTML →
-          </a>
+        {/* Live preview */}
+        <div>
+          <p className="text-display mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Live preview
+          </p>
+          <div className="overflow-auto rounded-[var(--radius)] border border-border p-5" style={{ background: bg }}>
+            <div dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            Paste the copied HTML into Gmail (Settings → Signature) or Outlook (Options → Mail →
+            Signatures).
+          </p>
         </div>
-      )}
-      {state.error && <p className="mt-4 text-center text-xs text-destructive">{state.error}</p>}
+      </div>
     </div>
   )
 }
 
-function ColorPicker({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
+function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block">
-      <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 h-8 w-16 cursor-pointer rounded border border-border bg-background"
-      />
+      <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 h-8 w-16 cursor-pointer rounded border border-border bg-background" />
     </label>
   )
 }
