@@ -596,14 +596,15 @@ export async function generateSocialAvatarsAction(
   if (!brand) return { error: 'Not your brand design' }
   if (!brand.final_logo_url) return { error: 'Pick a final logo first.' }
 
+  const effect = String(form.get('effect') ?? 'none')
   try {
     const { generateSocialAvatars } = await import('@/lib/brand-addons')
-    const result = await generateSocialAvatars(brandId)
+    const result = await generateSocialAvatars(brandId, effect)
     const rec = await recordAddon({
       brandId,
       kind: 'social_avatars',
       url: result.url,
-      metadata: { count: result.count },
+      metadata: { count: result.count, effect },
       bumpCredits: true,
     })
     if (rec.error) return { error: rec.error }

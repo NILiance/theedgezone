@@ -1,8 +1,9 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DownloadLink } from '@/components/download-link'
+import { ARSENAL_EFFECTS } from '@/lib/arsenal-tab-options'
 import {
   generateSocialAvatarsAction,
   type SocialAvatarsActionState,
@@ -22,6 +23,7 @@ export function SocialAvatarsTab({ brandId, hasFinal }: { brandId: string; hasFi
     generateSocialAvatarsAction,
     {}
   )
+  const [effect, setEffect] = useState('none')
   useRefreshOnNewUrl(state.url)
 
   if (!hasFinal) return <LockedNotice label="Social Avatars" />
@@ -48,8 +50,30 @@ export function SocialAvatarsTab({ brandId, hasFinal }: { brandId: string; hasFi
         ))}
       </div>
 
-      <form action={action} className="mt-6 flex justify-center">
+      <form action={action} className="mx-auto mt-6 flex max-w-sm flex-col items-center gap-3">
         <input type="hidden" name="brand_id" value={brandId} />
+        <input type="hidden" name="effect" value={effect} />
+        <label className="block w-full">
+          <span className="text-display block text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Effect
+          </span>
+          <select
+            value={effect}
+            onChange={(e) => setEffect(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          >
+            {ARSENAL_EFFECTS.map((eff) => (
+              <option key={eff.val} value={eff.val}>
+                {eff.name}
+              </option>
+            ))}
+          </select>
+          {effect !== 'none' && (
+            <span className="mt-1 block text-center text-[10px] text-muted-foreground">
+              Generates a branded effect backdrop behind your logo.
+            </span>
+          )}
+        </label>
         <button
           type="submit"
           disabled={pending}

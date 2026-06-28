@@ -433,12 +433,15 @@ const PLATFORMS = [
   { key: 'linkedin', size: 400, bg: '#fff', circle: true },
 ]
 
-export async function generateSocialAvatars(brandId: string): Promise<{ url: string; count: number }> {
+export async function generateSocialAvatars(
+  brandId: string,
+  effect?: string
+): Promise<{ url: string; count: number }> {
   const supabase = createServiceClient()
   if (!supabase) throw new Error('Service role key missing')
   const { data: brand } = await supabase
     .from('brand_designs')
-    .select('final_logo_url')
+    .select('final_logo_url, primary_color, secondary_color')
     .eq('id', brandId)
     .single()
   if (!brand?.final_logo_url) throw new Error('No final logo selected')
@@ -447,24 +450,57 @@ export async function generateSocialAvatars(brandId: string): Promise<{ url: str
   const sharp = await getSharp()
   const zip = new JSZip()
   const logoBuf = await fetchAsBuffer(brand.final_logo_url)
-  const logoMeta = await sharp(logoBuf).metadata()
-  const baseW = logoMeta.width ?? 512
+
+  // Optional generated effect background — one Gemini call, composited behind
+  // the logo at every size. Falls back to the plain solid-colour avatars.
+  let effectBg: Buffer | null = null
+  if (effect && effect !== 'none') {
+    try {
+      const { generateArsenalImage } = await import('@/lib/gemini-image')
+      const { effectBackgroundPrompt } = await import('@/lib/arsenal-prompts')
+      const colors =
+        [brand.primary_color, brand.secondary_color].filter(Boolean).join(', ') || 'bold brand colors'
+      const res = await generateArsenalImage({
+        brandId,
+        prompt: effectBackgroundPrompt(effect, colors),
+        category: 'avatar_effect',
+      })
+      effectBg = await fetchAsBuffer(res.url)
+    } catch (err) {
+      console.error('[avatars effect bg]', err instanceof Error ? err.message : err)
+    }
+  }
+
+  // On an effect background, knock out the logo's own background so the effect
+  // shows around it.
+  let logoSource = logoBuf
+  if (effectBg) {
+    const { makeLogoTransparent } = await import('@/lib/logo-transparent')
+    logoSource = await makeLogoTransparent(logoBuf, sharp).catch(() => logoBuf)
+  }
 
   for (const p of PLATFORMS) {
     const targetSize = p.size
-    const logoSize = Math.round(targetSize * 0.72)
-    const resizedLogo = await sharp(logoBuf)
+    const logoSize = Math.round(targetSize * (effectBg ? 0.6 : 0.72))
+    const resizedLogo = await sharp(logoSource)
       .resize(logoSize, logoSize, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .toBuffer()
 
-    let canvas = sharp({
-      create: {
-        width: targetSize,
-        height: targetSize,
-        channels: 4,
-        background: p.bg === '#fff' ? { r: 255, g: 255, b: 255, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 1 },
-      },
-    }).png()
+    let canvas
+    if (effectBg) {
+      const bg = await sharp(effectBg).resize(targetSize, targetSize, { fit: 'cover' }).png().toBuffer()
+      canvas = sharp(bg)
+    } else {
+      canvas = sharp({
+        create: {
+          width: targetSize,
+          height: targetSize,
+          channels: 4,
+          background:
+            p.bg === '#fff' ? { r: 255, g: 255, b: 255, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 1 },
+        },
+      }).png()
+    }
 
     canvas = canvas.composite([
       {
@@ -473,10 +509,8 @@ export async function generateSocialAvatars(brandId: string): Promise<{ url: str
         left: Math.round((targetSize - logoSize) / 2),
       },
     ])
-    const composed = await canvas.toBuffer()
+    const composed = await canvas.png().toBuffer()
     zip.file(`${p.key}_${targetSize}x${targetSize}.png`, composed)
-    // Drop unused vars warning silencer (keep baseW reference)
-    void baseW
   }
 
   const zipBuf = await zip.generateAsync({ type: 'nodebuffer' })

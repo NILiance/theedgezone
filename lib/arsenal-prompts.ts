@@ -106,6 +106,12 @@ export function effectClause(effect?: string | null): string {
     : ''
 }
 
+/** A full-bleed effect BACKGROUND (no logo/text) for compositing behind avatars. */
+export function effectBackgroundPrompt(effect: string, colors: string): string {
+  const f = EFFECT_FRAGMENTS[effect] ?? 'a dynamic abstract energy texture'
+  return `Create a vibrant, abstract full-bleed background featuring ${f}, using ONLY these colors: ${colors}. NO text, NO words, NO logo — purely the effect/texture filling the entire square frame. High-energy, premium, suitable as a social-media avatar backdrop.`
+}
+
 export function businessCardPrompt(ctx: ArsenalContext): ArsenalPromptResult {
   const lines: string[] = [`Name (large, bold): ${ctx.brandName}`]
   if (ctx.positionLine) lines.push(`Title line: ${ctx.positionLine}`)
