@@ -442,15 +442,29 @@ export async function generateQrCodeAction(
         // logo's clear areas. ECC=H keeps it scannable behind a ~22% patch.
         const transparent = { r: 0, g: 0, b: 0, alpha: 0 }
         const trimmed = await sharp(logoBuf).trim().png().toBuffer().catch(() => logoBuf)
+        const logoSize = 168
         const sized = await sharp(trimmed)
-          .resize(176, 176, { fit: 'contain', background: transparent })
+          .resize(logoSize, logoSize, { fit: 'contain', background: transparent })
           .png()
           .toBuffer()
-        // Knock out the logo's white/solid background (same as the brand kit's
-        // transparent logo) so it doesn't sit on the QR as a white square.
+        // Knock out the logo's own white/solid background (brand-kit transparent
+        // logo) so only the mark shows.
         const inner = await makeLogoTransparent(sized, sharp)
+        // Clear the QR *behind* the logo with a rounded patch so the modules
+        // don't show through and clutter it — the logo stays readable. At ~25%
+        // center coverage the ECC=H QR is still scannable.
+        const pad = 16
+        const patchSize = logoSize + pad * 2
+        const patchSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${patchSize}" height="${patchSize}"><rect width="${patchSize}" height="${patchSize}" rx="28" ry="28" fill="${bgColor}"/></svg>`
+        const patch = await sharp(Buffer.from(patchSvg)).png().toBuffer()
         png = Buffer.from(
-          await sharp(png).composite([{ input: inner, gravity: 'center' }]).png().toBuffer()
+          await sharp(png)
+            .composite([
+              { input: patch, gravity: 'center' },
+              { input: inner, gravity: 'center' },
+            ])
+            .png()
+            .toBuffer()
         )
       }
     }
