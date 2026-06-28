@@ -12,6 +12,7 @@ import { ArsenalGrid } from './arsenal-grid'
 import { YourCreations } from './your-creations'
 import { BrandToolkit } from './brand-toolkit'
 import { ArsenalSubtabs } from './arsenal-subtabs'
+import { ArsenalGroupLanding } from './arsenal-group-landing'
 import { FOCUSED_CATEGORY_SUBTABS, type ArsenalSubtab } from './arsenal-subtab-meta'
 import { LogoAnimationTab } from './tab-logo-animation'
 import { TradingCardTab } from './tab-trading-card'
@@ -1079,6 +1080,13 @@ function ArsenalView({
           <ArsenalGrid brandId={brandId} hasFinal={hasFinal} />
           <YourCreations brandId={brandId} creations={creations} />
         </>
+      )}
+
+      {(subtab === 'visual' ||
+        subtab === 'comms' ||
+        subtab === 'print' ||
+        subtab === 'digital') && (
+        <ArsenalGroupLanding brandId={brandId} group={subtab} />
       )}
 
       {subtab === 'logo_animation' && (

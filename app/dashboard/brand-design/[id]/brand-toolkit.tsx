@@ -80,7 +80,7 @@ export function BrandToolkit({
                 className="text-display mt-1 text-[10px] font-bold uppercase tracking-widest"
                 style={{ color: s.color, opacity: 0.7 }}
               >
-                {has ? 'Click to open →' : 'Click to generate →'}
+                {has ? 'Open →' : 'Create →'}
               </p>
             </button>
           )
@@ -166,7 +166,9 @@ function ToolkitPanel({
 
         {pending && (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Generating your personalized coaching… stay on the page.
+            Generating your{' '}
+            <strong className="text-foreground">{section?.label}</strong>… this takes ~15 seconds,
+            stay on the page.
           </p>
         )}
 
@@ -188,6 +190,11 @@ function ToolkitPanel({
 
         {content && !pending && (
           <>
+            {state.ok && (
+              <div className="mb-3 rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-3 py-2 text-xs font-bold text-success">
+                ✓ Your “{section?.label}” is ready — see it below.
+              </div>
+            )}
             <MarkdownView md={content} />
             <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3">
               <form action={action}>

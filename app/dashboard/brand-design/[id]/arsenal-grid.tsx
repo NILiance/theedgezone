@@ -314,22 +314,6 @@ export function ArsenalGrid({
           ))}
         </div>
       </div>
-      <div>
-        <p className="text-eyebrow text-primary">More categories</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          One-off branded assets you&rsquo;ll reach for again and again.
-        </p>
-        <div className="mt-3 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-          {STANDARD.map((c) => (
-            <CategoryTile
-              key={c.id}
-              def={c}
-              active={openId === c.id}
-              onClick={() => setOpenId((cur) => (cur === c.id ? null : c.id))}
-            />
-          ))}
-        </div>
-      </div>
 
       {openDef && (
         <div className="rounded-[var(--radius)] border border-primary/40 bg-panel/40 p-1">
