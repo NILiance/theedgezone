@@ -24,6 +24,8 @@ export function QrCodeTab({
   const [qrType, setQrType] = useState<string>(QR_TYPE_OPTIONS[0]!.value)
   const [qrColor, setQrColor] = useState('#000000')
   const [bgColor, setBgColor] = useState('#ffffff')
+  const [includeLogo, setIncludeLogo] = useState(true)
+  const [logoSize, setLogoSize] = useState(168)
   const placeholder = QR_TYPE_OPTIONS.find((t) => t.value === qrType)?.placeholder ?? ''
   useRefreshOnNewUrl(state.url)
 
@@ -93,10 +95,35 @@ export function QrCodeTab({
           placeholder={placeholder}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
+        <input type="hidden" name="logo_size" value={logoSize} />
         <label className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <input type="checkbox" name="include_logo" value="1" defaultChecked className="h-4 w-4" />
+          <input
+            type="checkbox"
+            name="include_logo"
+            value="1"
+            checked={includeLogo}
+            onChange={(e) => setIncludeLogo(e.target.checked)}
+            className="h-4 w-4"
+          />
           Center logo on QR
         </label>
+        {includeLogo && (
+          <label className="mx-auto flex w-full max-w-xs items-center gap-3 text-xs text-muted-foreground">
+            <span className="text-display whitespace-nowrap text-[10px] font-bold uppercase tracking-widest">
+              Logo size
+            </span>
+            <input
+              type="range"
+              min={96}
+              max={240}
+              step={8}
+              value={logoSize}
+              onChange={(e) => setLogoSize(Number(e.target.value))}
+              className="w-full cursor-pointer"
+            />
+            <span className="w-9 text-right">{Math.round((logoSize / 800) * 100)}%</span>
+          </label>
+        )}
         <div className="mt-2 flex justify-center">
           <button
             type="submit"

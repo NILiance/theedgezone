@@ -457,6 +457,8 @@ export async function generateQrCodeAction(
   const qrColor = sanitizeHex(String(form.get('qr_color') ?? '#000000'), '#000000')
   const bgColor = sanitizeHex(String(form.get('bg_color') ?? '#ffffff'), '#ffffff')
   const includeLogo = form.get('include_logo') === '1' || form.get('include_logo') === 'on'
+  // Center-logo size — clamped to a still-scannable range for ECC=H.
+  const logoSize = Math.max(96, Math.min(240, Number(form.get('logo_size') ?? 168) || 168))
 
   try {
     const apiUrl =
@@ -477,7 +479,6 @@ export async function generateQrCodeAction(
         // logo's clear areas. ECC=H keeps it scannable behind a ~22% patch.
         const transparent = { r: 0, g: 0, b: 0, alpha: 0 }
         const trimmed = await sharp(logoBuf).trim().png().toBuffer().catch(() => logoBuf)
-        const logoSize = 168
         const sized = await sharp(trimmed)
           .resize(logoSize, logoSize, { fit: 'contain', background: transparent })
           .png()
@@ -490,7 +491,8 @@ export async function generateQrCodeAction(
         // center coverage the ECC=H QR is still scannable.
         const pad = 16
         const patchSize = logoSize + pad * 2
-        const patchSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${patchSize}" height="${patchSize}"><rect width="${patchSize}" height="${patchSize}" rx="28" ry="28" fill="${bgColor}"/></svg>`
+        const rx = Math.round(patchSize * 0.14)
+        const patchSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${patchSize}" height="${patchSize}"><rect width="${patchSize}" height="${patchSize}" rx="${rx}" ry="${rx}" fill="${bgColor}"/></svg>`
         const patch = await sharp(Buffer.from(patchSvg)).png().toBuffer()
         png = Buffer.from(
           await sharp(png)
@@ -510,7 +512,7 @@ export async function generateQrCodeAction(
       brandId,
       kind: 'qr_code',
       url,
-      metadata: { qrType, target, data, qrColor, bgColor, includeLogo },
+      metadata: { qrType, target, data, qrColor, bgColor, includeLogo, logoSize },
       bumpCredits: true,
     })
     if (rec.error) return { error: rec.error }
