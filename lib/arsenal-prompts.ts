@@ -88,6 +88,24 @@ export interface ArsenalPromptResult {
 
 // ── Per-category builders ────────────────────────────────────────────────────
 
+// Optional visual effects the talent can layer onto generated assets.
+const EFFECT_FRAGMENTS: Record<string, string> = {
+  color_burst: 'a dynamic radial COLOR BURST of light rays emanating from behind the focal point',
+  explosion: 'an energetic EXPLOSION / shatter burst of fragments and light radiating outward',
+  gradient_glow: 'a smooth GRADIENT GLOW / aura behind the focal point, soft and premium',
+  particles: 'floating PARTICLES, sparks and bokeh scattered through the composition',
+  light_streaks: 'fast diagonal LIGHT STREAKS / motion lines for a sense of speed and energy',
+  smoke: 'atmospheric SMOKE / FOG drifting through the background for a moody, cinematic feel',
+  geometric: 'bold GEOMETRIC SHAPES (triangles, arcs, lines) as a modern decorative layer',
+}
+
+export function effectClause(effect?: string | null): string {
+  const f = effect && effect !== 'none' ? EFFECT_FRAGMENTS[effect] : null
+  return f
+    ? `\n\nVISUAL EFFECT: incorporate ${f}, rendered using ONLY the brand colors. Keep it tasteful and on-brand — it must enhance, not overpower, the logo and text.`
+    : ''
+}
+
 export function businessCardPrompt(ctx: ArsenalContext): ArsenalPromptResult {
   const lines: string[] = [`Name (large, bold): ${ctx.brandName}`]
   if (ctx.positionLine) lines.push(`Title line: ${ctx.positionLine}`)
@@ -216,14 +234,15 @@ export function letterheadPrompt(ctx: ArsenalContext): ArsenalPromptResult {
   }
 }
 
-export function presentationPrompt(ctx: ArsenalContext): ArsenalPromptResult {
+export function presentationPrompt(ctx: ArsenalContext, effect?: string): ArsenalPromptResult {
   return {
     aspect: '16:9',
     prompt:
       `I am providing a logo image. Create a professional presentation title slide (16:9 widescreen) for ${ctx.brandName}.\n\n` +
       `${logoRule(ctx.colors)}\n\n` +
       `Place the logo centered with the athlete name "${ctx.brandName}" below it. Use ONLY these exact colors for accents: ${ctx.colors}. ${bgTheme(ctx.colorMode)}. Clean ${ctx.vibe ?? 'professional'} aesthetic. Ready-to-use title slide.\n\n` +
-      `${spellRule(ctx.brandName)}`,
+      `${spellRule(ctx.brandName)}` +
+      effectClause(effect),
   }
 }
 
@@ -294,7 +313,8 @@ export const SOCIAL_PLATFORMS = Object.keys(SOCIAL_SPECS) as Array<keyof typeof 
 export function socialMediaPrompt(
   ctx: ArsenalContext,
   platform: string,
-  style: string
+  style: string,
+  effect?: string
 ): ArsenalPromptResult {
   const spec = SOCIAL_SPECS[platform] ?? SOCIAL_SPECS.instagram!
   return {
@@ -304,7 +324,8 @@ export function socialMediaPrompt(
       `${logoRule(ctx.colors)}\n\n` +
       `Place the logo prominently in the center of the design. Build a professional ${style} branded template AROUND the logo using ONLY these exact colors: ${ctx.colors}. Every element — backgrounds, borders, shapes, gradients — must use these colors. ${bgTheme(ctx.colorMode)}. Leave space for optional text overlay. Platform: ${platform}.\n\n` +
       `${spellRule(ctx.brandName)}\n\n` +
-      `${brandCtx(ctx)}`,
+      `${brandCtx(ctx)}` +
+      effectClause(effect),
   }
 }
 

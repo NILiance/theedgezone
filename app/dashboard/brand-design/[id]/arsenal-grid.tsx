@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DownloadLink } from '@/components/download-link'
 import { generateArsenalAsset, type ArsenalGenState } from './arsenal-actions'
 import { LogoOnPhotoEditor } from './logo-on-photo-editor'
+import { ARSENAL_EFFECTS } from '@/lib/arsenal-tab-options'
 import {
   UNIFORM_SPORTS,
   UNIFORM_ITEMS_BY_SPORT,
@@ -42,6 +43,8 @@ interface CategoryDef {
   notesLabel?: string
   /** Special UI variant — 'uniforms' = sport + item two-step picker, 'logo_on_photo' = file upload. */
   variant?: 'uniforms' | 'logo_on_photo'
+  /** When true, the generator shows a visual-effects picker (color burst, etc.). */
+  effects?: boolean
 }
 
 const FEATURED: CategoryDef[] = [
@@ -107,6 +110,7 @@ const STANDARD: CategoryDef[] = [
     icon: '📱',
     color: '#e67e22',
     blurb: 'Templates for IG, TikTok, YouTube banner, LinkedIn, Twitch, more.',
+    effects: true,
     optionLabel: 'Platform',
     options: [
       { val: 'instagram', name: 'Instagram Post (1:1)' },
@@ -180,6 +184,7 @@ const STANDARD: CategoryDef[] = [
     icon: '📊',
     color: '#9b59b6',
     blurb: '16:9 title slide ready to drop into Keynote / Google Slides.',
+    effects: true,
   },
   {
     id: 'thank_you_card',
@@ -423,6 +428,7 @@ function StandardCategoryCard({
   )
   const [option, setOption] = useState(def.options?.[0]?.val ?? '')
   const [notes, setNotes] = useState('')
+  const [effect, setEffect] = useState('none')
   const url = state.url
   useRefreshOnNewUrl(url)
   return (
@@ -436,7 +442,27 @@ function StandardCategoryCard({
       <input type="hidden" name="category" value={def.id} />
       <input type="hidden" name="option" value={option} />
       <input type="hidden" name="notes" value={notes} />
+      {def.effects && <input type="hidden" name="effect" value={effect} />}
       <CategoryHeader def={def} />
+
+      {def.effects && (
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Visual Effect
+          </span>
+          <select
+            value={effect}
+            onChange={(e) => setEffect(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+          >
+            {ARSENAL_EFFECTS.map((eff) => (
+              <option key={eff.val} value={eff.val}>
+                {eff.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {def.options && def.options.length > 0 && (
         <label className="block">

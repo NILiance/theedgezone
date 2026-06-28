@@ -74,6 +74,7 @@ export async function generateArsenalAsset(
   const option = String(form.get('option') ?? '')
   const styleOpt = String(form.get('style') ?? 'announcement')
   const notes = String(form.get('notes') ?? '')
+  const effect = String(form.get('effect') ?? 'none')
   // Optional sport override — used by the Sport Uniforms two-step picker.
   // Falls back to the brand row's sport if not supplied.
   const sportOverride = String(form.get('sport') ?? '')
@@ -152,7 +153,7 @@ export async function generateArsenalAsset(
         built = letterheadPrompt(ctx)
         break
       case 'presentation':
-        built = presentationPrompt(ctx)
+        built = presentationPrompt(ctx, effect)
         break
       case 'thank_you_card':
         built = thankYouCardPrompt(ctx)
@@ -161,7 +162,7 @@ export async function generateArsenalAsset(
         built = mediaKitPrompt(ctx)
         break
       case 'social_media':
-        built = socialMediaPrompt(ctx, option || 'instagram', styleOpt)
+        built = socialMediaPrompt(ctx, option || 'instagram', styleOpt, effect)
         break
       case 'merch_mockup':
         built = merchPrompt(ctx, option || 'tshirt', ctx.tagline)
