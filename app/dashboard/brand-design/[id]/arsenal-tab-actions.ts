@@ -436,28 +436,17 @@ export async function generateQrCodeAction(
       const logoRes = await fetch(brand.final_logo_url)
       if (logoRes.ok) {
         const logoBuf = Buffer.from(await logoRes.arrayBuffer())
-        // Auto-crop the logo's transparent/uniform padding so it fills the
-        // center cleanly (it otherwise looked small), then enlarge it. ECC=H
-        // keeps the QR scannable behind a center patch up to ~25%.
-        const trimmed = await sharp(logoBuf)
-          .trim()
-          .png()
-          .toBuffer()
-          .catch(() => logoBuf)
-        const size = 176
-        const pad = 12
+        // Auto-crop the logo's padding, then composite it directly over the QR
+        // with its OWN transparency (no white box) — the QR shows through the
+        // logo's clear areas. ECC=H keeps it scannable behind a ~22% patch.
+        const transparent = { r: 0, g: 0, b: 0, alpha: 0 }
+        const trimmed = await sharp(logoBuf).trim().png().toBuffer().catch(() => logoBuf)
         const inner = await sharp(trimmed)
-          .resize(size, size, { fit: 'contain', background: bgColor })
-          .png()
-          .toBuffer()
-        const padded = await sharp({
-          create: { width: size + pad * 2, height: size + pad * 2, channels: 4, background: bgColor },
-        })
-          .composite([{ input: inner, top: pad, left: pad }])
+          .resize(176, 176, { fit: 'contain', background: transparent })
           .png()
           .toBuffer()
         png = Buffer.from(
-          await sharp(png).composite([{ input: padded, gravity: 'center' }]).png().toBuffer()
+          await sharp(png).composite([{ input: inner, gravity: 'center' }]).png().toBuffer()
         )
       }
     }

@@ -31,7 +31,10 @@ const envSchema = z.object({
   CRON_SECRET: z.string().optional(),
 
   // Integrations
-  ANTHROPIC_API_KEY: z.string().optional(),
+  // .trim() guards against a trailing newline/space pasted into the Vercel env
+  // var, which the Anthropic SDK would otherwise send and get a 401 invalid
+  // x-api-key for.
+  ANTHROPIC_API_KEY: z.string().trim().optional(),
   GEMINI_API_KEY: z.string().optional(),
   IDEOGRAM_API_KEY: z.string().optional(),
   PHYLLO_CLIENT_ID: z.string().optional(),

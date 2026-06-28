@@ -78,6 +78,7 @@ export function YourCreations({
   creations: CreationRow[]
 }) {
   const [quoteFor, setQuoteFor] = useState<CreationRow | null>(null)
+  const [enlarged, setEnlarged] = useState<CreationRow | null>(null)
 
   if (creations.length === 0) {
     return (
@@ -106,6 +107,7 @@ export function YourCreations({
             brandId={brandId}
             creation={c}
             onRequestQuote={() => setQuoteFor(c)}
+            onEnlarge={() => setEnlarged(c)}
           />
         ))}
       </div>
@@ -116,7 +118,65 @@ export function YourCreations({
           onClose={() => setQuoteFor(null)}
         />
       )}
+      {enlarged && <EnlargeModal creation={enlarged} onClose={() => setEnlarged(null)} />}
     </section>
+  )
+}
+
+// Request Quote only makes sense for physical / print orders — hide it on
+// digital, comms, animation and text creations.
+const NO_QUOTE_KINDS = new Set([
+  'logo_animation',
+  'qr_code',
+  'social_avatars',
+  'email_signature',
+  'email_signature_image',
+  'social_media',
+  'phone_wallpaper',
+  'story_highlight',
+  'virtual_background',
+  'icon_generator',
+  'game_day',
+  'brand_voice_lines',
+  'brand_voice_doc',
+])
+
+function EnlargeModal({ creation, onClose }: { creation: CreationRow; onClose: () => void }) {
+  const url = creation.url ?? ''
+  const isImg = isImageUrl(url)
+  const isHtml = !isImg && isHtmlUrl(url)
+  return (
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 sm:p-8"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="text-display absolute right-4 top-4 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/20"
+      >
+        ✕ Close
+      </button>
+      {isImg ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt=""
+          onClick={(e) => e.stopPropagation()}
+          className="max-h-[90vh] max-w-[92vw] rounded-md object-contain shadow-2xl"
+        />
+      ) : isHtml ? (
+        <iframe
+          src={url}
+          title="Preview"
+          sandbox=""
+          onClick={(e) => e.stopPropagation()}
+          className="h-[80vh] w-[min(92vw,840px)] rounded-md border-0 bg-white"
+        />
+      ) : null}
+    </div>
   )
 }
 
@@ -124,10 +184,12 @@ function CreationTile({
   brandId,
   creation,
   onRequestQuote,
+  onEnlarge,
 }: {
   brandId: string
   creation: CreationRow
   onRequestQuote: () => void
+  onEnlarge: () => void
 }) {
   const [delState, delAction, delPending] = useActionState<DeleteAddonState, FormData>(
     deleteAddonAction,
@@ -166,8 +228,10 @@ function CreationTile({
   return (
     <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
       <div
+        onClick={showImage || showHtml ? onEnlarge : undefined}
+        title={showImage || showHtml ? 'Click to enlarge' : undefined}
         className={`relative flex aspect-square items-center justify-center overflow-hidden ${
-          showImage || showHtml ? 'bg-white' : 'bg-panel-elevated'
+          showImage || showHtml ? 'cursor-zoom-in bg-white' : 'bg-panel-elevated'
         }`}
       >
         {showImage && creation.url ? (
@@ -234,7 +298,7 @@ function CreationTile({
               ✏️ Edit
             </a>
           )}
-          {creation.kind !== 'logo_animation' && (
+          {!NO_QUOTE_KINDS.has(creation.kind) && (
             <button
               type="button"
               onClick={onRequestQuote}
