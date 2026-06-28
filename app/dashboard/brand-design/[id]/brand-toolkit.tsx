@@ -165,11 +165,18 @@ function ToolkitPanel({
         )}
 
         {pending && (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Generating your{' '}
-            <strong className="text-foreground">{section?.label}</strong>… this takes ~15 seconds,
-            stay on the page.
-          </p>
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <span className="flex gap-1.5" aria-hidden>
+              <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
+              <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
+              <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-primary" />
+            </span>
+            <p className="text-sm text-muted-foreground">
+              Generating your{' '}
+              <strong className="text-foreground">{section?.label}</strong>… this takes ~15 seconds,
+              stay on the page.
+            </p>
+          </div>
         )}
 
         {showError && (

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import Anthropic from '@anthropic-ai/sdk'
 import type SharpType from 'sharp'
 import { renderTradingCard } from '@/lib/satori-card'
+import { makeLogoTransparent } from '@/lib/logo-transparent'
 import { requireUser } from '@/lib/auth'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
@@ -441,10 +442,13 @@ export async function generateQrCodeAction(
         // logo's clear areas. ECC=H keeps it scannable behind a ~22% patch.
         const transparent = { r: 0, g: 0, b: 0, alpha: 0 }
         const trimmed = await sharp(logoBuf).trim().png().toBuffer().catch(() => logoBuf)
-        const inner = await sharp(trimmed)
+        const sized = await sharp(trimmed)
           .resize(176, 176, { fit: 'contain', background: transparent })
           .png()
           .toBuffer()
+        // Knock out the logo's white/solid background (same as the brand kit's
+        // transparent logo) so it doesn't sit on the QR as a white square.
+        const inner = await makeLogoTransparent(sized, sharp)
         png = Buffer.from(
           await sharp(png).composite([{ input: inner, gravity: 'center' }]).png().toBuffer()
         )
