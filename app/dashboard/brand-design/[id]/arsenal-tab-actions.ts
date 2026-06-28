@@ -559,6 +559,10 @@ export async function generateEmailSigAction(
     ? socialFromForm
     : ((profile?.socials as Record<string, string> | null) ?? {})
 
+  const { ensureTransparentLogo } = await import('@/lib/brand-addons')
+  const transparentLogo = await ensureTransparentLogo(brandId)
+  const logoSize = Math.max(32, Math.min(160, Number(form.get('logo_size') ?? 72) || 72))
+
   const html = buildEmailSignatureHtml({
     name,
     title,
@@ -568,7 +572,8 @@ export async function generateEmailSigAction(
     phone,
     website,
     socials,
-    logoUrl: brand.final_logo_url ?? undefined,
+    logoUrl: transparentLogo ?? brand.final_logo_url ?? undefined,
+    logoSize,
     bg,
     nameColor,
     bodyColor,

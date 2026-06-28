@@ -45,6 +45,7 @@ export function EmailSignatureTab({
   const [nameColor, setNameColor] = useState(brandPrimary ?? LIGHT.name)
   const [body, setBody] = useState(LIGHT.body)
   const [link, setLink] = useState(brandPrimary ?? LIGHT.link)
+  const [logoSize, setLogoSize] = useState(72)
   const [f, setF] = useState({
     name: brandName || '',
     title: '',
@@ -84,6 +85,7 @@ export function EmailSignatureTab({
     website: f.website,
     socials: socialUrls(f.ig, f.x, f.tiktok, f.linkedin),
     logoUrl: logoUrl || undefined,
+    logoSize,
     bg,
     nameColor,
     bodyColor: body,
@@ -118,6 +120,7 @@ export function EmailSignatureTab({
           <input type="hidden" name="name_color" value={nameColor} />
           <input type="hidden" name="body_color" value={body} />
           <input type="hidden" name="link_color" value={link} />
+          <input type="hidden" name="logo_size" value={logoSize} />
           <input type="hidden" name="name" value={f.name} />
           <input type="hidden" name="sport" value={f.sport} />
           <input type="hidden" name="email" value={f.email} />
@@ -148,6 +151,20 @@ export function EmailSignatureTab({
             <ColorPicker label="Name" value={nameColor} onChange={setNameColor} />
             <ColorPicker label="Content" value={body} onChange={setBody} />
             <ColorPicker label="Links" value={link} onChange={setLink} />
+            <label className="block">
+              <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Logo size · {logoSize}px
+              </span>
+              <input
+                type="range"
+                min={40}
+                max={140}
+                step={4}
+                value={logoSize}
+                onChange={(e) => setLogoSize(Number(e.target.value))}
+                className="mt-3 w-32 cursor-pointer align-middle"
+              />
+            </label>
             <div>
               <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Presets

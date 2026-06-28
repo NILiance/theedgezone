@@ -32,6 +32,7 @@ import { LogoCanvas } from '@/components/brand-design/logo-canvas'
 import { BrandSwitcher } from './brand-switcher'
 import { ConceptPackButton } from './concept-pack-button'
 import { getTradingCardTiers } from '@/lib/trading-cards'
+import { ensureTransparentLogo } from '@/lib/brand-addons'
 import { RenderBoundary } from '@/components/render-boundary'
 import { DownloadLink } from '@/components/download-link'
 
@@ -128,6 +129,13 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
   ).length
   const selectedConcept = (concepts ?? []).find((c) => c.is_selected) ?? null
   const hasFinal = Boolean(selectedConcept)
+
+  // Email-signature logo: a transparent PNG so it sits cleanly on any
+  // background. Only generated when that tab is open (idempotent + cached).
+  const emailLogoUrl =
+    hasFinal && arsenalSubtab === 'email_signature'
+      ? ((await ensureTransparentLogo(brand.id)) ?? brand.final_logo_url ?? '')
+      : (brand.final_logo_url ?? '')
 
   const { data: addonsData } = await supabase
     .from('brand_design_addons')
@@ -359,6 +367,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
             brandPrimary={brand.primary_color}
             brandSecondary={brand.secondary_color}
             finalLogoUrl={brand.final_logo_url}
+            emailLogoUrl={emailLogoUrl}
             brandName={brand.brand_name ?? ''}
             tradingCardTiers={tradingCardTiers}
             orderableCards={orderableCards}
@@ -1016,6 +1025,7 @@ function ArsenalView({
   brandPrimary,
   brandSecondary,
   finalLogoUrl,
+  emailLogoUrl,
   brandName,
   tradingCardTiers,
   orderableCards,
@@ -1032,6 +1042,7 @@ function ArsenalView({
   brandPrimary: string | null
   brandSecondary: string | null
   finalLogoUrl: string | null
+  emailLogoUrl: string
   brandName: string
   tradingCardTiers: Array<{ qty: number; price_cents: number; label: string }>
   orderableCards: Array<{ id: string; url: string; style?: string | null }>
@@ -1172,7 +1183,7 @@ function ArsenalView({
             hasFinal={hasFinal}
             brandPrimary={brandPrimary}
             brandName={brandName}
-            logoUrl={finalLogoUrl ?? ''}
+            logoUrl={emailLogoUrl}
           />
           <YourCreations
             brandId={brandId}

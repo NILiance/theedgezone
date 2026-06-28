@@ -14,6 +14,8 @@ export interface EmailSigInput {
   /** Display label → URL (e.g. { Instagram: 'https://...' }). */
   socials?: Record<string, string>
   logoUrl?: string
+  /** Logo width/height in px (default 72, clamped 32–160). */
+  logoSize?: number
   bg: string
   nameColor: string
   bodyColor: string
@@ -38,9 +40,10 @@ export function buildEmailSignatureHtml(i: EmailSigInput): string {
           ? esc(i.sport)
           : ''
   const socials = Object.entries(i.socials ?? {}).filter(([, v]) => v)
+  const logoPx = Math.max(32, Math.min(160, Math.round(i.logoSize ?? 72)))
   return `<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,sans-serif;font-size:13px;color:${i.bodyColor};line-height:1.4;background:${i.bg};padding:12px;">
   <tr>
-    ${i.logoUrl ? `<td style="padding-right:16px;border-right:3px solid ${i.nameColor};vertical-align:top;"><img src="${esc(i.logoUrl)}" width="72" height="72" alt="" style="display:block;border:0;background:${i.bg};"/></td>` : ''}
+    ${i.logoUrl ? `<td style="padding-right:16px;border-right:3px solid ${i.nameColor};vertical-align:top;"><img src="${esc(i.logoUrl)}" width="${logoPx}" height="${logoPx}" alt="" style="display:block;border:0;"/></td>` : ''}
     <td style="padding-left:${i.logoUrl ? '16px' : '0'};vertical-align:top;">
       <p style="margin:0 0 2px;font-size:16px;font-weight:bold;color:${i.nameColor};">${esc(i.name)}</p>
       ${titleLine ? `<p style="margin:0 0 4px;color:${i.bodyColor};">${titleLine}</p>` : ''}

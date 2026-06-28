@@ -53,6 +53,40 @@ function escapeHtml(s: string): string {
   return s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c] ?? c)
 }
 
+/**
+ * A transparent-background PNG of the brand's final logo, suitable as an <img>
+ * src (e.g. the email signature). Generated once and reused via a stable path —
+ * the final logo is locked after finalize, so it never goes stale.
+ */
+export async function ensureTransparentLogo(brandId: string): Promise<string | null> {
+  const supabase = createServiceClient()
+  if (!supabase) return null
+  const { data: brand } = await supabase
+    .from('brand_designs')
+    .select('final_logo_url')
+    .eq('id', brandId)
+    .single()
+  if (!brand?.final_logo_url) return null
+
+  const path = `${brandId}/addons/transparent-logo.png`
+  const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+  // Reuse if it's already been generated.
+  const { data: existing } = await supabase.storage
+    .from(BUCKET)
+    .list(`${brandId}/addons`, { search: 'transparent-logo.png' })
+  if (existing?.some((file) => file.name === 'transparent-logo.png')) return publicUrl
+
+  try {
+    const sharp = await getSharp()
+    const { makeLogoTransparent } = await import('@/lib/logo-transparent')
+    const logoBuf = await fetchAsBuffer(brand.final_logo_url)
+    const transparent = await makeLogoTransparent(logoBuf, sharp).catch(() => logoBuf)
+    return await uploadToStorage(path, transparent, 'image/png')
+  } catch {
+    return brand.final_logo_url
+  }
+}
+
 // ── Logo animation ──────────────────────────────────────────────────────────
 
 export interface LogoAnimationOptions {
