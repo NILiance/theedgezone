@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { DownloadLink } from '@/components/download-link'
 import {
   generateSocialAvatarsAction,
   type SocialAvatarsActionState,
@@ -61,13 +62,12 @@ export function SocialAvatarsTab({ brandId, hasFinal }: { brandId: string; hasFi
       {state.url && (
         <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3 rounded-[var(--radius)] border border-success/40 bg-success/5 p-5 text-center">
           <p className="text-display text-sm font-bold text-success">✓ Pack ready</p>
-          <a
-            href={state.url}
-            download
+          <DownloadLink
+            url={state.url}
             className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
           >
             ⬇ Download ZIP ({state.count ?? 0} files)
-          </a>
+          </DownloadLink>
         </div>
       )}
       {state.error && <p className="mt-4 text-center text-xs text-destructive">{state.error}</p>}

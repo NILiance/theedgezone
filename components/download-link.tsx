@@ -20,12 +20,22 @@ export function DownloadLink({
   title,
 }: {
   url: string
-  filename: string
+  /** Optional — defaults to the file name in the URL path. */
+  filename?: string
   className?: string
   children: ReactNode
   title?: string
 }) {
   const [busy, setBusy] = useState(false)
+  const name =
+    filename ||
+    (() => {
+      try {
+        return decodeURIComponent(url.split('?')[0]!.split('/').pop() || 'download')
+      } catch {
+        return 'download'
+      }
+    })()
 
   async function onClick(e: React.MouseEvent) {
     e.preventDefault()
@@ -38,20 +48,23 @@ export function DownloadLink({
       const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = objectUrl
-      a.download = filename || 'download'
+      a.download = name
       document.body.appendChild(a)
       a.click()
       a.remove()
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
     } catch {
-      window.open(url, '_blank', 'noopener,noreferrer')
+      // Cross-origin fetch blocked (e.g. Google Drive) — fall back to the
+      // Supabase ?download param, which forces Content-Disposition: attachment.
+      const sep = url.includes('?') ? '&' : '?'
+      window.open(`${url}${sep}download=${encodeURIComponent(name)}`, '_blank', 'noopener,noreferrer')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <a href={url} download={filename} onClick={onClick} className={className} title={title}>
+    <a href={url} download={name} onClick={onClick} className={className} title={title}>
       {children}
     </a>
   )

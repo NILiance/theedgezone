@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { LocalTime } from '@/components/ui/local-time'
 import { BrandAdminTools } from './tools'
+import { DownloadLink } from '@/components/download-link'
 
 export const metadata = { title: 'Brand Design — Admin' }
 
@@ -109,32 +110,27 @@ export default async function AdminBrandDetailPage({
                 />
               </div>
               <div className="flex-1 space-y-2 text-xs">
-                <a
-                  href={brand.final_logo_url}
-                  download
+                <DownloadLink
+                  url={brand.final_logo_url}
                   className="text-display block rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-widest"
                 >
                   Download original PNG
-                </a>
+                </DownloadLink>
                 {brand.brand_kit_url && (
-                  <a
-                    href={brand.brand_kit_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <DownloadLink
+                    url={brand.brand_kit_url}
                     className="text-display block rounded-[var(--radius-sm)] border border-primary bg-primary/10 px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-widest text-primary"
                   >
-                    Open brand kit ZIP
-                  </a>
+                    Download brand kit ZIP
+                  </DownloadLink>
                 )}
                 {brand.admin_brand_guide_url && (
-                  <a
-                    href={brand.admin_brand_guide_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <DownloadLink
+                    url={brand.admin_brand_guide_url}
                     className="text-display block rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-center text-[10px] font-bold uppercase tracking-widest"
                   >
                     Admin brand guide
-                  </a>
+                  </DownloadLink>
                 )}
               </div>
             </div>

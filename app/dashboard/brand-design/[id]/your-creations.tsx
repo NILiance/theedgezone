@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { DownloadLink } from '@/components/download-link'
 import {
   deleteAddonAction,
   requestQuoteAction,
@@ -212,13 +213,12 @@ function CreationTile({
             </button>
           )}
           {creation.url && (
-            <a
-              href={creation.url}
-              download
+            <DownloadLink
+              url={creation.url}
               className="text-display rounded-[var(--radius-sm)] bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
             >
               ⬇ Download
-            </a>
+            </DownloadLink>
           )}
           {creation.kind !== 'logo_animation' && (
             <button

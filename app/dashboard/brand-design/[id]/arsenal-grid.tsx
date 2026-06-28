@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { DownloadLink } from '@/components/download-link'
 import { generateArsenalAsset, type ArsenalGenState } from './arsenal-actions'
 import { generateLogoOnPhotoAction, type LogoOnPhotoState } from './logo-on-photo-actions'
 import {
@@ -491,15 +492,12 @@ function StandardCategoryCard({
           {pending ? 'Generating…' : url ? 'Regenerate' : 'Generate'}
         </button>
         {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
+          <DownloadLink
+            url={url}
             className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-success"
           >
             ⬇ Download
-          </a>
+          </DownloadLink>
         )}
       </div>
       {pending && (
@@ -637,15 +635,12 @@ function UniformsCard({
           {pending ? 'Generating…' : url ? 'Regenerate' : 'Generate'}
         </button>
         {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
+          <DownloadLink
+            url={url}
             className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-success"
           >
             ⬇ Download
-          </a>
+          </DownloadLink>
         )}
       </div>
       {pending && (
@@ -768,15 +763,12 @@ function LogoOnPhotoCard({
           {pending ? 'Compositing…' : url ? 'Re-composite' : 'Place logo on photo'}
         </button>
         {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
+          <DownloadLink
+            url={url}
             className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-success"
           >
             ⬇ Download
-          </a>
+          </DownloadLink>
         )}
       </div>
       {state.error && <p className="text-xs text-destructive">{state.error}</p>}

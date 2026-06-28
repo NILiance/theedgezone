@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { generateQrCodeAction, type QrActionState } from './arsenal-tab-actions'
 import { QR_TYPE_OPTIONS } from '@/lib/arsenal-tab-options'
+import { DownloadLink } from '@/components/download-link'
 
 export function QrCodeTab({
   brandId,
@@ -114,13 +115,12 @@ export function QrCodeTab({
             alt="QR code"
             className="h-64 w-64 rounded-md border border-border bg-white object-contain"
           />
-          <a
-            href={state.url}
-            download
+          <DownloadLink
+            url={state.url}
             className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
           >
             ⬇ Download PNG
-          </a>
+          </DownloadLink>
         </div>
       )}
       {state.error && <p className="mt-4 text-center text-xs text-destructive">{state.error}</p>}

@@ -6,6 +6,7 @@ import { getBrandClientSession } from '@/lib/brand-client-auth'
 import { Button } from '@/components/ui/button'
 import { formatEasternDate } from '@/lib/format-date'
 import { LogoutForm } from './logout-form'
+import { DownloadLink } from '@/components/download-link'
 
 export const metadata = { title: 'Brand portal' }
 
@@ -115,11 +116,11 @@ export default async function BrandPortalPage({ searchParams }: PageProps) {
                       {formatEasternDate(a.created_at)}
                     </p>
                   </div>
-                  <a href={a.url} target="_blank" rel="noopener noreferrer" download>
+                  <DownloadLink url={a.url}>
                     <Button size="sm" variant="outline">
                       Download
                     </Button>
-                  </a>
+                  </DownloadLink>
                 </li>
               ))}
             </ul>

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { DownloadLink } from '@/components/download-link'
 import { generateAddonAction, type AddonState } from './addons-actions'
 
 type Addon = {
@@ -116,15 +117,12 @@ function AddonCard({
           </button>
         </form>
         {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
+          <DownloadLink
+            url={url}
             className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-xs font-bold uppercase tracking-widest"
           >
             Download
-          </a>
+          </DownloadLink>
         )}
       </div>
       {state.error && <p className="mt-2 text-xs text-destructive">{state.error}</p>}

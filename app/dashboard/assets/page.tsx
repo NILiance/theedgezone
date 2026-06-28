@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { DownloadLink } from '@/components/download-link'
 
 export const metadata = { title: 'My Assets' }
 
@@ -101,31 +102,26 @@ export default async function MyAssetsPage() {
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {files.map((f, i) => (
-                      <a
+                      <DownloadLink
                         key={i}
-                        href={f.url}
-                        download
-                        target="_blank"
-                        rel="noreferrer"
+                        url={f.url ?? ''}
+                        filename={f.name}
                         className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-border bg-panel-elevated/30 px-3 py-2 text-xs hover:border-primary/40"
                       >
                         <span className="truncate">{f.label || f.name}</span>
                         <span className="text-primary">↓</span>
-                      </a>
+                      </DownloadLink>
                     ))}
                   </div>
                 )}
 
                 {logo && (
-                  <a
-                    href={logo}
-                    download
-                    target="_blank"
-                    rel="noreferrer"
+                  <DownloadLink
+                    url={logo}
                     className="mt-2 inline-block text-xs font-bold text-primary hover:underline"
                   >
                     ↓ Download final logo
-                  </a>
+                  </DownloadLink>
                 )}
               </section>
             )
