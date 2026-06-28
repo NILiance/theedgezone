@@ -128,3 +128,31 @@ export const ARSENAL_GROUP_META: Record<
 export const SUBTAB_GROUP: Partial<Record<ArsenalSubtab, ArsenalGroup>> = Object.fromEntries(
   ARSENAL_GROUPS.flatMap((g) => ARSENAL_GROUP_META[g].cards.map((c) => [c.id, g] as const))
 )
+
+// The creation `kind`s each tab owns, so a tab's "Your Creations" only shows
+// its own assets (not everything). Most card ids equal the recorded kind;
+// brand_voice is the exception (it records lines/doc).
+export function creationKindsForTab(tab: ArsenalSubtab | ArsenalGroup): string[] {
+  switch (tab) {
+    case 'create':
+      return ['logo_on_photo', 'sport_uniform', 'merch_mockup']
+    case 'visual':
+      return ['logo_animation', 'trading_card', 'social_avatars']
+    case 'comms':
+      return ['brand_voice_lines', 'brand_voice_doc', 'email_signature', 'qr_code']
+    case 'print':
+      return ['business_card', 'letterhead', 'thank_you_card', 'presentation', 'media_kit']
+    case 'digital':
+      return [
+        'social_media',
+        'phone_wallpaper',
+        'story_highlight',
+        'virtual_background',
+        'email_signature_image',
+        'icon_generator',
+        'game_day',
+      ]
+    default:
+      return []
+  }
+}

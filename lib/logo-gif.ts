@@ -124,6 +124,18 @@ export async function renderLogoGif(
       .toBuffer()
     let lw = fit
     let lh = fit
+    if (!t.rotate && fit > SIZE) {
+      // scale > 1 (Pop, Zoom Out) makes the layer larger than the canvas, which
+      // Sharp's composite rejects — crop its centre so it fits (and the logo
+      // reads as zoomed past the frame).
+      const off = Math.round((fit - SIZE) / 2)
+      layerBuf = await sharp(layerBuf)
+        .extract({ left: off, top: off, width: SIZE, height: SIZE })
+        .png()
+        .toBuffer()
+      lw = SIZE
+      lh = SIZE
+    }
     if (t.rotate) {
       layerBuf = await sharp(layerBuf).rotate(t.rotate, { background: transparent }).png().toBuffer()
       let meta = await sharp(layerBuf).metadata()

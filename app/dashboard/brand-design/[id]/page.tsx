@@ -13,7 +13,11 @@ import { YourCreations } from './your-creations'
 import { BrandToolkit } from './brand-toolkit'
 import { ArsenalSubtabs } from './arsenal-subtabs'
 import { ArsenalGroupLanding } from './arsenal-group-landing'
-import { FOCUSED_CATEGORY_SUBTABS, type ArsenalSubtab } from './arsenal-subtab-meta'
+import {
+  FOCUSED_CATEGORY_SUBTABS,
+  creationKindsForTab,
+  type ArsenalSubtab,
+} from './arsenal-subtab-meta'
 import { LogoAnimationTab } from './tab-logo-animation'
 import { TradingCardTab } from './tab-trading-card'
 import { BrandVoiceTab } from './tab-brand-voice'
@@ -1078,7 +1082,10 @@ function ArsenalView({
       {subtab === 'create' && (
         <>
           <ArsenalGrid brandId={brandId} hasFinal={hasFinal} />
-          <YourCreations brandId={brandId} creations={creations} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => creationKindsForTab('create').includes(c.kind))}
+          />
         </>
       )}
 
@@ -1086,7 +1093,13 @@ function ArsenalView({
         subtab === 'comms' ||
         subtab === 'print' ||
         subtab === 'digital') && (
-        <ArsenalGroupLanding brandId={brandId} group={subtab} />
+        <>
+          <ArsenalGroupLanding brandId={brandId} group={subtab} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => creationKindsForTab(subtab).includes(c.kind))}
+          />
+        </>
       )}
 
       {subtab === 'logo_animation' && (
