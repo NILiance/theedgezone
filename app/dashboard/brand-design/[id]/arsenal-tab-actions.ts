@@ -119,7 +119,17 @@ export async function generateLogoAnimationAction(
 
 export type TradingCardActionState = { ok?: boolean; error?: string; url?: string }
 
-const CARD_STYLES = ['vintage', 'modern', 'holographic', 'premium_gold'] as const
+const CARD_STYLES = ['vintage', 'modern', 'holographic', 'premium_gold', 'custom'] as const
+
+function isHexColor(s: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(s)
+}
+// Pick black/white text for contrast against the chosen card color.
+function readableText(hex: string): string {
+  const n = parseInt(hex.slice(1), 16)
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+  return lum > 0.6 ? '#111111' : '#ffffff'
+}
 
 export async function generateTradingCardAction(
   _prev: TradingCardActionState,
@@ -163,7 +173,18 @@ export async function generateTradingCardAction(
       holographic: { bg: '#0a0a0e', border: '#a78bfa', accent: '#22d3ee', text: '#fff' },
       premium_gold: { bg: '#101010', border: '#FFD700', accent: '#FFD700', text: '#fff' },
     }
-    const p = palette[style]!
+    // Custom colors override the preset when the talent picks their own.
+    const customBg = String(form.get('bg_color') ?? '')
+    const customAccent = String(form.get('accent_color') ?? '')
+    const p =
+      style === 'custom'
+        ? {
+            bg: isHexColor(customBg) ? customBg : '#0b1e3f',
+            border: isHexColor(customAccent) ? customAccent : '#ffd166',
+            accent: isHexColor(customAccent) ? customAccent : '#ffd166',
+            text: readableText(isHexColor(customBg) ? customBg : '#0b1e3f'),
+          }
+        : palette[style]!
 
     // Resize photo to a card window.
     const photoArea = await sharp(photoBuf)

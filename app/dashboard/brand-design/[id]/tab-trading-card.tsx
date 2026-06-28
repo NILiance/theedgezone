@@ -17,6 +17,7 @@ const STYLES = [
   { value: 'vintage', name: 'Vintage' },
   { value: 'holographic', name: 'Holographic' },
   { value: 'premium_gold', name: 'Premium Gold' },
+  { value: 'custom', name: 'Custom Colors' },
 ]
 
 export function TradingCardTab({
@@ -45,8 +46,9 @@ export function TradingCardTab({
     <div>
       <h2 className="text-display text-center text-3xl font-black">Autograph Trading Card</h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground">
-        Upload your best action photo, add optional stats and a tagline, then click Generate to
-        preview. Once you love your card, order printed copies below.
+        Upload your best action photo, add optional stats and a tagline, and pick a style or your
+        own colors. Every card is generated <strong>front and back</strong>. Once you love it, order
+        printed copies below.
       </p>
 
       <form
@@ -97,6 +99,32 @@ export function TradingCardTab({
             ))}
           </select>
         </label>
+        {style === 'custom' && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Card color
+              </span>
+              <input
+                type="color"
+                name="bg_color"
+                defaultValue="#0b1e3f"
+                className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+              />
+            </label>
+            <label className="block">
+              <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Accent / border
+              </span>
+              <input
+                type="color"
+                name="accent_color"
+                defaultValue="#ffd166"
+                className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+              />
+            </label>
+          </div>
+        )}
         <div className="mt-2 flex justify-center">
           <button
             type="submit"
@@ -113,11 +141,11 @@ export function TradingCardTab({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={state.url}
-            alt="Generated trading card"
+            alt="Generated trading card front and back"
             className="max-h-[400px] w-auto rounded-md border border-border"
           />
           <p className="text-[10px] text-muted-foreground">
-            Saved to Your Creations below — download or order from there.
+            Front + back, side by side. Saved to Your Creations below — download or order from there.
           </p>
         </div>
       )}

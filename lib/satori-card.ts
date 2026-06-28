@@ -1,28 +1,23 @@
 /**
  * Trading-card renderer using satori (pure-JS) — text is converted to vector
- * PATHS using a fetched font, so the card renders correctly on serverless where
- * librsvg has no fonts (the old SVG-text approach produced tofu boxes).
- * Renders front + back side-by-side into one PNG. Returns null if the font
- * can't be loaded, so the caller can fall back.
+ * PATHS using an embedded font, so the card renders correctly on serverless
+ * where librsvg has no fonts (the old SVG-text approach produced tofu boxes).
+ * Renders front + back side-by-side into one PNG.
  */
 import satori from 'satori'
 import type SharpType from 'sharp'
+import { ANTON_TTF_BASE64 } from './anton-font-data'
 
 const W = 800
 const H = 1120
-const FONT_URL = 'https://cdn.jsdelivr.net/gh/google/fonts/ofl/anton/Anton-Regular.ttf'
 
-let fontCache: ArrayBuffer | null = null
-async function loadFont(): Promise<ArrayBuffer | null> {
-  if (fontCache) return fontCache
-  try {
-    const res = await fetch(FONT_URL, { signal: AbortSignal.timeout(7000) })
-    if (!res.ok) return null
-    fontCache = await res.arrayBuffer()
-    return fontCache
-  } catch {
-    return null
-  }
+// The font is embedded (base64) rather than fetched at runtime — the CDN fetch
+// was 404ing on Vercel, so the card silently fell back to tofu. It can no
+// longer fail.
+let fontCache: Buffer | null = null
+function loadFont(): Buffer {
+  if (!fontCache) fontCache = Buffer.from(ANTON_TTF_BASE64, 'base64')
+  return fontCache
 }
 
 export interface CardPalette {
@@ -88,23 +83,25 @@ function back(d: CardData, p: CardPalette): Node {
 }
 
 export async function renderTradingCard(d: CardData, p: CardPalette, sharp: typeof SharpType): Promise<Buffer | null> {
-  const font = await loadFont()
-  if (!font) return null
-  const fonts = [{ name: 'Anton', data: font, weight: 400 as const, style: 'normal' as const }]
-  const [frontSvg, backSvg] = await Promise.all([
-    satori(front(d, p) as never, { width: W, height: H, fonts }),
-    satori(back(d, p) as never, { width: W, height: H, fonts }),
-  ])
-  const [frontPng, backPng] = await Promise.all([
-    sharp(Buffer.from(frontSvg)).png().toBuffer(),
-    sharp(Buffer.from(backSvg)).png().toBuffer(),
-  ])
-  const gap = 40
-  return sharp({ create: { width: W * 2 + gap, height: H, channels: 4, background: { r: 17, g: 17, b: 20, alpha: 1 } } })
-    .composite([
-      { input: frontPng, left: 0, top: 0 },
-      { input: backPng, left: W + gap, top: 0 },
+  try {
+    const fonts = [{ name: 'Anton', data: loadFont(), weight: 400 as const, style: 'normal' as const }]
+    const [frontSvg, backSvg] = await Promise.all([
+      satori(front(d, p) as never, { width: W, height: H, fonts }),
+      satori(back(d, p) as never, { width: W, height: H, fonts }),
     ])
-    .png()
-    .toBuffer()
+    const [frontPng, backPng] = await Promise.all([
+      sharp(Buffer.from(frontSvg)).png().toBuffer(),
+      sharp(Buffer.from(backSvg)).png().toBuffer(),
+    ])
+    const gap = 40
+    return await sharp({ create: { width: W * 2 + gap, height: H, channels: 4, background: { r: 17, g: 17, b: 20, alpha: 1 } } })
+      .composite([
+        { input: frontPng, left: 0, top: 0 },
+        { input: backPng, left: W + gap, top: 0 },
+      ])
+      .png()
+      .toBuffer()
+  } catch {
+    return null
+  }
 }

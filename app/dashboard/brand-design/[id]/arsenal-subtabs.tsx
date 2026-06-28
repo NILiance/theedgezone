@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { ArsenalSubtab } from './arsenal-subtab-meta'
 
 // Re-export the type so existing client importers keep working. The runtime
@@ -33,7 +33,7 @@ const NAV: NavEntry[] = [
   {
     kind: 'group',
     id: 'comms',
-    label: 'Comms',
+    label: 'Communications',
     items: [
       { id: 'brand_voice', label: 'Brand Voice' },
       { id: 'email_signature', label: 'Email Signature (HTML)' },
@@ -80,32 +80,17 @@ export function ArsenalSubtabs({
   brandId: string
   active: ArsenalSubtab
 }) {
-  const [openGroup, setOpenGroup] = useState<string | null>(null)
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!openGroup) return
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpenGroup(null)
-      }
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenGroup(null)
-    }
-    window.addEventListener('mousedown', onDown)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('mousedown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [openGroup])
+  // Start with the group that contains the active sub-tab already expanded, so
+  // the user can see where they are and the siblings next to it.
+  const initialOpen =
+    NAV.find((e) => e.kind === 'group' && e.items.some((i) => i.id === active))?.id ?? null
+  const [openGroup, setOpenGroup] = useState<string | null>(initialOpen)
+  const openEntry = NAV.find((e) => e.kind === 'group' && e.id === openGroup) as
+    | GroupEntry
+    | undefined
 
   return (
-    <div
-      ref={rootRef}
-      className="relative rounded-[var(--radius)] border border-border bg-panel/40"
-    >
+    <div className="rounded-[var(--radius)] border border-border bg-panel/40">
       <ul className="flex flex-wrap items-stretch gap-1 p-1">
         {NAV.map((entry) => {
           if (entry.kind === 'leaf') {
@@ -127,12 +112,11 @@ export function ArsenalSubtabs({
           const isGroupActive = Boolean(activeChild)
           const isOpen = openGroup === entry.id
           return (
-            <li key={entry.id} className="relative flex-1 min-w-[160px]">
+            <li key={entry.id} className="flex-1 min-w-[160px]">
               <button
                 type="button"
                 onClick={() => setOpenGroup(isOpen ? null : entry.id)}
                 aria-expanded={isOpen}
-                aria-haspopup="true"
                 className={`${tabClass(isGroupActive)} w-full justify-between gap-2`}
               >
                 <span className="truncate">
@@ -145,42 +129,43 @@ export function ArsenalSubtabs({
                 </span>
                 <Chevron open={isOpen} />
               </button>
-              {isOpen && (
-                <ul
-                  role="menu"
-                  className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 overflow-hidden rounded-[var(--radius)] border border-border bg-panel-elevated shadow-2xl"
-                >
-                  {entry.items.map((item) => {
-                    const itemActive = item.id === active
-                    return (
-                      <li key={item.id} role="none">
-                        <Link
-                          href={hrefFor(brandId, item.id)}
-                          scroll={false}
-                          role="menuitem"
-                          onClick={() => setOpenGroup(null)}
-                          className={`text-display flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors ${
-                            itemActive
-                              ? 'bg-primary/15 text-primary'
-                              : 'text-muted-foreground hover:bg-panel/60 hover:text-foreground'
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              itemActive ? 'bg-primary' : 'bg-border'
-                            }`}
-                          />
-                          {item.label}
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
             </li>
           )
         })}
       </ul>
+
+      {/* The open group's items append inline below the tabs (in normal flow,
+          so they push the page heading down) instead of an overlay dropdown. */}
+      {openEntry && (
+        <div className="border-t border-border px-1.5 pb-2 pt-1.5">
+          <ul className="flex flex-wrap gap-1.5">
+            {openEntry.items.map((item) => {
+              const itemActive = item.id === active
+              return (
+                <li key={item.id}>
+                  <Link
+                    href={hrefFor(brandId, item.id)}
+                    scroll={false}
+                    onClick={() => setOpenGroup(null)}
+                    className={`text-display flex items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                      itemActive
+                        ? 'border-primary bg-primary/15 text-primary'
+                        : 'border-border bg-panel-elevated/40 text-muted-foreground hover:bg-panel/60 hover:text-foreground'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        itemActive ? 'bg-primary' : 'bg-border'
+                      }`}
+                    />
+                    {item.label}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
