@@ -240,14 +240,19 @@ export function letterheadPrompt(ctx: ArsenalContext): ArsenalPromptResult {
   }
 }
 
+// Templates (social posts, presentation slides) must ship as blank branded
+// canvases — the talent adds their own copy. No baked-in text or placeholders.
+const NO_TEXT_RULE =
+  'CRITICAL — THIS IS A BLANK TEMPLATE: Do NOT render ANY text, words, letters, names, titles, captions, dates, numbers, placeholder text, lorem ipsum, or empty text boxes / placeholder rectangles anywhere in the image. Include ONLY the logo plus abstract branded graphic elements (shapes, gradients, lines, patterns). Leave generous clean negative space where the user will add their own text later.'
+
 export function presentationPrompt(ctx: ArsenalContext, effect?: string): ArsenalPromptResult {
   return {
     aspect: '16:9',
     prompt:
-      `I am providing a logo image. Create a professional presentation title slide (16:9 widescreen) for ${ctx.brandName}.\n\n` +
+      `I am providing a logo image. Create a clean, professional 16:9 widescreen presentation TITLE-SLIDE TEMPLATE.\n\n` +
       `${logoRule(ctx.colors)}\n\n` +
-      `Place the logo centered with the athlete name "${ctx.brandName}" below it. Use ONLY these exact colors for accents: ${ctx.colors}. ${bgTheme(ctx.colorMode)}. Clean ${ctx.vibe ?? 'professional'} aesthetic. Ready-to-use title slide.\n\n` +
-      `${spellRule(ctx.brandName)}` +
+      `Place the logo cleanly in the composition and build a polished branded slide layout around it using ONLY these exact colors: ${ctx.colors}. ${bgTheme(ctx.colorMode)}. Clean ${ctx.vibe ?? 'professional'} aesthetic.\n\n` +
+      NO_TEXT_RULE +
       effectClause(effect),
   }
 }
@@ -326,11 +331,10 @@ export function socialMediaPrompt(
   return {
     aspect: spec.aspect,
     prompt:
-      `I am providing a logo image. Create a ${spec.size} social media post template for ${ctx.brandName}.\n\n` +
+      `I am providing a logo image. Create a ${spec.size} social media post TEMPLATE for the ${platform} platform.\n\n` +
       `${logoRule(ctx.colors)}\n\n` +
-      `Place the logo prominently in the center of the design. Build a professional ${style} branded template AROUND the logo using ONLY these exact colors: ${ctx.colors}. Every element — backgrounds, borders, shapes, gradients — must use these colors. ${bgTheme(ctx.colorMode)}. Leave space for optional text overlay. Platform: ${platform}.\n\n` +
-      `${spellRule(ctx.brandName)}\n\n` +
-      `${brandCtx(ctx)}` +
+      `Place the logo prominently in the design and build a professional ${style} branded template around it using ONLY these exact colors: ${ctx.colors}. Every element — backgrounds, borders, shapes, gradients — must use these colors. ${bgTheme(ctx.colorMode)}.\n\n` +
+      NO_TEXT_RULE +
       effectClause(effect),
   }
 }
