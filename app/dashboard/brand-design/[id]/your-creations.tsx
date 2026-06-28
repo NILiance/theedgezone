@@ -152,6 +152,12 @@ function CreationTile({
   const [replayKey, setReplayKey] = useState(0)
   const isGif = showImage && (creation.url ?? '').split('?')[0]!.toLowerCase().endsWith('.gif')
   const canReplay = creation.kind === 'logo_animation' || isGif
+  // Changing the src (cache-bust) reliably restarts the animation from frame 0
+  // — a key-only remount leaves a finished non-looping GIF on its last frame.
+  const replaySrc =
+    creation.url && replayKey > 0
+      ? `${creation.url}${creation.url.includes('?') ? '&' : '?'}replay=${replayKey}`
+      : (creation.url ?? '')
   return (
     <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
       <div
@@ -162,8 +168,7 @@ function CreationTile({
         {showImage && creation.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={replayKey}
-            src={creation.url}
+            src={replaySrc}
             alt={subLabel}
             className="max-h-full max-w-full object-contain"
           />
@@ -171,8 +176,7 @@ function CreationTile({
           // Self-contained HTML+CSS (no scripts) — sandbox="" is safe and the
           // CSS animation still plays. pointer-events-none keeps it a preview.
           <iframe
-            key={replayKey}
-            src={creation.url}
+            src={replaySrc}
             title={subLabel}
             sandbox=""
             scrolling="no"
@@ -216,13 +220,15 @@ function CreationTile({
               ⬇ Download
             </a>
           )}
-          <button
-            type="button"
-            onClick={onRequestQuote}
-            className="text-display rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-accent hover:bg-accent/20"
-          >
-            💬 Request Quote
-          </button>
+          {creation.kind !== 'logo_animation' && (
+            <button
+              type="button"
+              onClick={onRequestQuote}
+              className="text-display rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-accent hover:bg-accent/20"
+            >
+              💬 Request Quote
+            </button>
+          )}
           <button
             type="button"
             onClick={handleDelete}

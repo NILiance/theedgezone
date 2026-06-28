@@ -16,8 +16,15 @@ export function LogoAnimationTab({ brandId, hasFinal }: { brandId: string; hasFi
   const [style, setStyle] = useState('zoom')
   const [duration, setDuration] = useState(1600)
   const [loop, setLoop] = useState(false)
-  // Remounting the preview (changing key) restarts the animation from frame 0.
+  // Cache-busting the src restarts the animation from frame 0 (a finished
+  // non-looping GIF stays on its last frame otherwise).
   const [replayKey, setReplayKey] = useState(0)
+  const animUrl = state.url ?? ''
+  const isGifUrl = animUrl.split('?')[0]!.toLowerCase().endsWith('.gif')
+  const replaySrc =
+    animUrl && replayKey > 0
+      ? `${animUrl}${animUrl.includes('?') ? '&' : '?'}replay=${replayKey}`
+      : animUrl
   useRefreshOnNewUrl(state.url)
 
   if (!hasFinal) {
@@ -92,18 +99,16 @@ export function LogoAnimationTab({ brandId, hasFinal }: { brandId: string; hasFi
         <div className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3 rounded-[var(--radius)] border border-success/40 bg-success/5 p-5 text-center">
           <p className="text-display text-sm font-bold text-success">✓ Animation ready</p>
           <div className="flex aspect-square w-56 items-center justify-center overflow-hidden rounded-[var(--radius)] border border-border bg-white">
-            {state.url.split('?')[0]!.toLowerCase().endsWith('.gif') ? (
+            {isGifUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                key={replayKey}
-                src={state.url}
+                src={replaySrc}
                 alt="Logo animation"
                 className="max-h-full max-w-full object-contain"
               />
             ) : (
               <iframe
-                key={replayKey}
-                src={state.url}
+                src={replaySrc}
                 title="Logo animation"
                 sandbox=""
                 scrolling="no"
