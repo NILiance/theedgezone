@@ -145,7 +145,18 @@ export async function generateTradingCardAction(
   if (!brand.final_logo_url) return { error: 'Pick a final logo first.' }
 
   const photo = form.get('photo')
-  const stats = String(form.get('stats') ?? '').trim()
+  let stats: Array<{ label: string; value: string }> = []
+  try {
+    const rawStats = JSON.parse(String(form.get('stats_json') ?? '[]'))
+    if (Array.isArray(rawStats)) {
+      stats = rawStats
+        .map((s) => ({ label: String(s?.label ?? '').trim(), value: String(s?.value ?? '').trim() }))
+        .filter((s) => s.label || s.value)
+        .slice(0, 8)
+    }
+  } catch {
+    /* no stats supplied */
+  }
   const tagline = String(form.get('tagline') ?? '').trim()
   const styleRaw = String(form.get('style') ?? 'modern')
   const style = (CARD_STYLES as readonly string[]).includes(styleRaw) ? styleRaw : 'modern'
@@ -175,18 +186,17 @@ export async function generateTradingCardAction(
       holographic: { bg: '#0a0a0e', border: '#a78bfa', accent: '#22d3ee', text: '#fff' },
       premium_gold: { bg: '#101010', border: '#FFD700', accent: '#FFD700', text: '#fff' },
     }
-    // Custom colors override the preset when the talent picks their own.
-    const customBg = String(form.get('bg_color') ?? '')
-    const customAccent = String(form.get('accent_color') ?? '')
-    const p =
-      style === 'custom'
-        ? {
-            bg: isHexColor(customBg) ? customBg : '#0b1e3f',
-            border: isHexColor(customAccent) ? customAccent : '#ffd166',
-            accent: isHexColor(customAccent) ? customAccent : '#ffd166',
-            text: readableText(isHexColor(customBg) ? customBg : '#0b1e3f'),
-          }
-        : palette[style]!
+    // The editor always submits a background + accent colour (seeded from the
+    // chosen style preset), so honour the talent's pick whatever the style.
+    const pickedBg = String(form.get('bg_color') ?? '')
+    const pickedAccent = String(form.get('accent_color') ?? '')
+    const preset = palette[style] ?? palette.modern!
+    const p = {
+      bg: isHexColor(pickedBg) ? pickedBg : preset.bg,
+      border: isHexColor(pickedAccent) ? pickedAccent : preset.border,
+      accent: isHexColor(pickedAccent) ? pickedAccent : preset.accent,
+      text: readableText(isHexColor(pickedBg) ? pickedBg : preset.bg),
+    }
 
     // Resize photo to a card window.
     const photoArea = await sharp(photoBuf)
@@ -213,8 +223,7 @@ export async function generateTradingCardAction(
   ${school ? `<text x="${W / 2}" y="150" font-family="ui-monospace, monospace" font-size="14" text-anchor="middle" fill="#bbbbbb">${escapeXml(school)}</text>` : ''}
   <rect x="50" y="180" width="700" height="700" rx="12" fill="#000"/>
   <image href="data:image/png;base64,${photoArea.toString('base64')}" x="50" y="180" width="700" height="700" preserveAspectRatio="xMidYMid slice"/>
-  ${stats ? `<text x="60" y="930" font-family="ui-monospace, monospace" font-size="16" fill="${p.accent}">STATS</text><text x="60" y="958" font-family="ui-monospace, monospace" font-size="22" fill="${p.text}">${escapeXml(stats)}</text>` : ''}
-  ${tagline ? `<text x="60" y="1010" font-family="Impact, sans-serif" font-size="28" font-weight="800" font-style="italic" fill="${p.accent}">"${escapeXml(tagline)}"</text>` : ''}
+  ${tagline ? `<text x="60" y="960" font-family="Impact, sans-serif" font-size="28" font-weight="800" font-style="italic" fill="${p.accent}">"${escapeXml(tagline)}"</text>` : ''}
   <text x="${W - 40}" y="${H - 30}" font-family="ui-monospace, monospace" font-size="11" text-anchor="end" fill="${p.accent}" opacity="0.7">${escapeXml(style.toUpperCase())} · ${new Date().getFullYear()}</text>
 </svg>`
 

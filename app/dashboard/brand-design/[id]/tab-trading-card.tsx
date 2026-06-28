@@ -27,33 +27,17 @@ interface Palette {
   text: string
 }
 
+interface Stat {
+  label: string
+  value: string
+}
+
 function readableText(hex: string): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex)
   if (!m) return '#ffffff'
   const n = parseInt(m[1]!, 16)
   const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
   return lum > 0.6 ? '#111111' : '#ffffff'
-}
-
-function stylePalette(
-  style: string,
-  bg: string,
-  accent: string,
-  brandPrimary: string,
-  brandSecondary: string
-): Palette {
-  switch (style) {
-    case 'vintage':
-      return { bg: '#1a0f08', border: '#caa86a', accent: '#caa86a', text: '#fff' }
-    case 'holographic':
-      return { bg: '#0a0a0e', border: '#a78bfa', accent: '#22d3ee', text: '#fff' }
-    case 'premium_gold':
-      return { bg: '#101010', border: '#FFD700', accent: '#FFD700', text: '#fff' }
-    case 'custom':
-      return { bg, border: accent, accent, text: readableText(bg) }
-    default:
-      return { bg: brandPrimary || '#0b1e3f', border: brandSecondary || '#ffd166', accent: brandSecondary || '#ffd166', text: '#fff' }
-  }
 }
 
 export function TradingCardTab({
@@ -82,15 +66,15 @@ export function TradingCardTab({
     {}
   )
   const [style, setStyle] = useState('modern')
-  const [bg, setBg] = useState('#0b1e3f')
-  const [accent, setAccent] = useState('#ffd166')
+  const [bg, setBg] = useState(brandPrimary || '#0b1e3f')
+  const [accent, setAccent] = useState(brandSecondary || '#ffd166')
   const [flipped, setFlipped] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
+  const [stats, setStats] = useState<Stat[]>([{ label: '', value: '' }])
   const [f, setF] = useState({
     name: brandName || '',
     subline: '',
     school: '',
-    stats: '',
     tagline: '',
     handle: '',
     website: '',
@@ -99,6 +83,36 @@ export function TradingCardTab({
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }))
+
+  // Selecting a style seeds the colour pickers; the talent can then tweak them.
+  function presetColors(s: string): { bg: string; accent: string } {
+    switch (s) {
+      case 'vintage':
+        return { bg: '#1a0f08', accent: '#caa86a' }
+      case 'holographic':
+        return { bg: '#0a0a0e', accent: '#22d3ee' }
+      case 'premium_gold':
+        return { bg: '#101010', accent: '#FFD700' }
+      case 'modern':
+        return { bg: brandPrimary || '#0b1e3f', accent: brandSecondary || '#ffd166' }
+      default:
+        return { bg, accent }
+    }
+  }
+  function onStyle(s: string) {
+    setStyle(s)
+    if (s !== 'custom') {
+      const c = presetColors(s)
+      setBg(c.bg)
+      setAccent(c.accent)
+    }
+  }
+
+  const setStat = (i: number, key: keyof Stat, val: string) =>
+    setStats((arr) => arr.map((s, idx) => (idx === i ? { ...s, [key]: val } : s)))
+  const addStat = () => setStats((arr) => (arr.length >= 8 ? arr : [...arr, { label: '', value: '' }]))
+  const removeStat = (i: number) =>
+    setStats((arr) => (arr.length <= 1 ? [{ label: '', value: '' }] : arr.filter((_, idx) => idx !== i)))
 
   function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -110,9 +124,9 @@ export function TradingCardTab({
 
   if (!hasFinal) return <LockedNotice label="Trading Card" />
 
-  const p = stylePalette(style, bg, accent, brandPrimary, brandSecondary)
-  const inputCls =
-    'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
+  const p: Palette = { bg, border: accent, accent, text: readableText(bg) }
+  const cleanStats = stats.filter((s) => s.label.trim() || s.value.trim())
+  const inputCls = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
   const labelCls =
     'text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground'
 
@@ -120,8 +134,9 @@ export function TradingCardTab({
     <div>
       <h2 className="text-display text-center text-3xl font-black">Trading Card Designer</h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground">
-        Design the front and back live — flip the card to edit the back. Upload your photo, set
-        your text and colors, then Generate a print-ready front + back. Order copies below.
+        Design the front and back live — flip the card to edit the back. Your photo anchors the
+        front; your stats, logo and contact go on the back. Set your colors, then Generate a
+        print-ready front + back.
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_300px]">
@@ -134,7 +149,7 @@ export function TradingCardTab({
           <input type="hidden" name="name" value={f.name} />
           <input type="hidden" name="subline" value={f.subline} />
           <input type="hidden" name="school" value={f.school} />
-          <input type="hidden" name="stats" value={f.stats} />
+          <input type="hidden" name="stats_json" value={JSON.stringify(cleanStats)} />
           <input type="hidden" name="tagline" value={f.tagline} />
           <input type="hidden" name="handle" value={f.handle} />
           <input type="hidden" name="website" value={f.website} />
@@ -158,8 +173,7 @@ export function TradingCardTab({
             <input value={f.name} onChange={set('name')} placeholder="Name" className={inputCls} />
             <input value={f.subline} onChange={set('subline')} placeholder="Position · Sport" className={inputCls} />
             <input value={f.school} onChange={set('school')} placeholder="School / Team" className={inputCls} />
-            <input value={f.stats} onChange={set('stats')} placeholder="Key stats" className={inputCls} />
-            <input value={f.tagline} onChange={set('tagline')} placeholder="Tagline" className={`${inputCls} sm:col-span-2`} />
+            <input value={f.tagline} onChange={set('tagline')} placeholder="Tagline" className={inputCls} />
           </div>
 
           <p className="text-display mt-1 text-[10px] font-bold uppercase tracking-widest text-primary">
@@ -170,12 +184,52 @@ export function TradingCardTab({
             <input value={f.website} onChange={set('website')} placeholder="website.com" className={inputCls} />
           </div>
 
+          {/* Multiple stats → rendered on the back */}
+          <div>
+            <span className={labelCls}>Stats (on the back — value + label)</span>
+            <div className="mt-1 grid gap-2">
+              {stats.map((s, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    value={s.value}
+                    onChange={(e) => setStat(i, 'value', e.target.value)}
+                    placeholder="24.5"
+                    className={`${inputCls} w-24 shrink-0`}
+                  />
+                  <input
+                    value={s.label}
+                    onChange={(e) => setStat(i, 'label', e.target.value)}
+                    placeholder="Points per game"
+                    className={inputCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeStat(i)}
+                    aria-label="Remove stat"
+                    className="shrink-0 rounded-md border border-border px-2.5 py-2 text-xs text-muted-foreground hover:bg-panel hover:text-destructive"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            {stats.length < 8 && (
+              <button
+                type="button"
+                onClick={addStat}
+                className="text-display mt-2 rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-panel"
+              >
+                + Add stat
+              </button>
+            )}
+          </div>
+
           <label className="block">
-            <span className={labelCls}>Card Style</span>
+            <span className={labelCls}>Card Style (seeds the colors)</span>
             <select
               name="style_view"
               value={style}
-              onChange={(e) => setStyle(e.target.value)}
+              onChange={(e) => onStyle(e.target.value)}
               className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             >
               {STYLES.map((s) => (
@@ -185,18 +239,32 @@ export function TradingCardTab({
               ))}
             </select>
           </label>
-          {style === 'custom' && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className={labelCls}>Card color</span>
-                <input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1" />
-              </label>
-              <label className="block">
-                <span className={labelCls}>Accent / border</span>
-                <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1" />
-              </label>
-            </div>
-          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className={labelCls}>Background color</span>
+              <input
+                type="color"
+                value={bg}
+                onChange={(e) => {
+                  setBg(e.target.value)
+                  setStyle('custom')
+                }}
+                className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+              />
+            </label>
+            <label className="block">
+              <span className={labelCls}>Accent / border</span>
+              <input
+                type="color"
+                value={accent}
+                onChange={(e) => {
+                  setAccent(e.target.value)
+                  setStyle('custom')
+                }}
+                className="mt-1 h-10 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+              />
+            </label>
+          </div>
 
           <div className="mt-1 flex justify-center">
             <button
@@ -211,7 +279,7 @@ export function TradingCardTab({
 
         {/* Live preview with 3D flip */}
         <div className="flex flex-col items-center gap-3">
-          <CardFlip flipped={flipped} palette={p} photo={photo} logoUrl={logoUrl} f={f} style={style} />
+          <CardFlip flipped={flipped} palette={p} photo={photo} logoUrl={logoUrl} f={f} stats={cleanStats} style={style} />
           <button
             type="button"
             onClick={() => setFlipped((v) => !v)}
@@ -245,13 +313,15 @@ function CardFlip({
   photo,
   logoUrl,
   f,
+  stats,
   style,
 }: {
   flipped: boolean
   palette: Palette
   photo: string | null
   logoUrl: string
-  f: { name: string; subline: string; school: string; stats: string; tagline: string; handle: string; website: string }
+  f: { name: string; subline: string; school: string; tagline: string; handle: string; website: string }
+  stats: Stat[]
   style: string
 }) {
   return (
@@ -276,27 +346,31 @@ function CardFlip({
                 <div className="flex h-full items-center justify-center text-[9px] text-white/40">action photo</div>
               )}
             </div>
-            {f.stats && (
-              <p className="text-[10px]" style={{ color: palette.accent }}>
-                <span className="font-bold">STATS </span>
-                <span style={{ color: palette.text }}>{f.stats}</span>
-              </p>
-            )}
-            {f.tagline && <p className="text-center text-xs font-bold italic" style={{ color: palette.accent }}>&ldquo;{f.tagline}&rdquo;</p>}
+            {f.tagline && <p className="mt-1 text-center text-xs font-bold italic" style={{ color: palette.accent }}>&ldquo;{f.tagline}&rdquo;</p>}
             <p className="mt-auto text-right text-[7px]" style={{ color: palette.accent, opacity: 0.6 }}>{style.toUpperCase()}</p>
           </CardShell>
         </div>
         {/* Back */}
         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
           <CardShell palette={palette}>
-            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+            <div className="flex flex-1 flex-col items-center justify-center gap-1.5">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="" className="h-20 w-20 object-contain" />
+                <img src={logoUrl} alt="" className="h-14 w-14 object-contain" />
               ) : null}
-              <p className="text-display text-center text-base font-black" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
+              <p className="text-display text-center text-base font-black leading-none" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
               {f.subline && <p className="text-center text-[9px] font-bold uppercase tracking-widest" style={{ color: palette.accent }}>{f.subline}</p>}
-              {f.tagline && <p className="text-center text-[11px] italic" style={{ color: palette.text, opacity: 0.9 }}>&ldquo;{f.tagline}&rdquo;</p>}
+              {stats.length > 0 && (
+                <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1">
+                  {stats.slice(0, 6).map((s, i) => (
+                    <div key={i} className="text-center">
+                      <p className="text-sm font-black leading-none" style={{ color: palette.text }}>{s.value || '—'}</p>
+                      <p className="text-[7px] uppercase tracking-wider" style={{ color: palette.accent }}>{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {f.tagline && <p className="mt-1 text-center text-[11px] italic" style={{ color: palette.text, opacity: 0.9 }}>&ldquo;{f.tagline}&rdquo;</p>}
             </div>
             <div className="text-center">
               {f.handle && <p className="text-xs font-bold" style={{ color: palette.accent }}>{f.handle}</p>}
