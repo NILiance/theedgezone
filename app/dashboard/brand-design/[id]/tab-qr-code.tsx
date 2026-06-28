@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { generateQrCodeAction, type QrActionState } from './arsenal-tab-actions'
 import { QR_TYPE_OPTIONS } from '@/lib/arsenal-tab-options'
 import { DownloadLink } from '@/components/download-link'
+import { LogoStyleToggle, type LogoStyle } from './logo-style-toggle'
 
 export function QrCodeTab({
   brandId,
@@ -26,6 +27,7 @@ export function QrCodeTab({
   const [bgColor, setBgColor] = useState('#ffffff')
   const [includeLogo, setIncludeLogo] = useState(true)
   const [logoSize, setLogoSize] = useState(168)
+  const [logoStyle, setLogoStyle] = useState<LogoStyle>('transparent')
   const placeholder = QR_TYPE_OPTIONS.find((t) => t.value === qrType)?.placeholder ?? ''
   useRefreshOnNewUrl(state.url)
 
@@ -96,6 +98,7 @@ export function QrCodeTab({
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input type="hidden" name="logo_size" value={logoSize} />
+        <input type="hidden" name="logo_style" value={logoStyle} />
         <label className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <input
             type="checkbox"
@@ -108,21 +111,24 @@ export function QrCodeTab({
           Center logo on QR
         </label>
         {includeLogo && (
-          <label className="mx-auto flex w-full max-w-xs items-center gap-3 text-xs text-muted-foreground">
-            <span className="text-display whitespace-nowrap text-[10px] font-bold uppercase tracking-widest">
-              Logo size
-            </span>
-            <input
-              type="range"
-              min={96}
-              max={240}
-              step={8}
-              value={logoSize}
-              onChange={(e) => setLogoSize(Number(e.target.value))}
-              className="w-full cursor-pointer"
-            />
-            <span className="w-9 text-right">{Math.round((logoSize / 800) * 100)}%</span>
-          </label>
+          <div className="mx-auto flex w-full max-w-xs flex-col items-center gap-3">
+            <label className="flex w-full items-center gap-3 text-xs text-muted-foreground">
+              <span className="text-display whitespace-nowrap text-[10px] font-bold uppercase tracking-widest">
+                Logo size
+              </span>
+              <input
+                type="range"
+                min={96}
+                max={240}
+                step={8}
+                value={logoSize}
+                onChange={(e) => setLogoSize(Number(e.target.value))}
+                className="w-full cursor-pointer"
+              />
+              <span className="w-9 text-right">{Math.round((logoSize / 800) * 100)}%</span>
+            </label>
+            <LogoStyleToggle value={logoStyle} onChange={setLogoStyle} />
+          </div>
         )}
         <div className="mt-2 flex justify-center">
           <button

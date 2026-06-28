@@ -130,10 +130,11 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
   const selectedConcept = (concepts ?? []).find((c) => c.is_selected) ?? null
   const hasFinal = Boolean(selectedConcept)
 
-  // Email-signature logo: a transparent PNG so it sits cleanly on any
-  // background. Only generated when that tab is open (idempotent + cached).
-  const emailLogoUrl =
-    hasFinal && arsenalSubtab === 'email_signature'
+  // Transparent-background logo (cached) for the asset editors that offer a
+  // transparent-vs-regular choice. Only generated when one of those tabs is open.
+  const logoChoiceTabs = ['email_signature', 'social_avatars', 'trading_card']
+  const transparentLogoUrl =
+    hasFinal && logoChoiceTabs.includes(arsenalSubtab)
       ? ((await ensureTransparentLogo(brand.id)) ?? brand.final_logo_url ?? '')
       : (brand.final_logo_url ?? '')
 
@@ -367,7 +368,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
             brandPrimary={brand.primary_color}
             brandSecondary={brand.secondary_color}
             finalLogoUrl={brand.final_logo_url}
-            emailLogoUrl={emailLogoUrl}
+            transparentLogoUrl={transparentLogoUrl}
             brandName={brand.brand_name ?? ''}
             tradingCardTiers={tradingCardTiers}
             orderableCards={orderableCards}
@@ -1025,7 +1026,7 @@ function ArsenalView({
   brandPrimary,
   brandSecondary,
   finalLogoUrl,
-  emailLogoUrl,
+  transparentLogoUrl,
   brandName,
   tradingCardTiers,
   orderableCards,
@@ -1042,7 +1043,7 @@ function ArsenalView({
   brandPrimary: string | null
   brandSecondary: string | null
   finalLogoUrl: string | null
-  emailLogoUrl: string
+  transparentLogoUrl: string
   brandName: string
   tradingCardTiers: Array<{ qty: number; price_cents: number; label: string }>
   orderableCards: Array<{ id: string; url: string; style?: string | null }>
@@ -1139,6 +1140,7 @@ function ArsenalView({
             orderSuccess={tcOrderSuccess}
             brandName={brandName}
             logoUrl={finalLogoUrl ?? ''}
+            transparentLogoUrl={transparentLogoUrl}
             brandPrimary={brandPrimary ?? '#0b1e3f'}
             brandSecondary={brandSecondary ?? '#ffd166'}
           />
@@ -1183,7 +1185,8 @@ function ArsenalView({
             hasFinal={hasFinal}
             brandPrimary={brandPrimary}
             brandName={brandName}
-            logoUrl={emailLogoUrl}
+            logoUrl={finalLogoUrl ?? ''}
+            transparentLogoUrl={transparentLogoUrl}
           />
           <YourCreations
             brandId={brandId}
@@ -1200,6 +1203,7 @@ function ArsenalView({
             brandId={brandId}
             hasFinal={hasFinal}
             logoUrl={finalLogoUrl ?? ''}
+            transparentLogoUrl={transparentLogoUrl}
             brandPrimary={brandPrimary}
           />
           <YourCreations

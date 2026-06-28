@@ -7,6 +7,7 @@ import {
   type EmailSigActionState,
 } from './arsenal-tab-actions'
 import { buildEmailSignatureHtml } from '@/lib/email-signature-html'
+import { LogoStyleToggle, type LogoStyle } from './logo-style-toggle'
 
 const LIGHT = { bg: '#ffffff', name: '#111111', body: '#444444', link: '#3aa7ff' }
 const DARK = { bg: '#0a0e14', name: '#ffffff', body: '#cccccc', link: '#caa86a' }
@@ -30,12 +31,14 @@ export function EmailSignatureTab({
   brandPrimary,
   brandName,
   logoUrl,
+  transparentLogoUrl,
 }: {
   brandId: string
   hasFinal: boolean
   brandPrimary: string | null
   brandName: string
   logoUrl: string
+  transparentLogoUrl: string
 }) {
   const [state, action, pending] = useActionState<EmailSigActionState, FormData>(
     generateEmailSigAction,
@@ -46,6 +49,7 @@ export function EmailSignatureTab({
   const [body, setBody] = useState(LIGHT.body)
   const [link, setLink] = useState(brandPrimary ?? LIGHT.link)
   const [logoSize, setLogoSize] = useState(72)
+  const [logoStyle, setLogoStyle] = useState<LogoStyle>('transparent')
   const [f, setF] = useState({
     name: brandName || '',
     title: '',
@@ -84,7 +88,7 @@ export function EmailSignatureTab({
     phone: f.phone,
     website: f.website,
     socials: socialUrls(f.ig, f.x, f.tiktok, f.linkedin),
-    logoUrl: logoUrl || undefined,
+    logoUrl: (logoStyle === 'transparent' ? transparentLogoUrl || logoUrl : logoUrl) || undefined,
     logoSize,
     bg,
     nameColor,
@@ -121,6 +125,7 @@ export function EmailSignatureTab({
           <input type="hidden" name="body_color" value={body} />
           <input type="hidden" name="link_color" value={link} />
           <input type="hidden" name="logo_size" value={logoSize} />
+          <input type="hidden" name="logo_style" value={logoStyle} />
           <input type="hidden" name="name" value={f.name} />
           <input type="hidden" name="sport" value={f.sport} />
           <input type="hidden" name="email" value={f.email} />
@@ -151,6 +156,7 @@ export function EmailSignatureTab({
             <ColorPicker label="Name" value={nameColor} onChange={setNameColor} />
             <ColorPicker label="Content" value={body} onChange={setBody} />
             <ColorPicker label="Links" value={link} onChange={setLink} />
+            <LogoStyleToggle value={logoStyle} onChange={setLogoStyle} />
             <label className="block">
               <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Logo size · {logoSize}px

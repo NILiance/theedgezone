@@ -482,7 +482,12 @@ export interface AvatarResult {
 
 export async function generateSocialAvatars(
   brandId: string,
-  opts: { effect?: string; bgColor?: string; effectColor?: string } = {}
+  opts: {
+    effect?: string
+    bgColor?: string
+    effectColor?: string
+    logoStyle?: 'transparent' | 'regular'
+  } = {}
 ): Promise<AvatarResult> {
   const { effect, bgColor, effectColor } = opts
   const supabase = createServiceClient()
@@ -522,10 +527,11 @@ export async function generateSocialAvatars(
     }
   }
 
-  // On an effect background, knock out the logo's own background so the effect
-  // shows around it.
+  // Knock out the logo's own background when the talent chose a transparent
+  // logo (the default) so the chosen colour / effect shows around it.
+  const wantTransparent = (opts.logoStyle ?? 'transparent') !== 'regular'
   let logoSource = logoBuf
-  if (effectBg) {
+  if (wantTransparent) {
     const { makeLogoTransparent } = await import('@/lib/logo-transparent')
     logoSource = await makeLogoTransparent(logoBuf, sharp).catch(() => logoBuf)
   }

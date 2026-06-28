@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DownloadLink } from '@/components/download-link'
 import { ARSENAL_EFFECTS } from '@/lib/arsenal-tab-options'
+import { LogoStyleToggle } from './logo-style-toggle'
 import {
   generateSocialAvatarsAction,
   type SocialAvatarsActionState,
@@ -23,11 +24,13 @@ export function SocialAvatarsTab({
   brandId,
   hasFinal,
   logoUrl,
+  transparentLogoUrl,
   brandPrimary,
 }: {
   brandId: string
   hasFinal: boolean
   logoUrl: string
+  transparentLogoUrl: string
   brandPrimary: string | null
 }) {
   const [state, action, pending] = useActionState<SocialAvatarsActionState, FormData>(
@@ -37,11 +40,13 @@ export function SocialAvatarsTab({
   const [effect, setEffect] = useState('none')
   const [bgColor, setBgColor] = useState('#ffffff')
   const [effectColor, setEffectColor] = useState(brandPrimary ?? '#1f6feb')
+  const [logoStyle, setLogoStyle] = useState<'transparent' | 'regular'>('transparent')
   useRefreshOnNewUrl(state.url)
 
   if (!hasFinal) return <LockedNotice label="Social Avatars" />
 
   const hasEffect = effect !== 'none'
+  const previewLogo = logoStyle === 'transparent' ? transparentLogoUrl || logoUrl : logoUrl
 
   return (
     <div>
@@ -58,6 +63,7 @@ export function SocialAvatarsTab({
           <input type="hidden" name="effect" value={effect} />
           <input type="hidden" name="bg_color" value={bgColor} />
           <input type="hidden" name="effect_color" value={effectColor} />
+          <input type="hidden" name="logo_style" value={logoStyle} />
 
           {/* Live preview of the avatar */}
           <div className="mx-auto">
@@ -73,8 +79,8 @@ export function SocialAvatarsTab({
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo preview" className="h-[60%] w-[60%] object-contain" />
+              {previewLogo ? (
+                <img src={previewLogo} alt="Logo preview" className="h-[60%] w-[60%] object-contain" />
               ) : null}
             </div>
             {hasEffect && (
@@ -105,6 +111,7 @@ export function SocialAvatarsTab({
                 ))}
               </select>
             </label>
+            <LogoStyleToggle value={logoStyle} onChange={setLogoStyle} />
           </div>
 
           <button

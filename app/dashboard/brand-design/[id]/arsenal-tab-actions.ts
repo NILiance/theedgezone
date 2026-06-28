@@ -231,10 +231,18 @@ export async function generateTradingCardAction(
     // never tofu on serverless; produces a front + back side-by-side. Falls back
     // to the legacy single-side SVG if the font can't be fetched.
     const photoDataUrl = `data:image/png;base64,${photoArea.toString('base64')}`
+    // Back logo — transparent (default) or the regular logo with its background.
+    const logoStyle =
+      String(form.get('logo_style') ?? 'transparent') === 'regular' ? 'regular' : 'transparent'
+    let logoForCard = brand.final_logo_url
+    if (logoStyle === 'transparent' && brand.final_logo_url) {
+      const { ensureTransparentLogo } = await import('@/lib/brand-addons')
+      logoForCard = (await ensureTransparentLogo(brandId)) ?? brand.final_logo_url
+    }
     let logoDataUrl: string | undefined
-    if (brand.final_logo_url) {
+    if (logoForCard) {
       try {
-        const lr = await fetch(brand.final_logo_url)
+        const lr = await fetch(logoForCard)
         if (lr.ok) logoDataUrl = `data:image/png;base64,${Buffer.from(await lr.arrayBuffer()).toString('base64')}`
       } catch {
         /* logo optional on the back */
@@ -459,6 +467,8 @@ export async function generateQrCodeAction(
   const includeLogo = form.get('include_logo') === '1' || form.get('include_logo') === 'on'
   // Center-logo size — clamped to a still-scannable range for ECC=H.
   const logoSize = Math.max(96, Math.min(240, Number(form.get('logo_size') ?? 168) || 168))
+  const logoStyle =
+    String(form.get('logo_style') ?? 'transparent') === 'regular' ? 'regular' : 'transparent'
 
   try {
     const apiUrl =
@@ -483,9 +493,9 @@ export async function generateQrCodeAction(
           .resize(logoSize, logoSize, { fit: 'contain', background: transparent })
           .png()
           .toBuffer()
-        // Knock out the logo's own white/solid background (brand-kit transparent
-        // logo) so only the mark shows.
-        const inner = await makeLogoTransparent(sized, sharp)
+        // Transparent (default) knocks out the logo's background so only the
+        // mark shows; 'regular' keeps the logo's own background.
+        const inner = logoStyle === 'regular' ? sized : await makeLogoTransparent(sized, sharp)
         // Clear the QR *behind* the logo with a rounded patch so the modules
         // don't show through and clutter it — the logo stays readable. At ~25%
         // center coverage the ECC=H QR is still scannable.
@@ -512,7 +522,7 @@ export async function generateQrCodeAction(
       brandId,
       kind: 'qr_code',
       url,
-      metadata: { qrType, target, data, qrColor, bgColor, includeLogo, logoSize },
+      metadata: { qrType, target, data, qrColor, bgColor, includeLogo, logoSize, logoStyle },
       bumpCredits: true,
     })
     if (rec.error) return { error: rec.error }
@@ -581,7 +591,12 @@ export async function generateEmailSigAction(
     : ((profile?.socials as Record<string, string> | null) ?? {})
 
   const { ensureTransparentLogo } = await import('@/lib/brand-addons')
-  const transparentLogo = await ensureTransparentLogo(brandId)
+  const logoStyle =
+    String(form.get('logo_style') ?? 'transparent') === 'regular' ? 'regular' : 'transparent'
+  const sigLogo =
+    logoStyle === 'transparent'
+      ? ((await ensureTransparentLogo(brandId)) ?? brand.final_logo_url)
+      : brand.final_logo_url
   const logoSize = Math.max(32, Math.min(160, Number(form.get('logo_size') ?? 72) || 72))
 
   const html = buildEmailSignatureHtml({
@@ -593,7 +608,7 @@ export async function generateEmailSigAction(
     phone,
     website,
     socials,
-    logoUrl: transparentLogo ?? brand.final_logo_url ?? undefined,
+    logoUrl: sigLogo ?? undefined,
     logoSize,
     bg,
     nameColor,
@@ -640,9 +655,11 @@ export async function generateSocialAvatarsAction(
   const effect = String(form.get('effect') ?? 'none')
   const bgColor = String(form.get('bg_color') ?? '') || undefined
   const effectColor = String(form.get('effect_color') ?? '') || undefined
+  const logoStyle =
+    String(form.get('logo_style') ?? 'transparent') === 'regular' ? 'regular' : 'transparent'
   try {
     const { generateSocialAvatars } = await import('@/lib/brand-addons')
-    const result = await generateSocialAvatars(brandId, { effect, bgColor, effectColor })
+    const result = await generateSocialAvatars(brandId, { effect, bgColor, effectColor, logoStyle })
     const rec = await recordAddon({
       brandId,
       kind: 'social_avatars',

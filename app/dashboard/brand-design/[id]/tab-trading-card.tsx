@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ARSENAL_EFFECTS } from '@/lib/arsenal-tab-options'
+import { LogoStyleToggle } from './logo-style-toggle'
 import {
   generateTradingCardAction,
   type TradingCardActionState,
@@ -48,6 +49,7 @@ export function TradingCardTab({
   orderSuccess,
   brandName,
   logoUrl,
+  transparentLogoUrl,
   brandPrimary,
   brandSecondary,
 }: {
@@ -58,6 +60,7 @@ export function TradingCardTab({
   orderSuccess?: boolean
   brandName: string
   logoUrl: string
+  transparentLogoUrl: string
   brandPrimary: string
   brandSecondary: string
 }) {
@@ -69,6 +72,7 @@ export function TradingCardTab({
   const [bg, setBg] = useState(brandPrimary || '#0b1e3f')
   const [accent, setAccent] = useState(brandSecondary || '#ffd166')
   const [effect, setEffect] = useState('none')
+  const [logoStyle, setLogoStyle] = useState<'transparent' | 'regular'>('transparent')
   const [flipped, setFlipped] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
   const [stats, setStats] = useState<Stat[]>([{ label: '', value: '' }])
@@ -124,6 +128,7 @@ export function TradingCardTab({
   if (!hasFinal) return <LockedNotice label="Trading Card" />
 
   const p: Palette = { bg, border: accent, accent, text: readableText(bg) }
+  const previewLogo = logoStyle === 'transparent' ? transparentLogoUrl || logoUrl : logoUrl
   const cleanStats = stats.filter((s) => s.label.trim() || s.value.trim())
   const inputCls = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
   const labelCls =
@@ -144,6 +149,7 @@ export function TradingCardTab({
           <input type="hidden" name="brand_id" value={brandId} />
           <input type="hidden" name="style" value={style} />
           <input type="hidden" name="effect" value={effect} />
+          <input type="hidden" name="logo_style" value={logoStyle} />
           <input type="hidden" name="bg_color" value={bg} />
           <input type="hidden" name="accent_color" value={accent} />
           <input type="hidden" name="name" value={f.name} />
@@ -183,6 +189,7 @@ export function TradingCardTab({
             <input value={f.handle} onChange={set('handle')} placeholder="@handle" className={inputCls} />
             <input value={f.website} onChange={set('website')} placeholder="website.com" className={inputCls} />
           </div>
+          <LogoStyleToggle value={logoStyle} onChange={setLogoStyle} label="Back logo" />
 
           {/* Multiple stats → rendered on the back, one per line */}
           <div>
@@ -307,7 +314,7 @@ export function TradingCardTab({
             flipped={flipped}
             palette={p}
             photo={photo}
-            logoUrl={logoUrl}
+            logoUrl={previewLogo}
             f={f}
             stats={cleanStats}
             effectActive={effect !== 'none'}
