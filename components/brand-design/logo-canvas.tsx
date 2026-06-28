@@ -23,6 +23,11 @@ import { saveCanvasOutput } from '@/app/dashboard/brand-design/actions'
 interface Props {
   brandId: string
   logoUrl: string
+  /** When set, edit this asset instead of the logo (print/digital items). */
+  baseUrl?: string
+  /** When set, the saved PNG is recorded in Your Creations under this kind. */
+  assetKind?: string
+  assetLabel?: string
   defaults: {
     brand_name?: string | null
     sport?: string | null
@@ -99,7 +104,8 @@ const ARCH_PRESETS = [
   { label: 'Arch Down', value: 120 },
 ] as const
 
-export function LogoCanvas({ brandId, logoUrl, defaults }: Props) {
+export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, defaults }: Props) {
+  const imageSrc = baseUrl || logoUrl
   // ── refs ────────────────────────────────────────────────────────────
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
@@ -167,13 +173,13 @@ export function LogoCanvas({ brandId, logoUrl, defaults }: Props) {
 
   // ── load the logo image once ────────────────────────────────────────
   useEffect(() => {
-    if (!logoUrl) return
+    if (!imageSrc) return
     const img = new window.Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => setLogoImage(img)
     img.onerror = () => setLogoImage(null)
-    img.src = logoUrl
-  }, [logoUrl])
+    img.src = imageSrc
+  }, [imageSrc])
 
   // Draw the original logo onto the canvas when it arrives. Resets
   // history to just the initial snapshot.
@@ -492,7 +498,9 @@ export function LogoCanvas({ brandId, logoUrl, defaults }: Props) {
     const fd = new FormData()
     fd.set('brand_id', brandId)
     fd.set('data_url', dataUrl)
-    fd.set('filename', `logo-modified-${Date.now()}.png`)
+    fd.set('filename', `${assetKind ? `${assetKind}-edited` : 'logo-modified'}-${Date.now()}.png`)
+    if (assetKind) fd.set('kind', assetKind)
+    if (assetLabel) fd.set('label', assetLabel)
     fd.set(
       'layers_meta',
       JSON.stringify({

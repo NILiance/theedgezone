@@ -6,12 +6,15 @@ import { LogoCanvas } from '@/components/brand-design/logo-canvas'
 
 interface PageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ src?: string; kind?: string; label?: string }>
 }
 
 export const metadata = { title: 'Canvas editor' }
 
-export default async function BrandCanvasPage({ params }: PageProps) {
+export default async function BrandCanvasPage({ params, searchParams }: PageProps) {
   const { id } = await params
+  const { src, kind, label } = await searchParams
+  const editingAsset = Boolean(src)
   const user = await requireUser()
   const supabase = await createClient()
 
@@ -24,7 +27,7 @@ export default async function BrandCanvasPage({ params }: PageProps) {
     .single()
 
   if (!brand || brand.user_id !== user.id) notFound()
-  if (!brand.final_logo_url) {
+  if (!editingAsset && !brand.final_logo_url) {
     return (
       <div className="space-y-4">
         <Link
@@ -51,16 +54,22 @@ export default async function BrandCanvasPage({ params }: PageProps) {
         >
           ← Back to studio
         </Link>
-        <h1 className="text-display mt-3 text-3xl font-black tracking-tight">Canvas editor</h1>
+        <h1 className="text-display mt-3 text-3xl font-black tracking-tight">
+          {editingAsset ? `Edit ${label ?? 'asset'}` : 'Canvas editor'}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add jersey numbers, school, position. Drag text on the canvas. Save to your brand or
-          download a high-res PNG.
+          {editingAsset
+            ? 'Edit text, colors and your logo on this asset. Save back to Your Creations or download a PNG.'
+            : 'Add jersey numbers, school, position. Drag text on the canvas. Save to your brand or download a high-res PNG.'}
         </p>
       </div>
 
       <LogoCanvas
         brandId={brand.id}
-        logoUrl={brand.final_logo_url}
+        logoUrl={brand.final_logo_url ?? src ?? ''}
+        baseUrl={src}
+        assetKind={kind}
+        assetLabel={label}
         defaults={{
           brand_name: brand.brand_name,
           sport: brand.sport,

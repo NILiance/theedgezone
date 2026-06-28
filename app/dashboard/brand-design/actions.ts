@@ -591,6 +591,10 @@ const saveCanvasSchema = z.object({
   data_url: z.string().regex(/^data:image\/png;base64,/),
   filename: z.string().max(120).optional(),
   layers_meta: z.string().optional(),
+  // When editing an arsenal asset (print/digital), kind routes the saved PNG
+  // back into Your Creations so it's downloadable + re-editable.
+  kind: z.string().max(60).optional(),
+  label: z.string().max(120).optional(),
 })
 
 /** Receives a base64 PNG from the canvas editor, uploads it to Storage, records in brand_assets. */
@@ -603,6 +607,8 @@ export async function saveCanvasOutput(
     data_url: formData.get('data_url'),
     filename: formData.get('filename') || undefined,
     layers_meta: formData.get('layers_meta') || undefined,
+    kind: formData.get('kind') || undefined,
+    label: formData.get('label') || undefined,
   })
   if (!parsed.success) return { ok: false, message: parsed.error.errors[0]!.message }
 
@@ -644,6 +650,17 @@ export async function saveCanvasOutput(
     url,
     metadata: meta as unknown as Record<string, unknown>,
   })
+
+  // Editing an arsenal asset → also record it as a creation so it appears in
+  // Your Creations (downloadable + re-editable), tagged as an edited version.
+  if (parsed.data.kind) {
+    await supabase.from('brand_design_addons').insert({
+      brand_design_id: brand.id,
+      kind: parsed.data.kind,
+      url,
+      metadata: { edited: true, label: parsed.data.label ?? null, ...(meta ?? {}) },
+    })
+  }
 
   revalidatePath(`/dashboard/brand-design/${brand.id}`)
   return { ok: true, url }

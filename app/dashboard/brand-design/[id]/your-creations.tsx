@@ -153,6 +153,10 @@ function CreationTile({
   const [replayKey, setReplayKey] = useState(0)
   const isGif = showImage && (creation.url ?? '').split('?')[0]!.toLowerCase().endsWith('.gif')
   const canReplay = creation.kind === 'logo_animation' || isGif
+  // Raster assets (PNG/JPG/WebP) can be opened in the Canvas editor to tweak
+  // text, colors and logo, then saved back here.
+  const isEditable =
+    showImage && /\.(png|jpe?g|webp)$/.test((creation.url ?? '').split('?')[0]!.toLowerCase())
   // Changing the src (cache-bust) reliably restarts the animation from frame 0
   // — a key-only remount leaves a finished non-looping GIF on its last frame.
   const replaySrc =
@@ -219,6 +223,16 @@ function CreationTile({
             >
               ⬇ Download
             </DownloadLink>
+          )}
+          {isEditable && creation.url && (
+            <a
+              href={`/dashboard/brand-design/${brandId}/canvas?src=${encodeURIComponent(
+                creation.url
+              )}&kind=${encodeURIComponent(creation.kind)}&label=${encodeURIComponent(subLabel)}`}
+              className="text-display rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-panel"
+            >
+              ✏️ Edit
+            </a>
           )}
           {creation.kind !== 'logo_animation' && (
             <button
