@@ -1185,7 +1185,12 @@ function ArsenalView({
 
       {subtab === 'social_avatars' && (
         <>
-          <SocialAvatarsTab brandId={brandId} hasFinal={hasFinal} />
+          <SocialAvatarsTab
+            brandId={brandId}
+            hasFinal={hasFinal}
+            logoUrl={finalLogoUrl ?? ''}
+            brandPrimary={brandPrimary}
+          />
           <YourCreations
             brandId={brandId}
             creations={creations.filter((c) => c.kind === 'social_avatars')}

@@ -433,10 +433,24 @@ const PLATFORMS = [
   { key: 'linkedin', size: 400, bg: '#fff', circle: true },
 ]
 
+function hexToRgb(hex: string, fallback: { r: number; g: number; b: number }) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return fallback
+  const n = parseInt(m[1]!, 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+
+export interface AvatarResult {
+  url: string
+  count: number
+  avatars: Array<{ key: string; size: number; url: string }>
+}
+
 export async function generateSocialAvatars(
   brandId: string,
-  effect?: string
-): Promise<{ url: string; count: number }> {
+  opts: { effect?: string; bgColor?: string; effectColor?: string } = {}
+): Promise<AvatarResult> {
+  const { effect, bgColor, effectColor } = opts
   const supabase = createServiceClient()
   if (!supabase) throw new Error('Service role key missing')
   const { data: brand } = await supabase
@@ -458,8 +472,11 @@ export async function generateSocialAvatars(
     try {
       const { generateArsenalImage } = await import('@/lib/gemini-image')
       const { effectBackgroundPrompt } = await import('@/lib/arsenal-prompts')
+      // Prefer the user's picked colours, fall back to the brand palette.
       const colors =
-        [brand.primary_color, brand.secondary_color].filter(Boolean).join(', ') || 'bold brand colors'
+        [effectColor || brand.primary_color, bgColor || brand.secondary_color]
+          .filter(Boolean)
+          .join(', ') || 'bold brand colors'
       const res = await generateArsenalImage({
         brandId,
         prompt: effectBackgroundPrompt(effect, colors),
@@ -479,6 +496,9 @@ export async function generateSocialAvatars(
     logoSource = await makeLogoTransparent(logoBuf, sharp).catch(() => logoBuf)
   }
 
+  const solidRgb = hexToRgb(bgColor ?? '#ffffff', { r: 255, g: 255, b: 255 })
+  const avatars: AvatarResult['avatars'] = []
+
   for (const p of PLATFORMS) {
     const targetSize = p.size
     const logoSize = Math.round(targetSize * (effectBg ? 0.6 : 0.72))
@@ -496,8 +516,7 @@ export async function generateSocialAvatars(
           width: targetSize,
           height: targetSize,
           channels: 4,
-          background:
-            p.bg === '#fff' ? { r: 255, g: 255, b: 255, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 1 },
+          background: { ...solidRgb, alpha: 1 },
         },
       }).png()
     }
@@ -511,12 +530,18 @@ export async function generateSocialAvatars(
     ])
     const composed = await canvas.png().toBuffer()
     zip.file(`${p.key}_${targetSize}x${targetSize}.png`, composed)
+    const avatarUrl = await uploadToStorage(
+      `${brandId}/addons/avatars/${p.key}_${targetSize}.png`,
+      composed,
+      'image/png'
+    )
+    avatars.push({ key: p.key, size: targetSize, url: avatarUrl })
   }
 
   const zipBuf = await zip.generateAsync({ type: 'nodebuffer' })
   const path = `${brandId}/addons/social-avatars.zip`
   const url = await uploadToStorage(path, zipBuf, 'application/zip')
-  return { url, count: PLATFORMS.length }
+  return { url, count: PLATFORMS.length, avatars }
 }
 
 // ── Trading card ────────────────────────────────────────────────────────────

@@ -583,7 +583,13 @@ export async function generateEmailSigAction(
 
 // ── Social Avatars (delegates to existing generator) ─────────────────────────
 
-export type SocialAvatarsActionState = { ok?: boolean; error?: string; url?: string; count?: number }
+export type SocialAvatarsActionState = {
+  ok?: boolean
+  error?: string
+  url?: string
+  count?: number
+  avatars?: Array<{ key: string; size: number; url: string }>
+}
 
 export async function generateSocialAvatarsAction(
   _prev: SocialAvatarsActionState,
@@ -597,19 +603,21 @@ export async function generateSocialAvatarsAction(
   if (!brand.final_logo_url) return { error: 'Pick a final logo first.' }
 
   const effect = String(form.get('effect') ?? 'none')
+  const bgColor = String(form.get('bg_color') ?? '') || undefined
+  const effectColor = String(form.get('effect_color') ?? '') || undefined
   try {
     const { generateSocialAvatars } = await import('@/lib/brand-addons')
-    const result = await generateSocialAvatars(brandId, effect)
+    const result = await generateSocialAvatars(brandId, { effect, bgColor, effectColor })
     const rec = await recordAddon({
       brandId,
       kind: 'social_avatars',
       url: result.url,
-      metadata: { count: result.count, effect },
+      metadata: { count: result.count, effect, avatars: result.avatars },
       bumpCredits: true,
     })
     if (rec.error) return { error: rec.error }
     revalidatePath(`/dashboard/brand-design/${brandId}`)
-    return { ok: true, url: result.url, count: result.count }
+    return { ok: true, url: result.url, count: result.count, avatars: result.avatars }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Avatar pack failed' }
   }
