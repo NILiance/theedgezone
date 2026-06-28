@@ -20,6 +20,13 @@ export async function generateLogoOnPhotoAction(
   const brandId = String(form.get('brand_id') ?? '')
   const placement = String(form.get('placement') ?? 'bottom_right')
   const size = String(form.get('size') ?? 'medium')
+  // Free drag mode: x/y are the logo CENTER as a 0–1 fraction of the photo,
+  // scale is the logo width as a 0–1 fraction of the photo width.
+  const freeX = form.get('x') != null ? Number(form.get('x')) : null
+  const freeY = form.get('y') != null ? Number(form.get('y')) : null
+  const freeScale = form.get('scale') != null ? Number(form.get('scale')) : null
+  const isFree =
+    freeX != null && freeY != null && freeScale != null && [freeX, freeY, freeScale].every(Number.isFinite)
   const photo = form.get('photo')
   if (!brandId) return { error: 'Missing brand id' }
   if (!(photo instanceof File) || photo.size === 0) {
@@ -64,7 +71,9 @@ export async function generateLogoOnPhotoAction(
 
   // Logo size as a percentage of the photo's smaller side.
   const sizePct = size === 'small' ? 0.1 : size === 'large' ? 0.35 : 0.2
-  const logoTargetW = Math.max(64, Math.round(Math.min(pw, ph) * sizePct))
+  const logoTargetW = isFree
+    ? Math.max(24, Math.round(pw * Math.min(0.95, Math.max(0.03, freeScale!))))
+    : Math.max(64, Math.round(Math.min(pw, ph) * sizePct))
   const logoMeta = await sharp(logoBuf).metadata()
   const logoAspect = (logoMeta.width ?? 1) / (logoMeta.height ?? 1)
   const logoTargetH = Math.round(logoTargetW / Math.max(0.1, logoAspect))
@@ -108,7 +117,12 @@ export async function generateLogoOnPhotoAction(
       left: Math.round((pw - logoTargetW) / 2),
     },
   }
-  const placementCfg = pos[placement] ?? pos.bottom_right!
+  const placementCfg = isFree
+    ? {
+        left: Math.max(0, Math.min(pw - logoTargetW, Math.round(freeX! * pw - logoTargetW / 2))),
+        top: Math.max(0, Math.min(ph - logoTargetH, Math.round(freeY! * ph - logoTargetH / 2))),
+      }
+    : (pos[placement] ?? pos.bottom_right!)
 
   // Composite + export as PNG (preserves transparency in the photo if any).
   const composed = await sharp(photoBuf)
@@ -136,7 +150,9 @@ export async function generateLogoOnPhotoAction(
     brand_design_id: brandId,
     kind: 'logo_on_photo',
     url,
-    metadata: { placement, size, source_filename: photo.name },
+    metadata: isFree
+      ? { placement: 'free', x: freeX, y: freeY, scale: freeScale, source_filename: photo.name }
+      : { placement, size, source_filename: photo.name },
   })
   if (addonErr) {
     return {

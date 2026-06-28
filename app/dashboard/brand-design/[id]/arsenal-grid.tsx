@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DownloadLink } from '@/components/download-link'
 import { generateArsenalAsset, type ArsenalGenState } from './arsenal-actions'
-import { generateLogoOnPhotoAction, type LogoOnPhotoState } from './logo-on-photo-actions'
+import { LogoOnPhotoEditor } from './logo-on-photo-editor'
 import {
   UNIFORM_SPORTS,
   UNIFORM_ITEMS_BY_SPORT,
@@ -229,9 +229,12 @@ export function ArsenalGrid({
   brandId,
   hasFinal,
   focusedCategoryId,
+  logoUrl,
 }: {
   brandId: string
   hasFinal: boolean
+  /** Final logo URL — needed by the Logo On Your Photo drag editor. */
+  logoUrl?: string
   /** When set, render ONLY the matching category card (no tile grid).
    *  Used by the Print / Digital sub-tabs to show one focused generator. */
   focusedCategoryId?: string
@@ -286,7 +289,7 @@ export function ArsenalGrid({
           </div>
         </div>
         <div className="mt-4">
-          <CategoryCard brandId={brandId} def={def} featured={FEATURED.includes(def)} />
+          <CategoryCard brandId={brandId} def={def} featured={FEATURED.includes(def)} logoUrl={logoUrl} />
         </div>
       </div>
     )
@@ -334,7 +337,7 @@ export function ArsenalGrid({
             </button>
           </div>
           <div className="px-2 pb-2">
-            <CategoryCard brandId={brandId} def={openDef} featured={FEATURED.includes(openDef)} />
+            <CategoryCard brandId={brandId} def={openDef} featured={FEATURED.includes(openDef)} logoUrl={logoUrl} />
           </div>
         </div>
       )}
@@ -387,15 +390,17 @@ function CategoryCard({
   brandId,
   def,
   featured,
+  logoUrl,
 }: {
   brandId: string
   def: CategoryDef
   featured?: boolean
+  logoUrl?: string
 }) {
   // Specialty variants route to dedicated forms — keeps hooks out of the
   // branching path so rules-of-hooks stays happy.
   if (def.variant === 'logo_on_photo') {
-    return <LogoOnPhotoCard brandId={brandId} def={def} featured={featured} />
+    return <LogoOnPhotoEditor brandId={brandId} logoUrl={logoUrl ?? ''} />
   }
   if (def.variant === 'uniforms') {
     return <UniformsCard brandId={brandId} def={def} featured={featured} />
@@ -632,129 +637,6 @@ function UniformsCard({
           Our designer renders this in ~30–60 seconds. Stay on the page.
         </p>
       )}
-      {state.error && <p className="text-xs text-destructive">{state.error}</p>}
-    </form>
-  )
-}
-
-/**
- * Logo On Your Photo — uploads a user photo, composites the talent's
- * final logo over it at the chosen placement + size, returns a saved
- * URL. NOT a generative call — sharp does the compositing server-side.
- */
-const PLACEMENTS = [
-  { val: 'top_left', name: 'Top Left' },
-  { val: 'top_center', name: 'Top Center' },
-  { val: 'top_right', name: 'Top Right' },
-  { val: 'center_left', name: 'Center Left' },
-  { val: 'center', name: 'Center' },
-  { val: 'center_right', name: 'Center Right' },
-  { val: 'bottom_left', name: 'Bottom Left' },
-  { val: 'bottom_center', name: 'Bottom Center' },
-  { val: 'bottom_right', name: 'Bottom Right' },
-  { val: 'watermark', name: 'Watermark (Semi-transparent)' },
-]
-
-const SIZES = [
-  { val: 'small', name: 'Small (10%)' },
-  { val: 'medium', name: 'Medium (20%)' },
-  { val: 'large', name: 'Large (35%)' },
-]
-
-function LogoOnPhotoCard({
-  brandId,
-  def,
-  featured,
-}: {
-  brandId: string
-  def: CategoryDef
-  featured?: boolean
-}) {
-  const [state, action, pending] = useActionState<LogoOnPhotoState, FormData>(
-    generateLogoOnPhotoAction,
-    {}
-  )
-  const [placement, setPlacement] = useState(PLACEMENTS[8]!.val) // bottom_right
-  const [size, setSize] = useState(SIZES[1]!.val)
-  const url = state.url
-  useRefreshOnNewUrl(url)
-  return (
-    <form
-      action={action}
-      className={`flex flex-col gap-3 rounded-[var(--radius)] border bg-panel/40 p-4 ${
-        featured ? 'border-accent/40' : 'border-border'
-      }`}
-    >
-      <input type="hidden" name="brand_id" value={brandId} />
-      <CategoryHeader def={def} />
-
-      <label className="block">
-        <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          Your photo (PNG / JPG)
-        </span>
-        <input
-          type="file"
-          name="photo"
-          accept="image/png,image/jpeg"
-          required
-          className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs file:mr-3 file:rounded file:border-0 file:bg-primary/20 file:px-2 file:py-1 file:text-[10px] file:font-bold file:uppercase file:tracking-widest file:text-primary"
-        />
-      </label>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Placement
-          </span>
-          <select
-            name="placement"
-            value={placement}
-            onChange={(e) => setPlacement(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
-          >
-            {PLACEMENTS.map((p) => (
-              <option key={p.val} value={p.val}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Logo size
-          </span>
-          <select
-            name="size"
-            value={size}
-            onChange={(e) => setSize(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
-          >
-            {SIZES.map((s) => (
-              <option key={s.val} value={s.val}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="text-display rounded-[var(--radius-sm)] bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-60"
-        >
-          {pending ? 'Compositing…' : url ? 'Re-composite' : 'Place logo on photo'}
-        </button>
-        {url && (
-          <DownloadLink
-            url={url}
-            className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-success"
-          >
-            ⬇ Download
-          </DownloadLink>
-        )}
-      </div>
       {state.error && <p className="text-xs text-destructive">{state.error}</p>}
     </form>
   )

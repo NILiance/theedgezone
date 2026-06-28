@@ -358,6 +358,7 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
             subtab={arsenalSubtab}
             brandPrimary={brand.primary_color}
             brandSecondary={brand.secondary_color}
+            finalLogoUrl={brand.final_logo_url}
             tradingCardTiers={tradingCardTiers}
             orderableCards={orderableCards}
             tcOrderSuccess={tcOrderSuccess}
@@ -1013,6 +1014,7 @@ function ArsenalView({
   subtab,
   brandPrimary,
   brandSecondary,
+  finalLogoUrl,
   tradingCardTiers,
   orderableCards,
   tcOrderSuccess,
@@ -1027,6 +1029,7 @@ function ArsenalView({
   subtab: ArsenalSubtab
   brandPrimary: string | null
   brandSecondary: string | null
+  finalLogoUrl: string | null
   tradingCardTiers: Array<{ qty: number; price_cents: number; label: string }>
   orderableCards: Array<{ id: string; url: string; style?: string | null }>
   tcOrderSuccess: boolean
@@ -1081,7 +1084,7 @@ function ArsenalView({
 
       {subtab === 'create' && (
         <>
-          <ArsenalGrid brandId={brandId} hasFinal={hasFinal} />
+          <ArsenalGrid brandId={brandId} hasFinal={hasFinal} logoUrl={finalLogoUrl ?? undefined} />
           <YourCreations
             brandId={brandId}
             creations={creations.filter((c) => creationKindsForTab('create').includes(c.kind))}
