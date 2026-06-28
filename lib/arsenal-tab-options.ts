@@ -9,8 +9,13 @@ export const LOGO_ANIMATION_STYLE_OPTIONS = [
   { key: 'slide_up', name: 'Slide Up' },
   { key: 'slide_down', name: 'Slide Down' },
   { key: 'zoom', name: 'Zoom In' },
+  { key: 'zoom_out', name: 'Zoom Out' },
   { key: 'rotate', name: 'Rotate In' },
+  { key: 'spin', name: 'Spin In' },
   { key: 'bounce', name: 'Bounce' },
+  { key: 'pop', name: 'Pop' },
+  { key: 'drop', name: 'Drop In' },
+  { key: 'blur_in', name: 'Blur In' },
   { key: 'glitch', name: 'Glitch' },
   { key: 'reveal_wipe', name: 'Reveal Wipe' },
 ] as const
@@ -39,13 +44,15 @@ export const BRAND_VOICE_TONES = [
 
 export const QR_TYPE_OPTIONS = [
   { value: 'url', name: 'URL / Link', placeholder: 'https://yourbrand.com' },
-  {
-    value: 'instagram',
-    name: 'Instagram Profile',
-    placeholder: 'https://instagram.com/yourhandle',
-  },
-  { value: 'tiktok', name: 'TikTok Profile', placeholder: 'https://tiktok.com/@yourhandle' },
-  { value: 'linktree', name: 'Linktree', placeholder: 'https://linktr.ee/yourhandle' },
-  { value: 'email', name: 'Email', placeholder: 'mailto:you@example.com' },
-  { value: 'phone', name: 'Phone', placeholder: 'tel:+15555555555' },
+  { value: 'instagram', name: 'Instagram Profile', placeholder: 'yourhandle (or full URL)' },
+  { value: 'tiktok', name: 'TikTok Profile', placeholder: '@yourhandle (or full URL)' },
+  { value: 'youtube', name: 'YouTube Channel', placeholder: 'https://youtube.com/@yourchannel' },
+  { value: 'x', name: 'X / Twitter', placeholder: 'yourhandle (or full URL)' },
+  { value: 'facebook', name: 'Facebook', placeholder: 'https://facebook.com/yourpage' },
+  { value: 'linktree', name: 'Linktree', placeholder: 'yourhandle (or full URL)' },
+  { value: 'email', name: 'Email', placeholder: 'you@example.com' },
+  { value: 'phone', name: 'Phone', placeholder: '+1 555 555 5555' },
+  { value: 'sms', name: 'Text Message (SMS)', placeholder: '+1 555 555 5555' },
+  { value: 'whatsapp', name: 'WhatsApp', placeholder: '+1 555 555 5555' },
+  { value: 'text', name: 'Plain Text', placeholder: 'Any text to encode' },
 ] as const

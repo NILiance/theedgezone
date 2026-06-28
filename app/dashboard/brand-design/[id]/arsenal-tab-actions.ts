@@ -339,6 +339,13 @@ Output exactly 6 lines. Put each line on its own line. No numbering, no preamble
       .filter((l) => l.length > 0)
       .slice(0, 8)
   } catch (err) {
+    const status = (err as { status?: number })?.status
+    if (status === 401 || status === 403) {
+      return {
+        error:
+          'The content generator is temporarily unavailable. (Admin: ANTHROPIC_API_KEY is invalid or expired — update it in the Vercel project settings.)',
+      }
+    }
     return { error: err instanceof Error ? err.message : 'Generation failed' }
   }
   if (lines.length === 0) return { error: 'No lines were generated. Try a different context.' }
@@ -363,6 +370,40 @@ Output exactly 6 lines. Put each line on its own line. No numbering, no preamble
 
 export type QrActionState = { ok?: boolean; error?: string; url?: string }
 
+// Turns the raw value the talent typed into the right QR payload for the
+// chosen type, so they don't have to know mailto:/tel:/sms: prefixes.
+function formatQrData(type: string, raw: string): string {
+  const v = raw.trim()
+  const digits = v.replace(/[^\d+]/g, '')
+  const handle = v.replace(/^@/, '')
+  const isUrl = /^https?:\/\//i.test(v)
+  switch (type) {
+    case 'email':
+      return v.startsWith('mailto:') ? v : `mailto:${v}`
+    case 'phone':
+      return v.startsWith('tel:') ? v : `tel:${digits}`
+    case 'sms':
+      return v.startsWith('sms:') ? v : `sms:${digits}`
+    case 'whatsapp':
+      return `https://wa.me/${digits.replace(/^\+/, '')}`
+    case 'instagram':
+      return isUrl ? v : `https://instagram.com/${handle}`
+    case 'tiktok':
+      return isUrl ? v : `https://tiktok.com/@${handle}`
+    case 'x':
+      return isUrl ? v : `https://x.com/${handle}`
+    case 'linktree':
+      return isUrl ? v : `https://linktr.ee/${handle}`
+    case 'youtube':
+    case 'facebook':
+    case 'url':
+      return isUrl ? v : `https://${v}`
+    case 'text':
+    default:
+      return v
+  }
+}
+
 export async function generateQrCodeAction(
   _prev: QrActionState,
   form: FormData
@@ -375,6 +416,8 @@ export async function generateQrCodeAction(
 
   const target = String(form.get('target') ?? '').trim()
   if (!target) return { error: 'Enter the URL or contact the QR should link to.' }
+  const qrType = String(form.get('qr_type') ?? 'url')
+  const data = formatQrData(qrType, target)
   const qrColor = sanitizeHex(String(form.get('qr_color') ?? '#000000'), '#000000')
   const bgColor = sanitizeHex(String(form.get('bg_color') ?? '#ffffff'), '#ffffff')
   const includeLogo = form.get('include_logo') === '1' || form.get('include_logo') === 'on'
@@ -383,7 +426,7 @@ export async function generateQrCodeAction(
     const apiUrl =
       `https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=12&format=png&ecc=H` +
       `&color=${qrColor.replace('#', '')}&bgcolor=${bgColor.replace('#', '')}` +
-      `&data=${encodeURIComponent(target)}`
+      `&data=${encodeURIComponent(data)}`
     const res = await fetch(apiUrl)
     if (!res.ok) return { error: `QR service returned ${res.status}` }
     let png = Buffer.from(await res.arrayBuffer())
@@ -393,35 +436,28 @@ export async function generateQrCodeAction(
       const logoRes = await fetch(brand.final_logo_url)
       if (logoRes.ok) {
         const logoBuf = Buffer.from(await logoRes.arrayBuffer())
-        // Center the logo at ~18% of the QR width with a white pad.
-        const size = 144
+        // Auto-crop the logo's transparent/uniform padding so it fills the
+        // center cleanly (it otherwise looked small), then enlarge it. ECC=H
+        // keeps the QR scannable behind a center patch up to ~25%.
+        const trimmed = await sharp(logoBuf)
+          .trim()
+          .png()
+          .toBuffer()
+          .catch(() => logoBuf)
+        const size = 176
+        const pad = 12
+        const inner = await sharp(trimmed)
+          .resize(size, size, { fit: 'contain', background: bgColor })
+          .png()
+          .toBuffer()
         const padded = await sharp({
-          create: {
-            width: size + 24,
-            height: size + 24,
-            channels: 4,
-            background: bgColor,
-          },
+          create: { width: size + pad * 2, height: size + pad * 2, channels: 4, background: bgColor },
         })
-          .composite([
-            {
-              input: await sharp(logoBuf).resize(size, size, { fit: 'contain', background: bgColor }).png().toBuffer(),
-              top: 12,
-              left: 12,
-            },
-          ])
+          .composite([{ input: inner, top: pad, left: pad }])
           .png()
           .toBuffer()
         png = Buffer.from(
-          await sharp(png)
-            .composite([
-              {
-                input: padded,
-                gravity: 'center',
-              },
-            ])
-            .png()
-            .toBuffer()
+          await sharp(png).composite([{ input: padded, gravity: 'center' }]).png().toBuffer()
         )
       }
     }
@@ -432,7 +468,7 @@ export async function generateQrCodeAction(
       brandId,
       kind: 'qr_code',
       url,
-      metadata: { target, qrColor, bgColor, includeLogo },
+      metadata: { qrType, target, data, qrColor, bgColor, includeLogo },
       bumpCredits: true,
     })
     if (rec.error) return { error: rec.error }

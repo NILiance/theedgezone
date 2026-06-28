@@ -21,12 +21,13 @@ interface Tf {
   dy: number
   rotate: number
   wipe: number
+  blur: number
 }
 
 // Maps each CSS-keyframe style to a per-frame transform sampled at progress p.
 function transformFor(style: string, p: number): Tf {
   const e = easeOut(p)
-  const t: Tf = { scale: 1, opacity: 1, dx: 0, dy: 0, rotate: 0, wipe: 1 }
+  const t: Tf = { scale: 1, opacity: 1, dx: 0, dy: 0, rotate: 0, wipe: 1, blur: 0 }
   switch (style) {
     case 'fade':
       t.opacity = p
@@ -66,6 +67,32 @@ function transformFor(style: string, p: number): Tf {
     }
     case 'reveal_wipe':
       t.wipe = e
+      break
+    case 'zoom_out':
+      t.opacity = Math.min(1, p * 1.6)
+      t.scale = lerp(1.8, 1, e)
+      break
+    case 'spin':
+      t.opacity = Math.min(1, p * 1.4)
+      t.rotate = 360 * (1 - e)
+      t.scale = lerp(0.4, 1, e)
+      break
+    case 'pop':
+      t.opacity = Math.min(1, p * 2.5)
+      t.scale =
+        p < 0.5
+          ? lerp(0.2, 1.3, p / 0.5)
+          : p < 0.7
+            ? lerp(1.3, 0.92, (p - 0.5) / 0.2)
+            : lerp(0.92, 1, (p - 0.7) / 0.3)
+      break
+    case 'drop':
+      t.opacity = Math.min(1, p * 1.5)
+      t.dy = p < 0.6 ? lerp(-140, 12, easeOut(p / 0.6)) : lerp(12, 0, (p - 0.6) / 0.4)
+      break
+    case 'blur_in':
+      t.opacity = p
+      t.blur = lerp(28, 0, e)
       break
     default:
       t.opacity = e
@@ -133,11 +160,11 @@ export async function renderLogoGif(
       }
     }
 
-    const rgba = await sharp({ create: { width: SIZE, height: SIZE, channels: 3, background: BG } })
-      .composite(composites)
-      .ensureAlpha()
-      .raw()
-      .toBuffer()
+    let pipe = sharp({ create: { width: SIZE, height: SIZE, channels: 3, background: BG } }).composite(
+      composites
+    )
+    if (t.blur >= 0.3) pipe = pipe.blur(t.blur)
+    const rgba = await pipe.ensureAlpha().raw().toBuffer()
 
     // Opacity → blend toward the white background (logo fades in cleanly).
     if (t.opacity < 1) {

@@ -39,6 +39,7 @@ export function QrCodeTab({
 
       <form action={action} className="mx-auto mt-6 grid max-w-3xl gap-4">
         <input type="hidden" name="brand_id" value={brandId} />
+        <input type="hidden" name="qr_type" value={qrType} />
         <input type="hidden" name="qr_color" value={qrColor} />
         <input type="hidden" name="bg_color" value={bgColor} />
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">

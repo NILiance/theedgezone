@@ -116,6 +116,35 @@ const ANIMATION_STYLES: Record<
     keyframes:
       '0% { clip-path: inset(0 100% 0 0); } 100% { clip-path: inset(0 0 0 0); }',
   },
+  zoom_out: {
+    name: 'Zoom Out',
+    initial: 'opacity:0; transform-origin: 256px 256px; transform: scale(1.8);',
+    keyframes:
+      '0% { opacity: 0; transform: scale(1.8); } 100% { opacity: 1; transform: scale(1); }',
+  },
+  spin: {
+    name: 'Spin In',
+    initial: 'opacity:0; transform-origin: 256px 256px; transform: rotate(360deg) scale(0.4);',
+    keyframes:
+      '0% { opacity: 0; transform: rotate(360deg) scale(0.4); } 100% { opacity: 1; transform: rotate(0deg) scale(1); }',
+  },
+  pop: {
+    name: 'Pop',
+    initial: 'opacity:0; transform-origin: 256px 256px; transform: scale(0.2);',
+    keyframes:
+      '0% { opacity: 0; transform: scale(0.2); } 50% { opacity: 1; transform: scale(1.3); } 70% { transform: scale(0.92); } 100% { opacity: 1; transform: scale(1); }',
+  },
+  drop: {
+    name: 'Drop In',
+    initial: 'opacity:0; transform: translateY(-140px);',
+    keyframes:
+      '0% { opacity: 0; transform: translateY(-140px); } 60% { opacity: 1; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); }',
+  },
+  blur_in: {
+    name: 'Blur In',
+    initial: 'opacity:0; filter: blur(28px);',
+    keyframes: '0% { opacity: 0; filter: blur(28px); } 100% { opacity: 1; filter: blur(0); }',
+  },
 }
 
 export const LOGO_ANIMATION_STYLE_OPTIONS = Object.entries(ANIMATION_STYLES).map(
