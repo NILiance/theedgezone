@@ -181,6 +181,16 @@ export async function generateArsenalAsset(
     return { error: msg }
   }
 
+  // Exact print proportions — Gemini only approximates aspect, so cover-crop
+  // the result to these true print sizes.
+  const PRINT_DIMS: Record<string, { w: number; h: number }> = {
+    business_card: { w: 1050, h: 600 }, // 3.5 × 2 in
+    letterhead: { w: 1275, h: 1650 }, // 8.5 × 11 in
+    media_kit: { w: 1275, h: 1650 }, // 8.5 × 11 in
+    thank_you_card: { w: 1500, h: 2100 }, // 5 × 7 in
+    presentation: { w: 1920, h: 1080 }, // 16:9 slide
+  }
+
   let result
   try {
     const userName = (brand.brand_name ?? profile?.display_name ?? 'Athlete').trim()
@@ -193,6 +203,7 @@ export async function generateArsenalAsset(
       filenameHint: option || category,
       userName,
       brandSlug,
+      cropTo: PRINT_DIMS[category],
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Our designer failed to generate this asset'

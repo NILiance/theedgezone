@@ -55,6 +55,8 @@ async function callGeminiOnce(opts: {
   prompt: string
   referenceImageUrl?: string
   uploadPath: string
+  /** When set, cover-crop the result to these exact pixel dims (print sizes). */
+  cropTo?: { w: number; h: number }
   /** Optional Drive mirror info — when present, the saved image is also
    * copied into the talent's Drive folder for backup/share. */
   driveMirror?: {
@@ -118,8 +120,25 @@ async function callGeminiOnce(opts: {
     console.error('[gemini] no image in response')
     throw new Error('Designer returned no image — try a simpler prompt or retry.')
   }
-  const mimeType = imagePart.inlineData.mimeType ?? 'image/png'
-  const buffer = Buffer.from(imagePart.inlineData.data, 'base64')
+  let mimeType = imagePart.inlineData.mimeType ?? 'image/png'
+  let buffer = Buffer.from(imagePart.inlineData.data, 'base64')
+
+  // Print items: cover-crop to the EXACT print proportion (Gemini only
+  // approximates the requested aspect, so we normalize it here).
+  if (opts.cropTo) {
+    try {
+      const sharp = (await import('sharp')).default
+      buffer = Buffer.from(
+        await sharp(buffer)
+          .resize(opts.cropTo.w, opts.cropTo.h, { fit: 'cover', position: 'centre' })
+          .png()
+          .toBuffer()
+      )
+      mimeType = 'image/png'
+    } catch (err) {
+      console.error('[gemini] crop-to-print failed', err)
+    }
+  }
 
   const url = await uploadBuffer(opts.uploadPath, buffer, mimeType)
   // uploadBuffer throws on failure with a sanitized message; success is
@@ -327,6 +346,8 @@ export async function generateArsenalImage(opts: {
   userName?: string
   /** Brand slug — used as the per-brand Drive folder name. */
   brandSlug?: string
+  /** When set, cover-crop the result to these exact pixel dims (print sizes). */
+  cropTo?: { w: number; h: number }
 }): Promise<GeneratedConcept> {
   if (!env.GEMINI_API_KEY) {
     throw new Error('Our designer is not configured yet — admins should set it up under Integrations.')
@@ -347,6 +368,7 @@ export async function generateArsenalImage(opts: {
     referenceImageUrl: opts.referenceImageUrl,
     uploadPath,
     driveMirror,
+    cropTo: opts.cropTo,
   })
   if (!result) throw new Error('Our designer returned no image. Try again, or simplify the prompt.')
   return result

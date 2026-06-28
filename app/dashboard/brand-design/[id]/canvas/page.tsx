@@ -31,10 +31,10 @@ export default async function BrandCanvasPage({ params, searchParams }: PageProp
     return (
       <div className="space-y-4">
         <Link
-          href={`/dashboard/brand-design/${id}`}
+          href={`/dashboard/brand-design/${id}?view=arsenal`}
           className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
         >
-          ← Back to studio
+          ← Back to Brand Arsenal
         </Link>
         <h1 className="text-display text-2xl font-black">Pick a final concept first</h1>
         <p className="text-sm text-muted-foreground">
@@ -49,10 +49,10 @@ export default async function BrandCanvasPage({ params, searchParams }: PageProp
     <div className="space-y-6">
       <div>
         <Link
-          href={`/dashboard/brand-design/${id}`}
+          href={`/dashboard/brand-design/${id}?view=arsenal`}
           className="text-display text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
         >
-          ← Back to studio
+          ← Back to Brand Arsenal
         </Link>
         <h1 className="text-display mt-3 text-3xl font-black tracking-tight">
           {editingAsset ? `Edit ${label ?? 'asset'}` : 'Canvas editor'}
