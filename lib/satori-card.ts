@@ -42,7 +42,8 @@ export interface CardData {
   logoDataUrl?: string
   website?: string
   handle?: string
-  styleLabel: string
+  /** Optional full-bleed effect background, composited behind everything. */
+  bgImageDataUrl?: string
 }
 
 type Node = { type: string; props: Record<string, unknown> }
@@ -61,7 +62,9 @@ function front(d: CardData, p: CardPalette): Node {
   if (d.school) kids.push(box({ fontSize: 16, color: '#bdbdbd', marginTop: 2 }, d.school))
   kids.push(image(d.photoDataUrl, { width: 700, height: 700, objectFit: 'cover', borderRadius: 14, marginTop: 18 }))
   if (d.tagline) kids.push(box({ fontSize: 30, color: p.text, marginTop: 18, textAlign: 'center' }, `"${d.tagline}"`))
-  kids.push(box({ position: 'absolute', bottom: 28, right: 36, fontSize: 14, color: p.accent, opacity: 0.65 }, `${d.styleLabel} · ${new Date().getFullYear()}`))
+  kids.push(box({ position: 'absolute', bottom: 28, right: 36, fontSize: 14, color: p.accent, opacity: 0.65 }, `${new Date().getFullYear()}`))
+  if (d.bgImageDataUrl)
+    kids.unshift(image(d.bgImageDataUrl, { position: 'absolute', top: 0, left: 0, width: W, height: H, objectFit: 'cover' }))
   return box(
     { width: W, height: H, flexDirection: 'column', alignItems: 'center', background: p.bg, padding: 36, position: 'relative', fontFamily: 'Anton' },
     kids
@@ -79,14 +82,15 @@ function back(d: CardData, p: CardPalette): Node {
 
   const stats = d.stats.filter((s) => (s.value || s.label).trim())
   if (stats.length) {
-    kids.push(box({ fontSize: 18, color: p.accent, marginTop: 34, letterSpacing: 3 }, 'CAREER STATS'))
-    const statNodes = stats.slice(0, 8).map((s) =>
-      box({ flexDirection: 'column', alignItems: 'center', width: 200, marginTop: 20, flexShrink: 0 }, [
-        box({ fontSize: 52, color: p.text, lineHeight: 1, textAlign: 'center' }, s.value || '—'),
-        box({ fontSize: 17, color: p.accent, opacity: 0.85, marginTop: 6, textAlign: 'center' }, (s.label || '').toUpperCase()),
+    kids.push(box({ fontSize: 18, color: p.accent, marginTop: 30, letterSpacing: 3 }, 'CAREER STATS'))
+    // One stat per line — value column then label, stacked vertically.
+    const statRows = stats.slice(0, 8).map((s) =>
+      box({ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', width: W - 200, marginTop: 14 }, [
+        box({ fontSize: 44, color: p.text, lineHeight: 1, width: 150, textAlign: 'right' }, s.value || '—'),
+        box({ fontSize: 22, color: p.accent, opacity: 0.85, marginLeft: 18, lineHeight: 1 }, (s.label || '').toUpperCase()),
       ])
     )
-    kids.push(box({ flexWrap: 'wrap', justifyContent: 'center', width: W - 120, marginTop: 0 }, statNodes))
+    kids.push(box({ flexDirection: 'column', alignItems: 'center', width: W - 120, marginTop: 6 }, statRows))
   }
 
   if (d.tagline) kids.push(box({ fontSize: 24, color: p.text, marginTop: 30, textAlign: 'center', opacity: 0.92 }, `"${d.tagline}"`))
@@ -94,6 +98,8 @@ function back(d: CardData, p: CardPalette): Node {
   if (d.handle) contact.push(box({ fontSize: 24, color: p.accent }, d.handle))
   if (d.website) contact.push(box({ fontSize: 20, color: p.text, marginTop: 8 }, d.website))
   if (contact.length) kids.push(box({ flexDirection: 'column', alignItems: 'center', position: 'absolute', bottom: 56, left: 0, width: W }, contact))
+  if (d.bgImageDataUrl)
+    kids.unshift(image(d.bgImageDataUrl, { position: 'absolute', top: 0, left: 0, width: W, height: H, objectFit: 'cover' }))
   return box(
     { width: W, height: H, flexDirection: 'column', alignItems: 'center', background: p.bg, padding: 36, position: 'relative', fontFamily: 'Anton' },
     kids

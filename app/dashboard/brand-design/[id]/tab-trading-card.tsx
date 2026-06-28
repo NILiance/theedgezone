@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ARSENAL_EFFECTS } from '@/lib/arsenal-tab-options'
 import {
   generateTradingCardAction,
   type TradingCardActionState,
@@ -12,12 +13,11 @@ import {
   type OrderableCard,
 } from './trading-card-order'
 
-const STYLES = [
-  { value: 'modern', name: 'Modern' },
-  { value: 'vintage', name: 'Vintage' },
-  { value: 'holographic', name: 'Holographic' },
-  { value: 'premium_gold', name: 'Premium Gold' },
-  { value: 'custom', name: 'Custom Colors' },
+const QUICK_PALETTES = [
+  { key: 'modern', name: 'Brand' },
+  { key: 'vintage', name: 'Vintage' },
+  { key: 'holographic', name: 'Holographic' },
+  { key: 'premium_gold', name: 'Gold' },
 ]
 
 interface Palette {
@@ -65,9 +65,10 @@ export function TradingCardTab({
     generateTradingCardAction,
     {}
   )
-  const [style, setStyle] = useState('modern')
+  const [style, setStyle] = useState('custom')
   const [bg, setBg] = useState(brandPrimary || '#0b1e3f')
   const [accent, setAccent] = useState(brandSecondary || '#ffd166')
+  const [effect, setEffect] = useState('none')
   const [flipped, setFlipped] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
   const [stats, setStats] = useState<Stat[]>([{ label: '', value: '' }])
@@ -84,7 +85,7 @@ export function TradingCardTab({
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setF((p) => ({ ...p, [k]: e.target.value }))
 
-  // Selecting a style seeds the colour pickers; the talent can then tweak them.
+  // Quick palettes just seed the colour pickers; the talent then tweaks freely.
   function presetColors(s: string): { bg: string; accent: string } {
     switch (s) {
       case 'vintage':
@@ -99,13 +100,11 @@ export function TradingCardTab({
         return { bg, accent }
     }
   }
-  function onStyle(s: string) {
+  function applyPalette(s: string) {
     setStyle(s)
-    if (s !== 'custom') {
-      const c = presetColors(s)
-      setBg(c.bg)
-      setAccent(c.accent)
-    }
+    const c = presetColors(s)
+    setBg(c.bg)
+    setAccent(c.accent)
   }
 
   const setStat = (i: number, key: keyof Stat, val: string) =>
@@ -135,8 +134,8 @@ export function TradingCardTab({
       <h2 className="text-display text-center text-3xl font-black">Trading Card Designer</h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground">
         Design the front and back live — flip the card to edit the back. Your photo anchors the
-        front; your stats, logo and contact go on the back. Set your colors, then Generate a
-        print-ready front + back.
+        front; your stats, logo and contact go on the back. Pick your colors, add an optional
+        background effect, then Generate a print-ready front + back.
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_300px]">
@@ -144,6 +143,7 @@ export function TradingCardTab({
         <form action={action} className="grid gap-3">
           <input type="hidden" name="brand_id" value={brandId} />
           <input type="hidden" name="style" value={style} />
+          <input type="hidden" name="effect" value={effect} />
           <input type="hidden" name="bg_color" value={bg} />
           <input type="hidden" name="accent_color" value={accent} />
           <input type="hidden" name="name" value={f.name} />
@@ -184,7 +184,7 @@ export function TradingCardTab({
             <input value={f.website} onChange={set('website')} placeholder="website.com" className={inputCls} />
           </div>
 
-          {/* Multiple stats → rendered on the back */}
+          {/* Multiple stats → rendered on the back, one per line */}
           <div>
             <span className={labelCls}>Stats (on the back — value + label)</span>
             <div className="mt-1 grid gap-2">
@@ -224,21 +224,7 @@ export function TradingCardTab({
             )}
           </div>
 
-          <label className="block">
-            <span className={labelCls}>Card Style (seeds the colors)</span>
-            <select
-              name="style_view"
-              value={style}
-              onChange={(e) => onStyle(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-            >
-              {STYLES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* Colors */}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className={labelCls}>Background color</span>
@@ -265,6 +251,44 @@ export function TradingCardTab({
               />
             </label>
           </div>
+          <div>
+            <span className={labelCls}>Quick palette</span>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {QUICK_PALETTES.map((q) => {
+                const c = presetColors(q.key)
+                return (
+                  <button
+                    key={q.key}
+                    type="button"
+                    onClick={() => applyPalette(q.key)}
+                    className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:bg-panel"
+                  >
+                    <span className="h-3 w-3 rounded-full" style={{ background: c.bg, border: `1px solid ${c.accent}` }} />
+                    {q.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <label className="block">
+            <span className={labelCls}>Background Effect</span>
+            <select
+              value={effect}
+              onChange={(e) => setEffect(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            >
+              {ARSENAL_EFFECTS.map((eff) => (
+                <option key={eff.val} value={eff.val}>
+                  {eff.name}
+                </option>
+              ))}
+            </select>
+            {effect !== 'none' && (
+              <span className="mt-1 block text-[10px] text-muted-foreground">
+                A branded effect is rendered behind the card on generate.
+              </span>
+            )}
+          </label>
 
           <div className="mt-1 flex justify-center">
             <button
@@ -279,7 +303,15 @@ export function TradingCardTab({
 
         {/* Live preview with 3D flip */}
         <div className="flex flex-col items-center gap-3">
-          <CardFlip flipped={flipped} palette={p} photo={photo} logoUrl={logoUrl} f={f} stats={cleanStats} style={style} />
+          <CardFlip
+            flipped={flipped}
+            palette={p}
+            photo={photo}
+            logoUrl={logoUrl}
+            f={f}
+            stats={cleanStats}
+            effectActive={effect !== 'none'}
+          />
           <button
             type="button"
             onClick={() => setFlipped((v) => !v)}
@@ -314,7 +346,7 @@ function CardFlip({
   logoUrl,
   f,
   stats,
-  style,
+  effectActive,
 }: {
   flipped: boolean
   palette: Palette
@@ -322,8 +354,9 @@ function CardFlip({
   logoUrl: string
   f: { name: string; subline: string; school: string; tagline: string; handle: string; website: string }
   stats: Stat[]
-  style: string
+  effectActive: boolean
 }) {
+  const year = new Date().getFullYear()
   return (
     <div style={{ perspective: 1200 }} className="w-[260px]">
       <div
@@ -332,7 +365,7 @@ function CardFlip({
       >
         {/* Front */}
         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
-          <CardShell palette={palette}>
+          <CardShell palette={palette} effectActive={effectActive}>
             <p className="text-display text-center text-lg font-black leading-none" style={{ color: palette.text }}>
               {(f.name || 'YOUR NAME').toUpperCase()}
             </p>
@@ -347,12 +380,12 @@ function CardFlip({
               )}
             </div>
             {f.tagline && <p className="mt-1 text-center text-xs font-bold italic" style={{ color: palette.accent }}>&ldquo;{f.tagline}&rdquo;</p>}
-            <p className="mt-auto text-right text-[7px]" style={{ color: palette.accent, opacity: 0.6 }}>{style.toUpperCase()}</p>
+            <p className="mt-auto text-right text-[7px]" style={{ color: palette.accent, opacity: 0.6 }}>{year}</p>
           </CardShell>
         </div>
         {/* Back */}
         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-          <CardShell palette={palette}>
+          <CardShell palette={palette} effectActive={effectActive}>
             <div className="flex flex-1 flex-col items-center justify-center gap-1.5">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -361,11 +394,11 @@ function CardFlip({
               <p className="text-display text-center text-base font-black leading-none" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
               {f.subline && <p className="text-center text-[9px] font-bold uppercase tracking-widest" style={{ color: palette.accent }}>{f.subline}</p>}
               {stats.length > 0 && (
-                <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1">
-                  {stats.slice(0, 6).map((s, i) => (
-                    <div key={i} className="text-center">
-                      <p className="text-sm font-black leading-none" style={{ color: palette.text }}>{s.value || '—'}</p>
-                      <p className="text-[7px] uppercase tracking-wider" style={{ color: palette.accent }}>{s.label}</p>
+                <div className="mt-1 flex w-full flex-col items-center gap-0.5">
+                  {stats.slice(0, 8).map((s, i) => (
+                    <div key={i} className="flex w-full items-baseline justify-center gap-1.5">
+                      <span className="w-10 text-right text-xs font-black leading-none" style={{ color: palette.text }}>{s.value || '—'}</span>
+                      <span className="text-[7px] uppercase tracking-wider" style={{ color: palette.accent }}>{s.label}</span>
                     </div>
                   ))}
                 </div>
@@ -383,11 +416,24 @@ function CardFlip({
   )
 }
 
-function CardShell({ palette, children }: { palette: Palette; children: React.ReactNode }) {
+function CardShell({
+  palette,
+  effectActive,
+  children,
+}: {
+  palette: Palette
+  effectActive: boolean
+  children: React.ReactNode
+}) {
   return (
     <div
       className="flex h-full w-full flex-col gap-1 rounded-xl p-3"
-      style={{ background: palette.bg, border: `3px solid ${palette.border}` }}
+      style={{
+        background: effectActive
+          ? `radial-gradient(circle at 30% 18%, ${palette.accent}, ${palette.bg} 70%)`
+          : palette.bg,
+        border: `3px solid ${palette.border}`,
+      }}
     >
       {children}
     </div>

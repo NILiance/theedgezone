@@ -240,8 +240,27 @@ export async function generateTradingCardAction(
         /* logo optional on the back */
       }
     }
+    // Optional generated effect background (one image call) composited behind
+    // the card content — the photo and text sit on top.
+    const effect = String(form.get('effect') ?? 'none')
+    let bgImageDataUrl: string | undefined
+    if (effect && effect !== 'none') {
+      try {
+        const { generateArsenalImage } = await import('@/lib/gemini-image')
+        const { effectBackgroundPrompt } = await import('@/lib/arsenal-prompts')
+        const fx = await generateArsenalImage({
+          brandId,
+          prompt: effectBackgroundPrompt(effect, [p.bg, p.accent].join(', ')),
+          category: 'card_effect',
+        })
+        const fxBuf = Buffer.from(await (await fetch(fx.url)).arrayBuffer())
+        bgImageDataUrl = `data:image/png;base64,${fxBuf.toString('base64')}`
+      } catch {
+        /* fall back to the solid background */
+      }
+    }
     let png = await renderTradingCard(
-      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, styleLabel: style.toUpperCase() },
+      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl },
       { bg: p.bg, border: p.border, accent: p.accent, text: p.text },
       sharp
     )
@@ -253,7 +272,7 @@ export async function generateTradingCardAction(
       brandId,
       kind: 'trading_card',
       url,
-      metadata: { style, stats, tagline },
+      metadata: { style, stats, tagline, effect },
       bumpCredits: true,
     })
     if (rec.error) return { error: rec.error }
