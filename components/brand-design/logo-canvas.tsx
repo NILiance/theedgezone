@@ -112,6 +112,12 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
 
   // ── core state ──────────────────────────────────────────────────────
   const [logoImage, setLogoImage] = useState<HTMLImageElement | null>(null)
+  // Canvas buffer size — matches the loaded image's aspect ratio (long side
+  // capped at CANVAS_SIZE) so wide/tall assets aren't letterboxed. dimsRef
+  // mirrors it for the imperative pixel functions (avoids stale closures).
+  const [dims, setDims] = useState({ w: CANVAS_SIZE, h: CANVAS_SIZE })
+  const dimsRef = useRef(dims)
+  dimsRef.current = dims
   const [tool, setTool] = useState<Tool>('text')
   const [zoom, setZoom] = useState(1)
   const [historyDepth, setHistoryDepth] = useState(0)
@@ -176,7 +182,14 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
     if (!imageSrc) return
     const img = new window.Image()
     img.crossOrigin = 'anonymous'
-    img.onload = () => setLogoImage(img)
+    img.onload = () => {
+      const s = CANVAS_SIZE / Math.max(img.width || 1, img.height || 1)
+      setDims({
+        w: Math.max(1, Math.round((img.width || CANVAS_SIZE) * s)),
+        h: Math.max(1, Math.round((img.height || CANVAS_SIZE) * s)),
+      })
+      setLogoImage(img)
+    }
     img.onerror = () => setLogoImage(null)
     img.src = imageSrc
   }, [imageSrc])
@@ -189,23 +202,15 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    const { w, h } = dimsRef.current
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
-    const scale = Math.min(
-      CANVAS_SIZE / logoImage.width,
-      CANVAS_SIZE / logoImage.height
-    )
-    const w = logoImage.width * scale
-    const h = logoImage.height * scale
-    ctx.drawImage(
-      logoImage,
-      (CANVAS_SIZE - w) / 2,
-      (CANVAS_SIZE - h) / 2,
-      w,
-      h
-    )
+    ctx.fillRect(0, 0, w, h)
+    // The canvas matches the image's aspect ratio, so draw it edge-to-edge
+    // (no letterbox bars).
+    ctx.drawImage(logoImage, 0, 0, w, h)
     snapshotPushRef.current?.()
-  }, [logoImage])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logoImage, dims.w, dims.h])
 
   // ── history (per-tool undo via snapshots) ───────────────────────────
   const historyStackRef = useRef<ImageData[]>([])
@@ -214,7 +219,9 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    historyStackRef.current.push(ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE))
+    historyStackRef.current.push(
+      ctx.getImageData(0, 0, dimsRef.current.w, dimsRef.current.h)
+    )
     if (historyStackRef.current.length > MAX_HISTORY) {
       historyStackRef.current.shift()
     }
@@ -257,7 +264,7 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
     if (!preview) return
     const ctx = preview.getContext('2d')
     if (!ctx) return
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    ctx.clearRect(0, 0, dimsRef.current.w, dimsRef.current.h)
     if (tool !== 'text' || !textValue.trim()) return
     drawText(ctx, getTextDrawOpts())
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,10 +295,11 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
       color: textColor,
       outlineWidth,
       outlineColor,
-      x: (textX / 100) * CANVAS_SIZE,
-      y: (textY / 100) * CANVAS_SIZE,
+      x: (textX / 100) * dimsRef.current.w,
+      y: (textY / 100) * dimsRef.current.h,
       letterSpacing,
       arch,
+      refSize: Math.min(dimsRef.current.w, dimsRef.current.h),
     }
   }
 
@@ -311,9 +319,10 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
     const canvas = canvasRef.current
     if (!canvas) return [0, 0]
     const rect = canvas.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) * CANVAS_SIZE) / rect.width
-    const y = ((e.clientY - rect.top) * CANVAS_SIZE) / rect.height
-    return [Math.max(0, Math.min(CANVAS_SIZE - 1, x)), Math.max(0, Math.min(CANVAS_SIZE - 1, y))]
+    const { w: cw, h: ch } = dimsRef.current
+    const x = ((e.clientX - rect.left) * cw) / rect.width
+    const y = ((e.clientY - rect.top) * ch) / rect.height
+    return [Math.max(0, Math.min(cw - 1, x)), Math.max(0, Math.min(ch - 1, y))]
   }
 
   function pixelAt(x: number, y: number): [number, number, number, number] {
@@ -390,11 +399,12 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    const img = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    const { w: W, h: H } = dimsRef.current
+    const img = ctx.getImageData(0, 0, W, H)
     const data = img.data
     const sx = Math.floor(startX)
     const sy = Math.floor(startY)
-    const idx = (sy * CANVAS_SIZE + sx) * 4
+    const idx = (sy * W + sx) * 4
     const sr = data[idx]!
     const sg = data[idx + 1]!
     const sb = data[idx + 2]!
@@ -411,18 +421,18 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
       const [x, y] = stack.pop()!
       let left = x
       let right = x
-      const startIdx = (y * CANVAS_SIZE + x) * 4
+      const startIdx = (y * W + x) * 4
       if (!matches(startIdx)) continue
-      while (left > 0 && matches((y * CANVAS_SIZE + (left - 1)) * 4)) left--
-      while (right < CANVAS_SIZE - 1 && matches((y * CANVAS_SIZE + (right + 1)) * 4)) right++
+      while (left > 0 && matches((y * W + (left - 1)) * 4)) left--
+      while (right < W - 1 && matches((y * W + (right + 1)) * 4)) right++
       for (let i = left; i <= right; i++) {
-        const pi = (y * CANVAS_SIZE + i) * 4
+        const pi = (y * W + i) * 4
         data[pi] = fill[0]
         data[pi + 1] = fill[1]
         data[pi + 2] = fill[2]
         data[pi + 3] = fill[3]
-        if (y > 0 && matches(((y - 1) * CANVAS_SIZE + i) * 4)) stack.push([i, y - 1])
-        if (y < CANVAS_SIZE - 1 && matches(((y + 1) * CANVAS_SIZE + i) * 4)) stack.push([i, y + 1])
+        if (y > 0 && matches(((y - 1) * W + i) * 4)) stack.push([i, y - 1])
+        if (y < H - 1 && matches(((y + 1) * W + i) * 4)) stack.push([i, y + 1])
       }
     }
     ctx.putImageData(img, 0, 0)
@@ -437,7 +447,7 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
     const [tr, tg, tb] = hexToRgba(swapTo)
     const [fr, fg, fb] = hexToRgba(swapFrom)
     const tol2 = swapTolerance * swapTolerance * 3
-    const img = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    const img = ctx.getImageData(0, 0, dimsRef.current.w, dimsRef.current.h)
     const data = img.data
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i]!
@@ -616,16 +626,16 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
           <div
             className="relative"
             style={{
-              width: CANVAS_SIZE,
-              height: CANVAS_SIZE,
+              width: dims.w,
+              height: dims.h,
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
             }}
           >
             <canvas
               ref={canvasRef}
-              width={CANVAS_SIZE}
-              height={CANVAS_SIZE}
+              width={dims.w}
+              height={dims.h}
               className={`block touch-none ${cursorClass}`}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
@@ -634,8 +644,8 @@ export function LogoCanvas({ brandId, logoUrl, baseUrl, assetKind, assetLabel, d
             />
             <canvas
               ref={previewRef}
-              width={CANVAS_SIZE}
-              height={CANVAS_SIZE}
+              width={dims.w}
+              height={dims.h}
               className="pointer-events-none absolute inset-0"
             />
           </div>
@@ -897,6 +907,8 @@ function drawText(
     y: number
     letterSpacing: number
     arch: number
+    /** Shorter canvas side — drives the arch radius at any aspect ratio. */
+    refSize: number
   }
 ) {
   ctx.save()
@@ -930,7 +942,7 @@ function drawText(
   } else {
     // Curve along arc. Positive arch = bend down (smile),
     // negative = bend up (frown). Radius scales inversely with degrees.
-    const radius = (CANVAS_SIZE * 180) / (Math.abs(opts.arch) + 30)
+    const radius = (opts.refSize * 180) / (Math.abs(opts.arch) + 30)
     const chars = Array.from(opts.text)
     const widths = chars.map((c) => ctx.measureText(c).width)
     const total =
