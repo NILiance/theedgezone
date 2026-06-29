@@ -65,6 +65,10 @@ export async function upsertPrintProduct(form: FormData): Promise<void> {
   }
   if (coverUrl) row.cover_image_url = coverUrl
 
+  // Cost breakdown — our blank cost + decoration; base_price_cents is retail.
+  row.cost_cents = Math.max(0, Math.round(Number(form.get('cost') ?? 0) * 100))
+  row.print_cost_cents = Math.max(0, Math.round(Number(form.get('print_cost') ?? 0) * 100))
+
   // Per-product logo placement (catalog overlay).
   const clamp01 = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.5)
   row.logo_x = clamp01(Number(form.get('logo_x') ?? 0.5))
@@ -77,12 +81,14 @@ export async function upsertPrintProduct(form: FormData): Promise<void> {
       : supabase.from('print_products').insert(r)
 
   let res = await write(row)
-  if (res.error && /logo_(x|y|scale)|column/i.test(res.error.message)) {
-    // Placement migration not applied yet — save the rest.
-    const { logo_x, logo_y, logo_scale, ...rest } = row
+  if (res.error && /logo_(x|y|scale)|cost_cents|print_cost_cents|column/i.test(res.error.message)) {
+    // Placement / cost migration not applied yet — save the rest.
+    const { logo_x, logo_y, logo_scale, cost_cents, print_cost_cents, ...rest } = row
     void logo_x
     void logo_y
     void logo_scale
+    void cost_cents
+    void print_cost_cents
     res = await write(rest)
   }
   if (res.error) throw new Error(res.error.message)
@@ -150,6 +156,9 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
     slug = `${slug}-${suffix || Math.floor(Math.random() * 9000 + 1000)}`
   }
 
+  // Our cost = supplier wholesale (fall back to their base). Retail seeds from
+  // MSRP; the admin sets print cost + final retail afterward.
+  const cost = Number(sp.wholesale_price_cents) || Number(sp.base_price_cents) || 0
   const price =
     Number(sp.suggested_msrp_cents) || Number(sp.base_price_cents) || Number(sp.wholesale_price_cents) || 1999
 
@@ -170,18 +179,28 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
     options.push({ key: 'color', label: 'Color', values: colors, images: colorImages })
   if (sizes.length) options.push({ key: 'size', label: 'Size', values: sizes })
 
-  const { error } = await supabase.from('print_products').insert({
+  const insertRow: Record<string, unknown> = {
     name: String(sp.name),
     slug,
     description: (sp.description as string | null) ?? null,
     category: 'apparel',
     base_price_cents: Math.max(1, Math.round(price)),
+    cost_cents: Math.max(0, Math.round(cost)),
+    print_cost_cents: 0,
     cover_image_url: (sp.primary_image_url as string | null) ?? null,
     options,
     active: true,
     position: 0,
     updated_at: new Date().toISOString(),
-  })
+  }
+  let { error } = await supabase.from('print_products').insert(insertRow)
+  if (error && /cost_cents|print_cost_cents|column/i.test(error.message)) {
+    // Cost migration not applied yet — import without the cost fields.
+    const { cost_cents, print_cost_cents, ...rest } = insertRow
+    void cost_cents
+    void print_cost_cents
+    ;({ error } = await supabase.from('print_products').insert(rest))
+  }
   if (error) throw new Error(error.message)
   revalidatePath('/dashboard/admin/print-shop/products')
 }

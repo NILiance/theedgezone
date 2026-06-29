@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { ensureTrimmedLogo } from '@/lib/brand-addons'
 import { OrderForm } from './order-form'
 
 interface PageProps {
@@ -39,17 +40,22 @@ export default async function PrintProductPage({ params }: PageProps) {
   // Latest finalized brand logo — the default for print proofs.
   const { data: brand } = await supabase
     .from('brand_designs')
-    .select('final_logo_url, admin_final_logo_url')
+    .select('id, final_logo_url, admin_final_logo_url')
     .eq('user_id', user.id)
     .not('final_logo_url', 'is', null)
     .order('finalized_at', { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle()
-  const brandLogoUrl =
+  const rawLogoUrl =
     (brand as { admin_final_logo_url?: string | null; final_logo_url?: string | null } | null)
       ?.admin_final_logo_url ??
     (brand as { final_logo_url?: string | null } | null)?.final_logo_url ??
     ''
+  // Prefer a transparent, whitespace-trimmed logo so the overlay sits cleanly on
+  // the product (no white box, and it fills the placement box) — the same mark
+  // the catalog overlay uses. Falls back to the raw logo.
+  const brandId = (brand as { id?: string } | null)?.id ?? null
+  const brandLogoUrl = (brandId ? await ensureTrimmedLogo(brandId, true) : null) || rawLogoUrl
 
   return (
     <div className="space-y-6">

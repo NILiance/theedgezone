@@ -29,6 +29,8 @@ interface Product {
   category: string
   cover_image_url: string | null
   base_price_cents: number
+  cost_cents?: number
+  print_cost_cents?: number
   lead_time_days: number
   active: boolean
   position: number
@@ -183,7 +185,18 @@ export default async function AdminPrintProductsPage({
                 <span className="min-w-0">
                   <span className="text-display block truncate font-bold">{p.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    ${(p.base_price_cents / 100).toFixed(2)} · {p.category.replace('_', ' ')}
+                    Retail ${(p.base_price_cents / 100).toFixed(2)}
+                    {p.cost_cents || p.print_cost_cents ? (
+                      <>
+                        {' '}
+                        · margin $
+                        {(
+                          (p.base_price_cents - (p.cost_cents ?? 0) - (p.print_cost_cents ?? 0)) /
+                          100
+                        ).toFixed(2)}
+                      </>
+                    ) : null}{' '}
+                    · {p.category.replace('_', ' ')}
                   </span>
                 </span>
               </span>
@@ -230,7 +243,7 @@ function ProductForm({ product }: { product?: Product }) {
         <span className={label}>Description</span>
         <textarea name="description" defaultValue={p?.description ?? ''} rows={2} className={`mt-1 ${input}`} />
       </label>
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <label className="block">
           <span className={label}>Category</span>
           <select name="category" defaultValue={p?.category ?? 'apparel'} className={`mt-1 ${input}`}>
@@ -242,18 +255,6 @@ function ProductForm({ product }: { product?: Product }) {
           </select>
         </label>
         <label className="block">
-          <span className={label}>Base price ($)</span>
-          <input
-            name="base_price"
-            type="number"
-            step="0.01"
-            min="0.01"
-            defaultValue={p ? (p.base_price_cents / 100).toFixed(2) : ''}
-            required
-            className={`mt-1 ${input}`}
-          />
-        </label>
-        <label className="block">
           <span className={label}>Lead time (days)</span>
           <input name="lead_time_days" type="number" min="0" defaultValue={p?.lead_time_days ?? 7} className={`mt-1 ${input}`} />
         </label>
@@ -261,6 +262,68 @@ function ProductForm({ product }: { product?: Product }) {
           <span className={label}>Sort position</span>
           <input name="position" type="number" defaultValue={p?.position ?? 0} className={`mt-1 ${input}`} />
         </label>
+      </div>
+
+      {/* Pricing — cost + print are internal; customers only see Retail. */}
+      <div className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-3">
+        <span className={label}>Pricing (per unit)</span>
+        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+          <label className="block">
+            <span className={label}>Our cost ($)</span>
+            <input
+              name="cost"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              defaultValue={p?.cost_cents ? (p.cost_cents / 100).toFixed(2) : ''}
+              className={`mt-1 ${input}`}
+            />
+          </label>
+          <label className="block">
+            <span className={label}>Print cost ($)</span>
+            <input
+              name="print_cost"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              defaultValue={p?.print_cost_cents ? (p.print_cost_cents / 100).toFixed(2) : ''}
+              className={`mt-1 ${input}`}
+            />
+          </label>
+          <label className="block">
+            <span className={label}>Retail ($)</span>
+            <input
+              name="base_price"
+              type="number"
+              step="0.01"
+              min="0.01"
+              defaultValue={p ? (p.base_price_cents / 100).toFixed(2) : ''}
+              required
+              className={`mt-1 ${input}`}
+            />
+          </label>
+        </div>
+        {p ? (
+          (() => {
+            const margin = p.base_price_cents - (p.cost_cents ?? 0) - (p.print_cost_cents ?? 0)
+            const pct = p.base_price_cents > 0 ? Math.round((margin / p.base_price_cents) * 100) : 0
+            return (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Margin{' '}
+                <span className={margin >= 0 ? 'font-bold text-success' : 'font-bold text-destructive'}>
+                  ${(margin / 100).toFixed(2)} ({pct}%)
+                </span>{' '}
+                — retail − cost − print. Customers only see retail.
+              </p>
+            )
+          })()
+        ) : (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Cost + print are internal (for your margin). Customers only see Retail.
+          </p>
+        )}
       </div>
       <label className="block">
         <span className={label}>Cover image {p?.cover_image_url ? '(replace)' : ''}</span>
