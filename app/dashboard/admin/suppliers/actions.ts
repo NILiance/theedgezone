@@ -105,3 +105,26 @@ export async function syncSupplierCatalog(
   revalidatePath('/dashboard/admin/suppliers')
   return { ok: true, message: `Synced ${sync.synced} products`, synced: sync.synced }
 }
+
+/**
+ * Wipe a supplier's cached catalog (supplier_products). Useful after a grouping
+ * change so a fresh sync rebuilds clean rows instead of layering on top of
+ * stale ones. Does not touch already-imported Print Shop products.
+ */
+export async function clearSupplierCatalog(
+  _prev: SupplierActionState,
+  form: FormData
+): Promise<SupplierActionState> {
+  await requireAdmin()
+  const supabase = createServiceClient()
+  if (!supabase) return { error: 'Service role key missing' }
+  const code = String(form.get('supplier_code') ?? '')
+  if (!code) return { error: 'Missing supplier code' }
+  const { error, count } = await supabase
+    .from('supplier_products')
+    .delete({ count: 'exact' })
+    .eq('supplier_code', code)
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/admin/suppliers')
+  return { ok: true, message: `Cleared ${count ?? 0} cached products` }
+}

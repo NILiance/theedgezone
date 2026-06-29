@@ -30,6 +30,7 @@ interface SsCreds {
 
 interface SsRawProduct {
   productId?: number
+  styleID?: number // S&S uses capital-ID — this is the canonical style group key
   styleId?: number
   partNumber?: string
   sku?: string
@@ -264,13 +265,16 @@ function groupSsRows(rows: SsRawProduct[]): SupplierProduct[] {
     SupplierProduct & { _seenSkus: Set<string>; _colorImages: Record<string, string> }
   >()
   for (const r of rows) {
-    const styleKey = String(r.styleId ?? r.partNumber ?? r.sku ?? '')
+    const styleKey = String(r.styleID ?? r.styleId ?? r.partNumber ?? r.sku ?? '')
     if (!styleKey) continue
     let agg = byStyle.get(styleKey)
     if (!agg) {
       agg = {
         supplierSku: styleKey,
-        name: r.styleName ?? r.shortDescription ?? styleKey,
+        name:
+          [r.brandName, r.styleName].filter(Boolean).join(' ').trim() ||
+          r.shortDescription ||
+          styleKey,
         description: r.description ?? r.shortDescription,
         brand: r.brandName,
         category: r.baseCategory,

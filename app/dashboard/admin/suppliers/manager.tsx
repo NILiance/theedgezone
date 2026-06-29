@@ -5,6 +5,7 @@ import {
   saveSupplierCredentials,
   testSupplierConnection,
   syncSupplierCatalog,
+  clearSupplierCatalog,
   type SupplierActionState,
 } from './actions'
 
@@ -65,6 +66,10 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
   )
   const [syncState, syncAction, syncPending] = useActionState<SupplierActionState, FormData>(
     syncSupplierCatalog,
+    {}
+  )
+  const [clearState, clearAction, clearPending] = useActionState<SupplierActionState, FormData>(
+    clearSupplierCatalog,
     {}
   )
   const [open, setOpen] = useState(supplier.enabled)
@@ -185,6 +190,24 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             )}
             {syncState.error && <p className="text-xs text-destructive">{syncState.error}</p>}
             {syncState.ok && <p className="text-xs text-success">{syncState.message}</p>}
+          </form>
+
+          <form action={clearAction} className="flex flex-wrap items-center gap-3">
+            <input type="hidden" name="supplier_code" value={supplier.supplier_code} />
+            <button
+              type="submit"
+              disabled={clearPending}
+              className="text-display rounded-[var(--radius-sm)] border border-destructive/40 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              {clearPending ? 'Clearing…' : 'Clear cached catalog'}
+            </button>
+            <span className="text-[10px] text-muted-foreground">
+              Removes this supplier&rsquo;s {supplier.product_count} cached product
+              {supplier.product_count === 1 ? '' : 's'} (not your imported Print Shop items). Re-sync
+              after to rebuild clean.
+            </span>
+            {clearState.error && <p className="text-xs text-destructive">{clearState.error}</p>}
+            {clearState.ok && <p className="text-xs text-success">{clearState.message}</p>}
           </form>
         </div>
       )}

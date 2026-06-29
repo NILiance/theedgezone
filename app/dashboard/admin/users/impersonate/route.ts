@@ -47,8 +47,20 @@ function ssrForResponse(res: NextResponse, currentCookies: { name: string; value
   })
 }
 
+/** Extract the `sub` (user id) claim from a Supabase JWT without verifying it —
+ *  used only to attribute the audit-log entry when stopping impersonation. */
+function jwtSub(token: string): string | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const json = JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) as { sub?: string }
+    return typeof json.sub === 'string' ? json.sub : null
+  } catch {
+    return null
+  }
+}
+
 export async function GET(req: Request) {
-  const adminUser = await requireAdmin()
   const url = new URL(req.url)
   const stop = url.searchParams.get('stop')
   const service = createServiceClient()
@@ -58,15 +70,21 @@ export async function GET(req: Request) {
   const siteUrl = env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin
 
   // ── Stop impersonating — restore the admin's saved session ──────────────
+  // Do NOT requireAdmin() here: while impersonating, the live session is the
+  // (non-admin) target, so requireAdmin would redirect to /dashboard and the
+  // stop would silently fail. The httpOnly __ez_admin_session cookie is the
+  // proof of who started impersonating, and is what we restore.
   if (stop === '1') {
     const res = NextResponse.redirect(`${siteUrl}/dashboard/admin/users`, { status: 302 })
     const stored = jar.get(ADMIN_COOKIE)?.value
     clearAuthCookies(res, jar.getAll().map((c) => c.name))
     res.cookies.set(ADMIN_COOKIE, '', { path: '/', maxAge: 0 })
+    let adminId: string | null = null
     if (stored) {
       try {
         const t = JSON.parse(stored) as { access_token?: string; refresh_token?: string }
         if (t.access_token && t.refresh_token) {
+          adminId = jwtSub(t.access_token)
           await ssrForResponse(res, []).auth.setSession({
             access_token: t.access_token,
             refresh_token: t.refresh_token,
@@ -76,16 +94,19 @@ export async function GET(req: Request) {
         // ignore — admin can sign in again
       }
     }
-    await service.from('audit_log').insert({
-      user_id: adminUser.id,
-      action: 'impersonate.stop',
-      resource_type: 'user',
-      resource_id: adminUser.id,
-    })
+    if (adminId) {
+      await service.from('audit_log').insert({
+        user_id: adminId,
+        action: 'impersonate.stop',
+        resource_type: 'user',
+        resource_id: adminId,
+      })
+    }
     return res
   }
 
-  // ── Start impersonating ─────────────────────────────────────────────────
+  // ── Start impersonating (admin only) ────────────────────────────────────
+  const adminUser = await requireAdmin()
   const targetUserId = url.searchParams.get('user_id')
   const returnTo = url.searchParams.get('return') ?? '/dashboard'
   if (!targetUserId) return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
@@ -140,7 +161,7 @@ export async function GET(req: Request) {
         access_token: adminSession.access_token,
         refresh_token: adminSession.refresh_token,
       }),
-      { path: '/', httpOnly: true, sameSite: 'lax', secure, maxAge: 60 * 30 }
+      { path: '/', httpOnly: true, sameSite: 'lax', secure, maxAge: 60 * 60 * 4 }
     )
   }
   // Clear any stale admin auth-cookie chunks, then write the target session in
