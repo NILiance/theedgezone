@@ -21,6 +21,7 @@ import {
 } from './arsenal-subtab-meta'
 import { PlacementEditor } from './placement-editor'
 import { PLACEMENT_DIMS } from './placement-dims'
+import { GameDayEditor } from './game-day-editor'
 import { LogoAnimationTab } from './tab-logo-animation'
 import { TradingCardTab } from './tab-trading-card'
 import { BrandVoiceTab } from './tab-brand-voice'
@@ -1225,6 +1226,16 @@ function ArsenalView({
           <YourCreations
             brandId={brandId}
             creations={creations.filter((c) => c.kind === 'social_avatars')}
+          />
+        </>
+      )}
+
+      {subtab === 'game_day' && (
+        <>
+          <GameDayEditor brandId={brandId} hasFinal={hasFinal} />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => c.kind === 'game_day')}
           />
         </>
       )}

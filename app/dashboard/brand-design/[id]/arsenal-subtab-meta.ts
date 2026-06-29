@@ -63,7 +63,6 @@ export const FOCUSED_CATEGORY_SUBTABS: ReadonlyArray<ArsenalSubtab> = [
   'social_media',
   'email_signature_image',
   'icon_generator',
-  'game_day',
 ]
 
 export type ArsenalGroup = 'visual' | 'comms' | 'print' | 'digital'
