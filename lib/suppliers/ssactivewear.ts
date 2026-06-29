@@ -49,6 +49,22 @@ interface SsRawProduct {
   baseCategory?: string
 }
 
+// Popular blank styles used to seed the catalog when the admin runs a sync with
+// no style query. Reliable numeric Gildan styles (tees, hoodies, long sleeves);
+// admins can sync any other style/brand by entering style number(s).
+const DEFAULT_SS_STYLES = [
+  '5000', // Gildan Heavy Cotton Tee
+  '64000', // Gildan Softstyle Tee
+  '2000', // Gildan Ultra Cotton Tee
+  '8000', // Gildan DryBlend Tee
+  '18500', // Gildan Heavy Blend Hoodie
+  '18000', // Gildan Heavy Blend Crewneck
+  '5400', // Gildan Long Sleeve Tee
+  '42000', // Gildan Performance Tee
+  '12500', // Gildan DryBlend Hoodie
+  '2400', // Gildan Ultra Cotton Long Sleeve
+]
+
 export class SsActivewearSupplier implements Supplier {
   code = 'ssactivewear'
   displayName = 'S&S Activewear'
@@ -83,17 +99,35 @@ export class SsActivewearSupplier implements Supplier {
 
   async search(params: SupplierSearchParams): Promise<SupplierProduct[]> {
     const query = (params.query ?? '').trim()
-    if (!query) return []
-    try {
-      const url = `${this.baseUrl}/products?style=${encodeURIComponent(query)}`
-      const res = await fetch(url, { headers: this.headers() })
-      if (!res.ok) return []
-      const json = (await res.json()) as SsRawProduct[] | { products?: SsRawProduct[] }
-      const rows = Array.isArray(json) ? json : json.products ?? []
-      return groupSsRows(rows).slice(params.offset ?? 0, (params.offset ?? 0) + (params.limit ?? 50))
-    } catch {
-      return []
+    // S&S has no broad search endpoint — you query by style number. A blank
+    // query (the catalog sync / cron) seeds a set of popular blank styles so
+    // there's always a usable starter catalog; admins can sync more by style.
+    const styles = query
+      ? query
+          .split(/[\s,]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : DEFAULT_SS_STYLES
+    const out: SupplierProduct[] = []
+    const seen = new Set<string>()
+    for (const style of styles) {
+      try {
+        const url = `${this.baseUrl}/products?style=${encodeURIComponent(style)}`
+        const res = await fetch(url, { headers: this.headers() })
+        if (!res.ok) continue
+        const json = (await res.json()) as SsRawProduct[] | { products?: SsRawProduct[] }
+        const rows = Array.isArray(json) ? json : json.products ?? []
+        for (const p of groupSsRows(rows)) {
+          if (seen.has(p.supplierSku)) continue
+          seen.add(p.supplierSku)
+          out.push(p)
+        }
+      } catch {
+        /* skip this style */
+      }
     }
+    const offset = params.offset ?? 0
+    return out.slice(offset, offset + (params.limit ?? 50))
   }
 
   async getProduct(supplierSku: string): Promise<SupplierProduct | null> {

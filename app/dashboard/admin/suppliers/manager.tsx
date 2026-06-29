@@ -166,7 +166,7 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             <input type="hidden" name="supplier_code" value={supplier.supplier_code} />
             <input
               name="query"
-              placeholder="Search query for sync (optional)"
+              placeholder="Style number(s) e.g. 5000, 18500 — blank = popular blanks"
               className="flex-1 rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs"
             />
             <button
@@ -176,6 +176,13 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             >
               {syncPending ? 'Syncing…' : 'Sync catalog'}
             </button>
+            {supplier.supplier_code === 'ssactivewear' && (
+              <p className="w-full text-[10px] text-muted-foreground">
+                S&amp;S syncs by style number — enter one or more (e.g.{' '}
+                <code className="font-mono">5000, 18500</code>, comma/space separated). Leave blank
+                to seed a set of popular blank styles.
+              </p>
+            )}
             {syncState.error && <p className="text-xs text-destructive">{syncState.error}</p>}
             {syncState.ok && <p className="text-xs text-success">{syncState.message}</p>}
           </form>
