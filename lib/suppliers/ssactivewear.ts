@@ -50,20 +50,22 @@ interface SsRawProduct {
   baseCategory?: string
 }
 
-// Popular blank styles used to seed the catalog when the admin runs a sync with
-// no style query. Reliable numeric Gildan styles (tees, hoodies, long sleeves);
-// admins can sync any other style/brand by entering style number(s).
-const DEFAULT_SS_STYLES = [
-  '5000', // Gildan Heavy Cotton Tee
-  '64000', // Gildan Softstyle Tee
-  '2000', // Gildan Ultra Cotton Tee
-  '8000', // Gildan DryBlend Tee
-  '18500', // Gildan Heavy Blend Hoodie
-  '18000', // Gildan Heavy Blend Crewneck
-  '5400', // Gildan Long Sleeve Tee
-  '42000', // Gildan Performance Tee
-  '12500', // Gildan DryBlend Hoodie
-  '2400', // Gildan Ultra Cotton Long Sleeve
+// Popular blank "brand + style" searches used to seed the catalog when the admin
+// runs a sync with no query. These are TEXT searches (resolved via
+// /styles?search=), because S&S's /products `style` param matches the internal
+// styleID, NOT the printed style number. Admins search the same way, e.g.
+// "Gildan 5000" or "Bella Canvas 3001".
+const DEFAULT_SS_SEARCHES = [
+  'Gildan 5000', // Heavy Cotton Tee
+  'Gildan 64000', // Softstyle Tee
+  'Gildan 2000', // Ultra Cotton Tee
+  'Gildan 18500', // Heavy Blend Hoodie
+  'Gildan 18000', // Heavy Blend Crewneck
+  'Gildan 5400', // Long Sleeve Tee
+  'Bella Canvas 3001', // Unisex Jersey Tee
+  'Next Level 6210', // CVC Tee
+  'Comfort Colors 1717', // Garment-Dyed Tee
+  'Independent Trading SS4500', // Hoodie
 ]
 
 export class SsActivewearSupplier implements Supplier {
@@ -100,56 +102,81 @@ export class SsActivewearSupplier implements Supplier {
 
   async search(params: SupplierSearchParams): Promise<SupplierProduct[]> {
     const query = (params.query ?? '').trim()
-    // S&S has no broad search endpoint — you query by style number. A blank
-    // query (the catalog sync / cron) seeds a set of popular blank styles so
-    // there's always a usable starter catalog; admins can sync more by style.
-    const styles = query
+    // S&S's /products `style` param matches the INTERNAL styleID, not the printed
+    // style number. So we text-search /styles first to turn a brand+number like
+    // "Gildan 5000" into its styleID, then pull that style's products. Terms are
+    // comma/newline separated; spaces stay within a term ("Gildan 5000").
+    const terms = query
       ? query
-          .split(/[\s,]+/)
+          .split(/[,\n]+/)
           .map((s) => s.trim())
           .filter(Boolean)
-      : DEFAULT_SS_STYLES
+      : DEFAULT_SS_SEARCHES
+
+    const styleIds: number[] = []
+    for (const term of terms) {
+      if (styleIds.length >= 40) break
+      styleIds.push(...(await this.searchStyleIds(term)))
+    }
+    const uniqueIds = [...new Set(styleIds)].slice(0, 40)
+
+    const limit = params.limit ?? 50
+    const offset = params.offset ?? 0
     const out: SupplierProduct[] = []
     const seen = new Set<string>()
-    for (const style of styles) {
-      try {
-        const url = `${this.baseUrl}/products?style=${encodeURIComponent(style)}`
-        const res = await fetch(url, { headers: this.headers() })
-        if (!res.ok) {
-          console.warn(`[ssactivewear] style ${style}: HTTP ${res.status}`)
-          continue
-        }
-        const json = (await res.json()) as SsRawProduct[] | { products?: SsRawProduct[] }
-        const rows = Array.isArray(json) ? json : json.products ?? []
-        const grouped = groupSsRows(rows)
-        console.log(`[ssactivewear] style ${style}: ${rows.length} rows → ${grouped.length} product(s)`)
-        for (const p of grouped) {
-          if (seen.has(p.supplierSku)) continue
-          seen.add(p.supplierSku)
-          out.push(p)
-        }
-      } catch (err) {
-        console.warn(
-          `[ssactivewear] style ${style}: ${err instanceof Error ? err.message : 'fetch failed'}`
-        )
+    for (const sid of uniqueIds) {
+      if (out.length >= offset + limit) break
+      const rows = await this.fetchStyleProducts(sid)
+      const grouped = groupSsRows(rows)
+      console.log(`[ssactivewear] styleID ${sid}: ${rows.length} rows → ${grouped.length} product(s)`)
+      for (const p of grouped) {
+        if (seen.has(p.supplierSku)) continue
+        seen.add(p.supplierSku)
+        out.push(p)
       }
     }
-    const offset = params.offset ?? 0
-    return out.slice(offset, offset + (params.limit ?? 50))
+    return out.slice(offset, offset + limit)
+  }
+
+  /** Resolve a "brand style" text search (e.g. "Gildan 5000") to S&S styleIDs. */
+  private async searchStyleIds(term: string): Promise<number[]> {
+    try {
+      const res = await fetch(`${this.baseUrl}/styles?search=${encodeURIComponent(term)}`, {
+        headers: this.headers(),
+      })
+      if (!res.ok) {
+        console.warn(`[ssactivewear] styles "${term}": HTTP ${res.status}`)
+        return []
+      }
+      const json = (await res.json()) as Array<{ styleID?: number }>
+      const ids = (Array.isArray(json) ? json : [])
+        .map((s) => s.styleID)
+        .filter((n): n is number => typeof n === 'number')
+      console.log(`[ssactivewear] styles "${term}": ${ids.length} match(es)`)
+      return ids.slice(0, 10)
+    } catch (err) {
+      console.warn(`[ssactivewear] styles "${term}": ${err instanceof Error ? err.message : 'failed'}`)
+      return []
+    }
+  }
+
+  /** Pull every SKU row for a styleID via /products?style={styleID}. */
+  private async fetchStyleProducts(styleId: number): Promise<SsRawProduct[]> {
+    try {
+      const res = await fetch(`${this.baseUrl}/products?style=${styleId}`, { headers: this.headers() })
+      if (!res.ok) return []
+      const json = (await res.json()) as SsRawProduct[] | { products?: SsRawProduct[] }
+      return Array.isArray(json) ? json : json.products ?? []
+    } catch {
+      return []
+    }
   }
 
   async getProduct(supplierSku: string): Promise<SupplierProduct | null> {
-    try {
-      const url = `${this.baseUrl}/products/${encodeURIComponent(supplierSku)}`
-      const res = await fetch(url, { headers: this.headers() })
-      if (!res.ok) return null
-      const json = (await res.json()) as SsRawProduct[] | { products?: SsRawProduct[] }
-      const rows = Array.isArray(json) ? json : json.products ?? []
-      const grouped = groupSsRows(rows)
-      return grouped[0] ?? null
-    } catch {
-      return null
-    }
+    const sid = Number(supplierSku)
+    if (!Number.isFinite(sid)) return null
+    const grouped = groupSsRows(await this.fetchStyleProducts(sid))
+    return grouped[0] ?? null
   }
 
   async getInventory(supplierSku: string, variantSku?: string) {

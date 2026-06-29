@@ -171,7 +171,7 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             <input type="hidden" name="supplier_code" value={supplier.supplier_code} />
             <input
               name="query"
-              placeholder="Style number(s) e.g. 5000, 18500 — blank = popular blanks"
+              placeholder="Brand + style, e.g. Gildan 5000, Bella Canvas 3001 — blank = popular blanks"
               className="flex-1 rounded-[var(--radius-sm)] border border-border bg-background px-2 py-1.5 text-xs"
             />
             <button
@@ -183,9 +183,9 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             </button>
             {supplier.supplier_code === 'ssactivewear' && (
               <p className="w-full text-[10px] text-muted-foreground">
-                S&amp;S syncs by style number — enter one or more (e.g.{' '}
-                <code className="font-mono">5000, 18500</code>, comma/space separated). Leave blank
-                to seed a set of popular blank styles.
+                Search by brand + style — enter one or more, comma-separated (e.g.{' '}
+                <code className="font-mono">Gildan 5000, Bella Canvas 3001</code>). Leave blank to
+                seed popular blanks. Each match imports as one product with all colors/sizes.
               </p>
             )}
             {syncState.error && <p className="text-xs text-destructive">{syncState.error}</p>}
