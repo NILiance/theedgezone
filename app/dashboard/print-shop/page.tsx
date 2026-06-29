@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
+import { ensureTransparentLogo } from '@/lib/brand-addons'
 import { formatEasternDate } from '@/lib/format-date'
 
 export const metadata = { title: 'Print Shop' }
@@ -18,7 +19,7 @@ export default async function PrintShopPage() {
   const [{ data: products }, { data: orders }] = await Promise.all([
     supabase
       .from('print_products')
-      .select('id, slug, name, description, category, cover_image_url, base_price_cents, lead_time_days')
+      .select('*')
       .eq('active', true)
       .order('position', { ascending: true })
       .order('name', { ascending: true }),
@@ -29,6 +30,19 @@ export default async function PrintShopPage() {
       .order('created_at', { ascending: false })
       .limit(20),
   ])
+
+  // Talent's latest finalized brand logo → overlaid on each product card at the
+  // per-product placement, matching the brand-design Print Shop tab + product page.
+  const { data: brand } = await supabase
+    .from('brand_designs')
+    .select('id')
+    .eq('user_id', user.id)
+    .not('final_logo_url', 'is', null)
+    .order('finalized_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle()
+  const brandId = (brand as { id?: string } | null)?.id ?? null
+  const overlayLogo = brandId ? await ensureTransparentLogo(brandId) : null
 
   const productById = new Map((products ?? []).map((p) => [p.id, p]))
 
@@ -54,16 +68,36 @@ export default async function PrintShopPage() {
       <section>
         <p className="text-eyebrow mb-3 text-primary">Catalog</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(products ?? []).map((p) => (
+          {(products ?? []).map((p) => {
+            const pl = p as typeof p & {
+              logo_x?: number | null
+              logo_y?: number | null
+              logo_scale?: number | null
+            }
+            return (
             <Link
               key={p.id}
               href={`/dashboard/print-shop/${p.slug}`}
               className="group block overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40 transition hover:border-primary/40"
             >
-              <div className="aspect-[4/3] bg-panel-elevated">
+              <div className="relative aspect-square bg-panel-elevated">
                 {p.cover_image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.cover_image_url} alt="" className="h-full w-full object-cover" />
+                  <img src={p.cover_image_url} alt="" className="h-full w-full object-contain" />
+                )}
+                {overlayLogo && p.cover_image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={overlayLogo}
+                    alt=""
+                    className="pointer-events-none absolute object-contain"
+                    style={{
+                      left: `${(pl.logo_x ?? 0.5) * 100}%`,
+                      top: `${(pl.logo_y ?? 0.5) * 100}%`,
+                      width: `${(pl.logo_scale ?? 0.3) * 100}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  />
                 )}
               </div>
               <div className="p-4">
@@ -82,7 +116,8 @@ export default async function PrintShopPage() {
                 </div>
               </div>
             </Link>
-          ))}
+            )
+          })}
           {(products ?? []).length === 0 && (
             <p className="rounded-[var(--radius)] border border-dashed border-border bg-panel/30 p-6 text-center text-sm text-muted-foreground sm:col-span-3">
               No print products in the catalog yet.
