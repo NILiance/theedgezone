@@ -96,6 +96,7 @@ export function TradingCardTab({
   const [accent, setAccent] = useState(brandSecondary || '#ffd166')
   const [effect, setEffect] = useState('none')
   const [logoStyle, setLogoStyle] = useState<'transparent' | 'regular'>('transparent')
+  const [logoScale, setLogoScale] = useState(1)
   const [flipped, setFlipped] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
   const [stats, setStats] = useState<Stat[]>([{ label: '', value: '' }])
@@ -173,6 +174,7 @@ export function TradingCardTab({
           <input type="hidden" name="style" value={style} />
           <input type="hidden" name="effect" value={effect} />
           <input type="hidden" name="logo_style" value={logoStyle} />
+          <input type="hidden" name="logo_scale" value={logoScale} />
           <input type="hidden" name="bg_color" value={bg} />
           <input type="hidden" name="accent_color" value={accent} />
           <input type="hidden" name="name" value={f.name} />
@@ -212,7 +214,21 @@ export function TradingCardTab({
             <input value={f.handle} onChange={set('handle')} placeholder="@handle" className={inputCls} />
             <input value={f.website} onChange={set('website')} placeholder="website.com" className={inputCls} />
           </div>
-          <LogoStyleToggle value={logoStyle} onChange={setLogoStyle} label="Back logo" />
+          <div className="grid items-end gap-3 sm:grid-cols-2">
+            <LogoStyleToggle value={logoStyle} onChange={setLogoStyle} label="Back logo" />
+            <label className="block">
+              <span className={labelCls}>Back logo size · {Math.round(logoScale * 100)}%</span>
+              <input
+                type="range"
+                min={0.5}
+                max={1.7}
+                step={0.05}
+                value={logoScale}
+                onChange={(e) => setLogoScale(Number(e.target.value))}
+                className="mt-2 w-full cursor-pointer"
+              />
+            </label>
+          </div>
 
           {/* Multiple stats → rendered on the back, one per line */}
           <div>
@@ -341,6 +357,7 @@ export function TradingCardTab({
             f={f}
             stats={cleanStats}
             effect={effect}
+            logoScale={logoScale}
           />
           <button
             type="button"
@@ -377,6 +394,7 @@ function CardFlip({
   f,
   stats,
   effect,
+  logoScale,
 }: {
   flipped: boolean
   palette: Palette
@@ -385,6 +403,7 @@ function CardFlip({
   f: { name: string; subline: string; school: string; tagline: string; handle: string; website: string }
   stats: Stat[]
   effect: string
+  logoScale: number
 }) {
   const year = new Date().getFullYear()
   return (
@@ -419,7 +438,12 @@ function CardFlip({
             <div className="flex flex-1 flex-col items-center justify-center gap-1.5">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="" className="h-14 w-14 object-contain" />
+                <img
+                  src={logoUrl}
+                  alt=""
+                  className="object-contain"
+                  style={{ width: 56 * logoScale, height: 56 * logoScale }}
+                />
               ) : null}
               <p className="text-display text-center text-base font-black leading-none" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
               {f.subline && <p className="text-center text-[9px] font-bold uppercase tracking-widest" style={{ color: palette.accent }}>{f.subline}</p>}

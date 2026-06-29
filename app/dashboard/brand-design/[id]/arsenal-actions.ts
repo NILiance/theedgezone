@@ -171,10 +171,15 @@ export async function generateArsenalAsset(
         built = uniformPrompt(ctx, option || 'home_jersey', notes || null)
         break
       case 'icon_generator':
-        built = iconGeneratorPrompt(ctx, option || 'app_icon')
+        built = iconGeneratorPrompt(ctx, option || 'app_icon', effect)
         break
       case 'game_day':
-        built = gameDayPrompt(ctx, option || 'hype')
+        built = gameDayPrompt(ctx, option || 'hype', {
+          opponent: String(form.get('opponent') ?? ''),
+          opponentIcon: String(form.get('opponent_icon') ?? 'shield'),
+          customText: String(form.get('custom_text') ?? ''),
+          effect,
+        })
         break
     }
   } catch (err) {
@@ -223,6 +228,9 @@ export async function generateArsenalAsset(
       option,
       style: styleOpt,
       sport: sportOverride || null,
+      effect: effect !== 'none' ? effect : null,
+      opponent: String(form.get('opponent') ?? '') || null,
+      customText: String(form.get('custom_text') ?? '') || null,
       prompt: result.prompt,
     },
   })

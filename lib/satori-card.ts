@@ -44,6 +44,8 @@ export interface CardData {
   handle?: string
   /** Optional full-bleed effect background, composited behind everything. */
   bgImageDataUrl?: string
+  /** Back-logo scale multiplier (1 = default 220px). */
+  logoScale?: number
 }
 
 type Node = { type: string; props: Record<string, unknown> }
@@ -75,7 +77,10 @@ function back(d: CardData, p: CardPalette): Node {
   const kids: unknown[] = [
     box({ position: 'absolute', top: 18, left: 18, width: W - 36, height: H - 36, border: `6px solid ${p.border}`, borderRadius: 22 }),
   ]
-  if (d.logoDataUrl) kids.push(image(d.logoDataUrl, { width: 220, height: 220, objectFit: 'contain', marginTop: 64 }))
+  if (d.logoDataUrl) {
+    const ls = Math.max(120, Math.min(380, Math.round(220 * (d.logoScale ?? 1))))
+    kids.push(image(d.logoDataUrl, { width: ls, height: ls, objectFit: 'contain', marginTop: 64 }))
+  }
   kids.push(box({ fontSize: 44, color: p.text, marginTop: 18, textAlign: 'center' }, d.name.toUpperCase()))
   if (d.subline) kids.push(box({ fontSize: 22, color: p.accent, marginTop: 8 }, d.subline.toUpperCase()))
   if (d.school) kids.push(box({ fontSize: 16, color: '#bdbdbd', marginTop: 4 }, d.school))

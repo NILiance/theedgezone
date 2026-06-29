@@ -206,6 +206,7 @@ const STANDARD: CategoryDef[] = [
     icon: '💎',
     color: '#1abc9c',
     blurb: 'App icons, favicons, chat avatars, watch faces — same logo, every surface.',
+    effects: true,
     optionLabel: 'Surface',
     options: [
       { val: 'app_icon', name: 'iOS / Android App Icon' },
@@ -220,6 +221,7 @@ const STANDARD: CategoryDef[] = [
     icon: '🏆',
     color: '#f1c40f',
     blurb: 'Matchup graphics, countdown posts, final-score templates, hype tiles.',
+    effects: true,
     optionLabel: 'Type',
     options: [
       { val: 'hype', name: 'Hype / Pre-Game' },

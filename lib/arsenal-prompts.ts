@@ -646,7 +646,8 @@ export const UNIFORM_ITEM_LABELS: Record<string, string> = {
  */
 export function iconGeneratorPrompt(
   ctx: ArsenalContext,
-  variant: string
+  variant: string,
+  effect?: string
 ): ArsenalPromptResult {
   const variantLabel: Record<string, string> = {
     app_icon: 'iOS-style rounded square app icon, the logo centered with subtle drop shadow',
@@ -662,7 +663,8 @@ export function iconGeneratorPrompt(
       `${logoRule(ctx.colors)}\n\n` +
       `Use ONLY these colors: ${ctx.colors}. Treat the logo as the centerpiece — do not modify it. ` +
       `Backgrounds, gradients, and accents must draw from the brand palette. Clean, premium, instantly recognizable.\n\n` +
-      `${brandCtx(ctx)}`,
+      `${brandCtx(ctx)}` +
+      effectClause(effect),
   }
 }
 
@@ -671,13 +673,25 @@ export function iconGeneratorPrompt(
  */
 export function gameDayPrompt(
   ctx: ArsenalContext,
-  variant: string
+  variant: string,
+  opts: { opponent?: string; opponentIcon?: string; customText?: string; effect?: string } = {}
 ): ArsenalPromptResult {
+  const opponent = (opts.opponent ?? '').trim()
+  const customText = (opts.customText ?? '').trim()
+  const iconDesc: Record<string, string> = {
+    shield: 'a bold shield / crest emblem',
+    circle_initial: `a circular badge showing the opponent's initial`,
+    star: 'a star emblem',
+    mascot: 'a generic fierce mascot silhouette',
+    helmet: 'a sports helmet icon',
+    none: 'a clean placeholder circle',
+  }
+  const oppIcon = iconDesc[opts.opponentIcon ?? 'shield'] ?? iconDesc.shield!
   const variantDesc: Record<string, string> = {
-    matchup: 'matchup graphic showing two team logos side by side with VS in the middle and a "GAME DAY" header',
-    countdown: 'countdown-to-kickoff graphic with the logo and big "GAME DAY" type and game date placeholder',
-    score_announcement: 'final score announcement template with the logo, big "FINAL SCORE" text, and placeholder numbers',
-    hype: 'high-energy game day hype graphic with motion lines, the logo centered, and "GAME DAY" type',
+    matchup: `matchup graphic: my logo on the LEFT versus ${opponent ? `"${opponent}"` : 'the opponent'} on the RIGHT represented by ${oppIcon}, a large "VS" in the middle and a "GAME DAY" header`,
+    countdown: 'countdown-to-kickoff graphic with my logo and big "GAME DAY" type',
+    score_announcement: 'final score announcement template with my logo, big "FINAL SCORE" text and placeholder numbers',
+    hype: 'high-energy game day hype graphic with motion lines and my logo centered',
   }
   const desc = variantDesc[variant] ?? variantDesc.hype!
   return {
@@ -685,10 +699,12 @@ export function gameDayPrompt(
     prompt:
       `I am providing a logo image. Create a 1080x1080 ${desc} for ${ctx.brandName}.\n\n` +
       `${logoRule(ctx.colors)}\n\n` +
-      `Use ONLY these colors: ${ctx.colors}. ${bgTheme(ctx.colorMode)}. Bold, sports-broadcast aesthetic. ` +
-      `Leave enough negative space for the talent to overlay opponent name or score by hand.\n\n` +
-      `${spellRule(ctx.brandName)}\n\n` +
-      `${brandCtx(ctx)}`,
+      `Use ONLY these colors: ${ctx.colors}. ${bgTheme(ctx.colorMode)}. Bold, sports-broadcast aesthetic.\n\n` +
+      (customText ? `Render this exact headline text prominently and spelled correctly: "${customText}".\n\n` : '') +
+      (opponent && variant !== 'matchup' ? `Reference the opponent "${opponent}".\n\n` : '') +
+      `${spellRule(customText || ctx.brandName)}\n\n` +
+      `${brandCtx(ctx)}` +
+      effectClause(opts.effect),
   }
 }
 

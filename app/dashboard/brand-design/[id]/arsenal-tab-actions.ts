@@ -267,8 +267,9 @@ export async function generateTradingCardAction(
         /* fall back to the solid background */
       }
     }
+    const logoScale = Math.max(0.5, Math.min(1.7, Number(form.get('logo_scale') ?? 1) || 1))
     let png = await renderTradingCard(
-      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl },
+      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl, logoScale },
       { bg: p.bg, border: p.border, accent: p.accent, text: p.text },
       sharp
     )
