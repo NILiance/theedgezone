@@ -105,14 +105,14 @@ export function OrderForm({
       <p className="text-eyebrow text-primary">Order {productName}</p>
 
       {/* Live preview — product photo (swaps by color) with the logo overlaid at
-          the admin's per-product placement. */}
-      {(previewImage || logoUrl) && (
+          the admin's per-product placement. Uses the image's NATURAL aspect
+          ratio (block w-full, no crop) so logo_x/y map to the exact same spot
+          the admin set in the placer. */}
+      {previewImage && (
         <div className="mx-auto w-full max-w-xs">
-          <div className="relative aspect-square overflow-hidden rounded-[var(--radius)] border border-border bg-panel-elevated">
-            {previewImage && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewImage} alt="" className="h-full w-full object-contain" />
-            )}
+          <div className="relative overflow-hidden rounded-[var(--radius)] border border-border bg-panel-elevated">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewImage} alt="" className="block w-full" />
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
