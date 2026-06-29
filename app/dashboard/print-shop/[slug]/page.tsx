@@ -17,7 +17,7 @@ export default async function PrintProductPage({ params }: PageProps) {
   if (!supabase) notFound()
   const { data: product } = await supabase
     .from('print_products')
-    .select('id, slug, name, description, category, cover_image_url, base_price_cents, variants, options, lead_time_days')
+    .select('*')
     .eq('slug', slug)
     .eq('active', true)
     .maybeSingle()
@@ -25,6 +25,10 @@ export default async function PrintProductPage({ params }: PageProps) {
 
   const variants = (product.variants as Array<{ label: string; price_cents: number }>) ?? []
   const options = (product.options as Array<{ key: string; label: string; values: string[] }>) ?? []
+  // Admin per-product logo placement (0–1 fractions) — used for the proof.
+  const logoX = Number((product as { logo_x?: number | null }).logo_x ?? 0.5)
+  const logoY = Number((product as { logo_y?: number | null }).logo_y ?? 0.5)
+  const logoScale = Number((product as { logo_scale?: number | null }).logo_scale ?? 0.3)
 
   // Latest finalized brand logo — the default for print proofs.
   const { data: brand } = await supabase
@@ -81,6 +85,9 @@ export default async function PrintProductPage({ params }: PageProps) {
           options={options}
           coverUrl={product.cover_image_url ?? ''}
           brandLogoUrl={brandLogoUrl}
+          logoX={logoX}
+          logoY={logoY}
+          logoScale={logoScale}
         />
       </div>
     </div>

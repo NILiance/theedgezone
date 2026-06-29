@@ -15,6 +15,9 @@ export function OrderForm({
   options,
   coverUrl,
   brandLogoUrl,
+  logoX,
+  logoY,
+  logoScale,
 }: {
   productId: string
   productName: string
@@ -23,6 +26,9 @@ export function OrderForm({
   options: Option[]
   coverUrl: string
   brandLogoUrl: string
+  logoX: number
+  logoY: number
+  logoScale: number
 }) {
   const [state, action, pending] = useActionState<PrintOrderState, FormData>(createPrintOrder, {})
   const [variant, setVariant] = useState<string>(variants[0]?.label ?? '')
@@ -31,8 +37,6 @@ export function OrderForm({
 
   // Proof generator
   const [logoUrl, setLogoUrl] = useState(brandLogoUrl)
-  const [placement, setPlacement] = useState('center')
-  const [sizePct, setSizePct] = useState(40)
   const [knockout, setKnockout] = useState(true)
   const [proofBusy, setProofBusy] = useState(false)
   const [proofErr, setProofErr] = useState<string | null>(null)
@@ -54,9 +58,11 @@ export function OrderForm({
       const res = await generatePrintProof({
         blank_url: coverUrl,
         logo_url: logoUrl,
-        placement,
-        size_pct: sizePct,
+        placement: 'center',
+        size_pct: Math.round(logoScale * 100),
         knockout_white: knockout,
+        logo_x: logoX,
+        logo_y: logoY,
       })
       if (res.ok && res.url) setProof(res.url)
       else setProofErr(res.message ?? 'Proof failed')
@@ -147,7 +153,8 @@ export function OrderForm({
           Generate a proof
         </p>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Drop your logo onto this product to preview the print, then add it to your artwork.
+          Preview your logo on this product — it&rsquo;s placed at the position + size set for this
+          product. Then add the proof to your artwork.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div>
@@ -156,29 +163,7 @@ export function OrderForm({
               <AssetPicker value={logoUrl} onChange={setLogoUrl} accept="image/*" />
             </div>
           </div>
-          <div className="space-y-2">
-            <div>
-              <span className="block text-[11px] text-muted-foreground">Placement</span>
-              <select
-                value={placement}
-                onChange={(e) => setPlacement(e.target.value)}
-                className="mt-1 h-9 w-full rounded-[var(--radius-sm)] border border-border bg-background px-2 text-xs"
-              >
-                <option value="center">Centered</option>
-                <option value="front_center">Upper center</option>
-              </select>
-            </div>
-            <div>
-              <span className="block text-[11px] text-muted-foreground">Logo size — {sizePct}%</span>
-              <input
-                type="range"
-                min={10}
-                max={70}
-                value={sizePct}
-                onChange={(e) => setSizePct(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
-            </div>
+          <div className="flex items-start">
             <label className="flex items-center gap-2 text-[11px]">
               <input
                 type="checkbox"

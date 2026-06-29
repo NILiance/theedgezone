@@ -23,6 +23,9 @@ interface ComposeMockupInput {
   sizePct: number
   /** Knock out near-white pixels in the logo so it sits cleanly on colored blanks. */
   knockoutWhite?: boolean
+  /** Optional free placement — logo CENTRE as 0–1 fractions; overrides `placement`. */
+  x?: number
+  y?: number
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
@@ -33,6 +36,8 @@ export async function composeMockup({
   placement,
   sizePct,
   knockoutWhite = true,
+  x,
+  y,
 }: ComposeMockupInput): Promise<Buffer> {
   const { default: sharp } = await import('sharp')
 
@@ -43,8 +48,9 @@ export async function composeMockup({
 
   // Target logo width per placement + size. `front_chest` stays small (≤18%)
   // even if the slider is cranked up — matches the legacy left-chest rule.
-  let targetW = Math.round(bw * (clamp(sizePct, 10, 70) / 100))
-  if (placement === 'front_chest' && sizePct > 25) targetW = Math.round(bw * 0.18)
+  const free = typeof x === 'number' && typeof y === 'number'
+  let targetW = Math.round(bw * (clamp(sizePct, 5, free ? 90 : 70) / 100))
+  if (!free && placement === 'front_chest' && sizePct > 25) targetW = Math.round(bw * 0.18)
   targetW = Math.max(1, Math.min(targetW, bw))
 
   // Resize the logo first (cheaper raster), then optionally knock out white.
@@ -69,16 +75,24 @@ export async function composeMockup({
   const lw = lMeta.width ?? targetW
   const lh = lMeta.height ?? targetW
 
-  // Placement geometry — mirrors the legacy pos_map.
-  let dstX = Math.round((bw - lw) / 2)
-  let dstY = Math.round(bh * 0.32)
-  if (placement === 'front_chest') {
-    dstX = Math.round(bw * 0.32)
-    dstY = Math.round(bh * 0.26)
-  } else if (placement === 'back') {
-    dstY = Math.round(bh * 0.3)
-  } else if (placement === 'center') {
-    dstY = Math.round((bh - lh) / 2)
+  // Placement geometry. Free x/y (admin per-product placement) wins; otherwise
+  // fall back to the legacy named pos_map.
+  let dstX: number
+  let dstY: number
+  if (typeof x === 'number' && typeof y === 'number') {
+    dstX = Math.round(x * bw - lw / 2)
+    dstY = Math.round(y * bh - lh / 2)
+  } else {
+    dstX = Math.round((bw - lw) / 2)
+    dstY = Math.round(bh * 0.32)
+    if (placement === 'front_chest') {
+      dstX = Math.round(bw * 0.32)
+      dstY = Math.round(bh * 0.26)
+    } else if (placement === 'back') {
+      dstY = Math.round(bh * 0.3)
+    } else if (placement === 'center') {
+      dstY = Math.round((bh - lh) / 2)
+    }
   }
   // Keep the logo on-canvas.
   dstX = clamp(dstX, 0, Math.max(0, bw - lw))

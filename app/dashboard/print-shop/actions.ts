@@ -20,6 +20,9 @@ export async function generatePrintProof(input: {
   placement: string
   size_pct: number
   knockout_white: boolean
+  /** Admin per-product placement — logo CENTRE as 0–1 fractions. Wins over `placement`. */
+  logo_x?: number
+  logo_y?: number
 }): Promise<{ ok: boolean; url?: string; message?: string }> {
   const user = await requireUser()
   if (!input.blank_url) return { ok: false, message: 'This product has no image to print on.' }
@@ -46,14 +49,22 @@ export async function generatePrintProof(input: {
     ? input.placement
     : 'center') as 'front_center' | 'center' | 'front_chest'
 
+  const hasAdminPlacement =
+    typeof input.logo_x === 'number' &&
+    typeof input.logo_y === 'number' &&
+    Number.isFinite(input.logo_x) &&
+    Number.isFinite(input.logo_y)
+
   let png: Buffer
   try {
     png = await composeMockup({
       blankBuffer,
       logoBuffer,
       placement,
-      sizePct: Math.max(10, Math.min(70, Math.round(input.size_pct) || 40)),
+      sizePct: Math.max(5, Math.min(90, Math.round(input.size_pct) || 40)),
       knockoutWhite: input.knockout_white,
+      x: hasAdminPlacement ? input.logo_x : undefined,
+      y: hasAdminPlacement ? input.logo_y : undefined,
     })
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Proof render failed' }
