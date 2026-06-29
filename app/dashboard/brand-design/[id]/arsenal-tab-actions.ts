@@ -231,31 +231,18 @@ export async function generateTradingCardAction(
     // never tofu on serverless; produces a front + back side-by-side. Falls back
     // to the legacy single-side SVG if the font can't be fetched.
     const photoDataUrl = `data:image/png;base64,${photoArea.toString('base64')}`
-    // Back logo — transparent (default) or the regular logo with its background.
+    // Back logo — transparent (default) or regular, whitespace-trimmed so the
+    // mark fills the space. Same helper the live preview uses, so they match.
     const logoStyle =
       String(form.get('logo_style') ?? 'transparent') === 'regular' ? 'regular' : 'transparent'
-    let logoForCard = brand.final_logo_url
-    if (logoStyle === 'transparent' && brand.final_logo_url) {
-      const { ensureTransparentLogo } = await import('@/lib/brand-addons')
-      logoForCard = (await ensureTransparentLogo(brandId)) ?? brand.final_logo_url
-    }
+    const { ensureTrimmedLogo } = await import('@/lib/brand-addons')
+    const logoForCard =
+      (await ensureTrimmedLogo(brandId, logoStyle === 'transparent')) ?? brand.final_logo_url
     let logoDataUrl: string | undefined
     if (logoForCard) {
       try {
         const lr = await fetch(logoForCard)
-        if (lr.ok) {
-          const raw = Buffer.from(await lr.arrayBuffer())
-          // Trim the surrounding whitespace / transparent padding so the mark
-          // fills the space — the raw logo often carries a wide margin.
-          const lb = Buffer.from(
-            await sharp(raw)
-              .trim()
-              .png()
-              .toBuffer()
-              .catch(() => raw)
-          )
-          logoDataUrl = `data:image/png;base64,${lb.toString('base64')}`
-        }
+        if (lr.ok) logoDataUrl = `data:image/png;base64,${Buffer.from(await lr.arrayBuffer()).toString('base64')}`
       } catch {
         /* logo optional on the back */
       }

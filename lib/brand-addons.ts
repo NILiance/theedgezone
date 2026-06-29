@@ -87,6 +87,46 @@ export async function ensureTransparentLogo(brandId: string): Promise<string | n
   }
 }
 
+/**
+ * A whitespace-TRIMMED logo PNG for tight placement (e.g. the trading-card back
+ * logo), so the mark fills the space instead of floating in a wide margin.
+ * `transparent` knocks out the background first. Cached per variant.
+ */
+export async function ensureTrimmedLogo(
+  brandId: string,
+  transparent: boolean
+): Promise<string | null> {
+  const supabase = createServiceClient()
+  if (!supabase) return null
+  const { data: brand } = await supabase
+    .from('brand_designs')
+    .select('final_logo_url')
+    .eq('id', brandId)
+    .single()
+  if (!brand?.final_logo_url) return null
+
+  const file = `card-logo-${transparent ? 't' : 'r'}.png`
+  const path = `${brandId}/addons/${file}`
+  const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+  const { data: existing } = await supabase.storage
+    .from(BUCKET)
+    .list(`${brandId}/addons`, { search: file })
+  if (existing?.some((f) => f.name === file)) return publicUrl
+
+  try {
+    const sharp = await getSharp()
+    let buf = await fetchAsBuffer(brand.final_logo_url)
+    if (transparent) {
+      const { makeLogoTransparent } = await import('@/lib/logo-transparent')
+      buf = await makeLogoTransparent(buf, sharp).catch(() => buf)
+    }
+    buf = Buffer.from(await sharp(buf).trim().png().toBuffer().catch(() => buf))
+    return await uploadToStorage(path, buf, 'image/png')
+  } catch {
+    return brand.final_logo_url
+  }
+}
+
 // ── Logo animation ──────────────────────────────────────────────────────────
 
 export interface LogoAnimationOptions {

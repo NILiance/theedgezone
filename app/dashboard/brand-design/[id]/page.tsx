@@ -36,7 +36,7 @@ import { LogoCanvas } from '@/components/brand-design/logo-canvas'
 import { BrandSwitcher } from './brand-switcher'
 import { ConceptPackButton } from './concept-pack-button'
 import { getTradingCardTiers } from '@/lib/trading-cards'
-import { ensureTransparentLogo } from '@/lib/brand-addons'
+import { ensureTransparentLogo, ensureTrimmedLogo } from '@/lib/brand-addons'
 import { RenderBoundary } from '@/components/render-boundary'
 import { DownloadLink } from '@/components/download-link'
 
@@ -148,6 +148,16 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
     hasFinal && logoChoiceTabs.includes(arsenalSubtab)
       ? ((await ensureTransparentLogo(brand.id)) ?? brand.final_logo_url ?? '')
       : (brand.final_logo_url ?? '')
+
+  // Whitespace-trimmed logos for the trading-card back, so the live preview
+  // matches the rendered card (the raw logo carries a wide margin).
+  const onTradingCard = hasFinal && arsenalSubtab === 'trading_card'
+  const cardLogoRegular = onTradingCard
+    ? ((await ensureTrimmedLogo(brand.id, false)) ?? brand.final_logo_url ?? '')
+    : (brand.final_logo_url ?? '')
+  const cardLogoTransparent = onTradingCard
+    ? ((await ensureTrimmedLogo(brand.id, true)) ?? cardLogoRegular)
+    : transparentLogoUrl
 
   const { data: addonsData } = await supabase
     .from('brand_design_addons')
@@ -380,6 +390,8 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
             brandSecondary={brand.secondary_color}
             finalLogoUrl={brand.final_logo_url}
             transparentLogoUrl={transparentLogoUrl}
+            cardLogoRegular={cardLogoRegular}
+            cardLogoTransparent={cardLogoTransparent}
             brandName={brand.brand_name ?? ''}
             tradingCardTiers={tradingCardTiers}
             orderableCards={orderableCards}
@@ -1044,6 +1056,8 @@ function ArsenalView({
   brandSecondary,
   finalLogoUrl,
   transparentLogoUrl,
+  cardLogoRegular,
+  cardLogoTransparent,
   brandName,
   tradingCardTiers,
   orderableCards,
@@ -1061,6 +1075,8 @@ function ArsenalView({
   brandSecondary: string | null
   finalLogoUrl: string | null
   transparentLogoUrl: string
+  cardLogoRegular: string
+  cardLogoTransparent: string
   brandName: string
   tradingCardTiers: Array<{ qty: number; price_cents: number; label: string }>
   orderableCards: Array<{ id: string; url: string; style?: string | null }>
@@ -1156,8 +1172,8 @@ function ArsenalView({
             cards={orderableCards}
             orderSuccess={tcOrderSuccess}
             brandName={brandName}
-            logoUrl={finalLogoUrl ?? ''}
-            transparentLogoUrl={transparentLogoUrl}
+            logoUrl={cardLogoRegular}
+            transparentLogoUrl={cardLogoTransparent}
             brandPrimary={brandPrimary ?? '#0b1e3f'}
             brandSecondary={brandSecondary ?? '#ffd166'}
           />
