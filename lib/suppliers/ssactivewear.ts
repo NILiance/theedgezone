@@ -274,10 +274,10 @@ function groupSsRows(rows: SsRawProduct[]): SupplierProduct[] {
         basePriceCents: priceToCents(r.salePrice ?? r.piecePrice ?? r.customerPrice),
         wholesalePriceCents: priceToCents(r.piecePrice ?? r.customerPrice),
         currency: 'usd',
-        primaryImageUrl: r.colorFrontImage ?? r.colorSideImage ?? undefined,
-        imageUrls: [r.colorFrontImage, r.colorBackImage, r.colorSideImage].filter(
-          (u): u is string => Boolean(u)
-        ),
+        primaryImageUrl: ssImageUrl(r.colorFrontImage) ?? ssImageUrl(r.colorSideImage),
+        imageUrls: [r.colorFrontImage, r.colorBackImage, r.colorSideImage]
+          .map(ssImageUrl)
+          .filter((u): u is string => Boolean(u)),
         colorOptions: [],
         sizeOptions: [],
         variants: [],
@@ -309,4 +309,12 @@ function groupSsRows(rows: SsRawProduct[]): SupplierProduct[] {
 function priceToCents(value: number | undefined): number {
   if (value == null || !Number.isFinite(value)) return 0
   return Math.round(value * 100)
+}
+
+/** S&S image fields are relative paths (e.g. "Images/Color/..._fm.jpg"); prefix
+ *  with the S&S CDN so they render. Passes through already-absolute URLs. */
+function ssImageUrl(path: string | undefined): string | undefined {
+  if (!path) return undefined
+  if (/^https?:\/\//i.test(path)) return path
+  return `https://cdn.ssactivewear.com/${path.replace(/^\/+/, '')}`
 }
