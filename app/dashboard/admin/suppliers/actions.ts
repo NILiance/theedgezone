@@ -102,8 +102,35 @@ export async function syncSupplierCatalog(
   if (!result.ok) return { error: result.error }
   const sync = await syncSupplier(result.supplier, query)
   if (!sync.ok) return { error: sync.error }
+
+  // Report the running catalog total so it's clear sync ADDS (accumulates) —
+  // re-syncing the same style updates it in place rather than adding a copy.
+  const supabase = createServiceClient()
+  let total = 0
+  if (supabase) {
+    const { count } = await supabase
+      .from('supplier_products')
+      .select('id', { count: 'exact', head: true })
+      .eq('supplier_code', code)
+    total = count ?? 0
+  }
   revalidatePath('/dashboard/admin/suppliers')
-  return { ok: true, message: `Synced ${sync.synced} products`, synced: sync.synced }
+  revalidatePath('/dashboard/admin/print-shop/products')
+
+  if (sync.found === 0) {
+    return {
+      ok: true,
+      message: query
+        ? `No products found for "${query}" — double-check the S&S style number(s).`
+        : 'No products found. Enter specific S&S style number(s) to add to the catalog.',
+      synced: 0,
+    }
+  }
+  return {
+    ok: true,
+    message: `Synced ${sync.synced} product${sync.synced === 1 ? '' : 's'} · ${total} total in catalog`,
+    synced: sync.synced,
+  }
 }
 
 /**

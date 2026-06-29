@@ -115,16 +115,23 @@ export class SsActivewearSupplier implements Supplier {
       try {
         const url = `${this.baseUrl}/products?style=${encodeURIComponent(style)}`
         const res = await fetch(url, { headers: this.headers() })
-        if (!res.ok) continue
+        if (!res.ok) {
+          console.warn(`[ssactivewear] style ${style}: HTTP ${res.status}`)
+          continue
+        }
         const json = (await res.json()) as SsRawProduct[] | { products?: SsRawProduct[] }
         const rows = Array.isArray(json) ? json : json.products ?? []
-        for (const p of groupSsRows(rows)) {
+        const grouped = groupSsRows(rows)
+        console.log(`[ssactivewear] style ${style}: ${rows.length} rows → ${grouped.length} product(s)`)
+        for (const p of grouped) {
           if (seen.has(p.supplierSku)) continue
           seen.add(p.supplierSku)
           out.push(p)
         }
-      } catch {
-        /* skip this style */
+      } catch (err) {
+        console.warn(
+          `[ssactivewear] style ${style}: ${err instanceof Error ? err.message : 'fetch failed'}`
+        )
       }
     }
     const offset = params.offset ?? 0

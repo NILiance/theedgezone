@@ -94,15 +94,16 @@ export async function getSupplier(code: string): Promise<SupplierFactoryResult> 
 export async function syncSupplier(
   supplier: Supplier,
   query?: string
-): Promise<{ ok: true; synced: number } | { ok: false; error: string }> {
+): Promise<{ ok: true; synced: number; found: number } | { ok: false; error: string }> {
   const supabase = createServiceClient()
   if (!supabase) return { ok: false, error: 'Service role key missing' }
 
   try {
     const products = await supplier.search({ query, limit: 200 })
     let synced = 0
+    const errors: string[] = []
     for (const p of products) {
-      await supabase
+      const { error: upErr } = await supabase
         .from('supplier_products')
         .upsert(
           {
@@ -128,9 +129,18 @@ export async function syncSupplier(
           },
           { onConflict: 'supplier_code,supplier_sku' }
         )
-      synced += 1
+      if (upErr) errors.push(`${p.supplierSku}: ${upErr.message}`)
+      else synced += 1
     }
-    return { ok: true, synced }
+    // If we found products but couldn't save ANY, that's a real failure — surface
+    // it instead of silently reporting success (the old loop counted attempts).
+    if (products.length > 0 && synced === 0) {
+      return {
+        ok: false,
+        error: `Found ${products.length} product(s) but none saved — ${errors[0] ?? 'unknown error'}`,
+      }
+    }
+    return { ok: true, synced, found: products.length }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Unknown sync error' }
   }
