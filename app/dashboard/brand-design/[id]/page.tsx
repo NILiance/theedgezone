@@ -1312,16 +1312,31 @@ async function PrintShopView({
 }) {
   const supabase = createServiceClient()
   const { isAdmin } = await getUserContext()
-  const products = supabase
-    ? (
-        await supabase
-          .from('print_products')
-          .select('id, slug, name, description, category, cover_image_url, base_price_cents, lead_time_days')
-          .eq('active', true)
-          .order('position', { ascending: true })
-          .order('name', { ascending: true })
-      ).data ?? []
-    : []
+  const products = (
+    supabase
+      ? (
+          await supabase
+            .from('print_products')
+            .select('*')
+            .eq('active', true)
+            .order('position', { ascending: true })
+            .order('name', { ascending: true })
+        ).data ?? []
+      : []
+  ) as unknown as Array<{
+    id: string
+    slug: string
+    name: string
+    description: string | null
+    category: string
+    cover_image_url: string | null
+    base_price_cents: number
+    logo_x?: number | null
+    logo_y?: number | null
+    logo_scale?: number | null
+  }>
+  // Talent's transparent logo, overlaid on each cover at the admin-set placement.
+  const overlayLogo = supabase ? await ensureTransparentLogo(brandId) : null
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1369,10 +1384,24 @@ async function PrintShopView({
               href={`/dashboard/print-shop/${p.slug}?brand=${brandId}`}
               className="group block overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40 transition hover:border-primary/40"
             >
-              <div className="aspect-[4/3] bg-panel-elevated">
+              <div className="relative aspect-[4/3] bg-panel-elevated">
                 {p.cover_image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.cover_image_url} alt="" className="h-full w-full object-cover" />
+                )}
+                {overlayLogo && p.cover_image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={overlayLogo}
+                    alt=""
+                    className="pointer-events-none absolute object-contain"
+                    style={{
+                      left: `${(p.logo_x ?? 0.5) * 100}%`,
+                      top: `${(p.logo_y ?? 0.5) * 100}%`,
+                      width: `${(p.logo_scale ?? 0.3) * 100}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  />
                 )}
               </div>
               <div className="p-4">

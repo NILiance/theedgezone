@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { upsertPrintProduct, deletePrintProduct } from '../product-actions'
+import { ProductLogoPlacer } from '../product-logo-placer'
 
 export const metadata = { title: 'Print Products' }
 
@@ -27,6 +28,9 @@ interface Product {
   lead_time_days: number
   active: boolean
   position: number
+  logo_x?: number
+  logo_y?: number
+  logo_scale?: number
 }
 
 const input =
@@ -46,9 +50,7 @@ export default async function AdminPrintProductsPage() {
   }
   const { data } = await supabase
     .from('print_products')
-    .select(
-      'id, slug, name, description, category, cover_image_url, base_price_cents, lead_time_days, active, position'
-    )
+    .select('*')
     .order('position', { ascending: true })
     .order('name', { ascending: true })
   const products = (data ?? []) as Product[]
@@ -183,6 +185,18 @@ function ProductForm({ product }: { product?: Product }) {
           className="mt-1 block w-full rounded-[var(--radius-sm)] border border-border bg-panel-elevated px-3 py-2 text-sm text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-[var(--radius-sm)] file:border file:border-border file:bg-panel-elevated file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-foreground hover:file:bg-primary hover:file:text-primary-foreground"
         />
       </label>
+      {p?.cover_image_url ? (
+        <ProductLogoPlacer
+          coverUrl={p.cover_image_url}
+          x0={p.logo_x ?? 0.5}
+          y0={p.logo_y ?? 0.5}
+          s0={p.logo_scale ?? 0.3}
+        />
+      ) : (
+        <p className="text-[10px] text-muted-foreground">
+          Upload + save a cover photo, then reopen to position the logo overlay.
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input type="checkbox" name="active" defaultChecked={p ? p.active : true} className="h-4 w-4" />

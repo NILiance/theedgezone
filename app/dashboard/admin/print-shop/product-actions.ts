@@ -65,13 +65,27 @@ export async function upsertPrintProduct(form: FormData): Promise<void> {
   }
   if (coverUrl) row.cover_image_url = coverUrl
 
-  if (id) {
-    const { error } = await supabase.from('print_products').update(row).eq('id', id)
-    if (error) throw new Error(error.message)
-  } else {
-    const { error } = await supabase.from('print_products').insert(row)
-    if (error) throw new Error(error.message)
+  // Per-product logo placement (catalog overlay).
+  const clamp01 = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.5)
+  row.logo_x = clamp01(Number(form.get('logo_x') ?? 0.5))
+  row.logo_y = clamp01(Number(form.get('logo_y') ?? 0.5))
+  row.logo_scale = Math.max(0.05, Math.min(0.95, Number(form.get('logo_scale') ?? 0.3) || 0.3))
+
+  const write = (r: Record<string, unknown>) =>
+    id
+      ? supabase.from('print_products').update(r).eq('id', id)
+      : supabase.from('print_products').insert(r)
+
+  let res = await write(row)
+  if (res.error && /logo_(x|y|scale)|column/i.test(res.error.message)) {
+    // Placement migration not applied yet — save the rest.
+    const { logo_x, logo_y, logo_scale, ...rest } = row
+    void logo_x
+    void logo_y
+    void logo_scale
+    res = await write(rest)
   }
+  if (res.error) throw new Error(res.error.message)
   revalidatePath('/dashboard/admin/print-shop/products')
 }
 
