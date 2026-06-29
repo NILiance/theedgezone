@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { requireUser } from '@/lib/auth'
+import { requireUser, getUserContext } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
@@ -1311,6 +1311,7 @@ async function PrintShopView({
   primary: string | null
 }) {
   const supabase = createServiceClient()
+  const { isAdmin } = await getUserContext()
   const products = supabase
     ? (
         await supabase
@@ -1333,19 +1334,30 @@ async function PrintShopView({
             Printed &amp; shipped to you — every product mock-up uses your logo and brand colors.
           </p>
         </div>
-        <Link
-          href="/dashboard/print-shop"
-          className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-xs font-bold uppercase tracking-widest"
-        >
-          Full catalog ↗
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <Link
+              href="/dashboard/admin/print-shop/products"
+              className="text-display rounded-[var(--radius-sm)] bg-accent/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-accent hover:bg-accent/30"
+            >
+              ⚙ Manage Products
+            </Link>
+          )}
+          <Link
+            href="/dashboard/print-shop"
+            className="text-display rounded-[var(--radius-sm)] border border-border bg-background px-3 py-1.5 text-xs font-bold uppercase tracking-widest"
+          >
+            Full catalog ↗
+          </Link>
+        </div>
       </div>
       {products.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Catalog empty</CardTitle>
             <CardDescription>
-              Admins add products under <code className="font-mono">/dashboard/admin/print-shop</code>.
+              Admins add products under{' '}
+              <code className="font-mono">/dashboard/admin/print-shop/products</code>.
             </CardDescription>
           </CardHeader>
         </Card>
