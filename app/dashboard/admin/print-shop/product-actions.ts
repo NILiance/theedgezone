@@ -89,11 +89,36 @@ export async function upsertPrintProduct(form: FormData): Promise<void> {
   revalidatePath('/dashboard/admin/print-shop/products')
 }
 
+/** Normalize a supplier color/size option list (strings or objects) into a
+ *  deduped string[] for the Print Shop order-form dropdowns. */
+function optionValues(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const v of raw) {
+    let s = ''
+    if (typeof v === 'string') s = v
+    else if (v && typeof v === 'object') {
+      const o = v as Record<string, unknown>
+      s = String(
+        o.name ?? o.label ?? o.value ?? o.color ?? o.colorName ?? o.size ?? o.sizeName ?? ''
+      )
+    }
+    s = s.trim()
+    if (s && !seen.has(s.toLowerCase())) {
+      seen.add(s.toLowerCase())
+      out.push(s)
+    }
+    if (out.length >= 40) break
+  }
+  return out
+}
+
 /**
  * Import a synced supplier-catalog product (e.g. an S&S Activewear apparel
  * blank) into the Print Shop as a print_product — copying its name, image,
- * price and description. Admin only. Requires the supplier to be connected +
- * synced under /dashboard/admin/suppliers.
+ * price, description and color/size options. Admin only. Requires the supplier
+ * to be connected + synced under /dashboard/admin/suppliers.
  */
 export async function importSupplierToPrintShop(form: FormData): Promise<void> {
   await requireAdmin()
@@ -105,7 +130,7 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
   const { data: sp } = await supabase
     .from('supplier_products')
     .select(
-      'name, description, supplier_sku, suggested_msrp_cents, base_price_cents, wholesale_price_cents, primary_image_url'
+      'name, description, supplier_sku, suggested_msrp_cents, base_price_cents, wholesale_price_cents, primary_image_url, color_options, size_options'
     )
     .eq('id', spId)
     .single()
@@ -128,6 +153,13 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
   const price =
     Number(sp.suggested_msrp_cents) || Number(sp.base_price_cents) || Number(sp.wholesale_price_cents) || 1999
 
+  // Carry the supplier's colour + size options into the order-form dropdowns.
+  const colors = optionValues((sp as Record<string, unknown>).color_options)
+  const sizes = optionValues((sp as Record<string, unknown>).size_options)
+  const options: Array<{ key: string; label: string; values: string[] }> = []
+  if (colors.length) options.push({ key: 'color', label: 'Color', values: colors })
+  if (sizes.length) options.push({ key: 'size', label: 'Size', values: sizes })
+
   const { error } = await supabase.from('print_products').insert({
     name: String(sp.name),
     slug,
@@ -135,6 +167,7 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
     category: 'apparel',
     base_price_cents: Math.max(1, Math.round(price)),
     cover_image_url: (sp.primary_image_url as string | null) ?? null,
+    options,
     active: true,
     position: 0,
     updated_at: new Date().toISOString(),
