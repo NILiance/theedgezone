@@ -46,6 +46,14 @@ export type ArsenalSubtab =
  * page.tsx (a Server Component) uses this to render the focused single-category
  * view, so it must live in a non-client module.
  */
+// Placement-editor items (logo size + location + background colour + effects) —
+// handled by the PlacementEditor, not the generic focused-category generator.
+export const PLACEMENT_SUBTABS: ReadonlyArray<ArsenalSubtab> = [
+  'phone_wallpaper',
+  'story_highlight',
+  'virtual_background',
+]
+
 export const FOCUSED_CATEGORY_SUBTABS: ReadonlyArray<ArsenalSubtab> = [
   'business_card',
   'letterhead',
@@ -53,9 +61,6 @@ export const FOCUSED_CATEGORY_SUBTABS: ReadonlyArray<ArsenalSubtab> = [
   'presentation',
   'media_kit',
   'social_media',
-  'phone_wallpaper',
-  'story_highlight',
-  'virtual_background',
   'email_signature_image',
   'icon_generator',
   'game_day',

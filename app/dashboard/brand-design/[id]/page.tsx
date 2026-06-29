@@ -15,9 +15,12 @@ import { ArsenalSubtabs } from './arsenal-subtabs'
 import { ArsenalGroupLanding } from './arsenal-group-landing'
 import {
   FOCUSED_CATEGORY_SUBTABS,
+  PLACEMENT_SUBTABS,
   creationKindsForTab,
   type ArsenalSubtab,
 } from './arsenal-subtab-meta'
+import { PlacementEditor } from './placement-editor'
+import { PLACEMENT_DIMS } from './placement-dims'
 import { LogoAnimationTab } from './tab-logo-animation'
 import { TradingCardTab } from './tab-trading-card'
 import { BrandVoiceTab } from './tab-brand-voice'
@@ -132,7 +135,14 @@ export default async function BrandDesignStudioPage({ params, searchParams }: Pa
 
   // Transparent-background logo (cached) for the asset editors that offer a
   // transparent-vs-regular choice. Only generated when one of those tabs is open.
-  const logoChoiceTabs = ['email_signature', 'social_avatars', 'trading_card']
+  const logoChoiceTabs = [
+    'email_signature',
+    'social_avatars',
+    'trading_card',
+    'phone_wallpaper',
+    'story_highlight',
+    'virtual_background',
+  ]
   const transparentLogoUrl =
     hasFinal && logoChoiceTabs.includes(arsenalSubtab)
       ? ((await ensureTransparentLogo(brand.id)) ?? brand.final_logo_url ?? '')
@@ -1014,6 +1024,12 @@ function HelpTab() {
 
 // ── Brand Arsenal ───────────────────────────────────────────────────────────
 
+const PLACEMENT_LABELS: Record<string, string> = {
+  phone_wallpaper: 'Phone Wallpaper',
+  virtual_background: 'Virtual Background',
+  story_highlight: 'Story Highlight',
+}
+
 function ArsenalView({
   brandId,
   hasFinal,
@@ -1209,6 +1225,28 @@ function ArsenalView({
           <YourCreations
             brandId={brandId}
             creations={creations.filter((c) => c.kind === 'social_avatars')}
+          />
+        </>
+      )}
+
+      {PLACEMENT_SUBTABS.includes(subtab) && (
+        <>
+          <PlacementEditor
+            brandId={brandId}
+            kind={subtab}
+            label={PLACEMENT_LABELS[subtab] ?? 'Asset'}
+            canvasW={PLACEMENT_DIMS[subtab]?.w ?? 1080}
+            canvasH={PLACEMENT_DIMS[subtab]?.h ?? 1080}
+            hasFinal={hasFinal}
+            logoUrl={finalLogoUrl ?? ''}
+            transparentLogoUrl={transparentLogoUrl}
+            brandPrimary={brandPrimary}
+            brandSecondary={brandSecondary}
+            circle={subtab === 'story_highlight'}
+          />
+          <YourCreations
+            brandId={brandId}
+            creations={creations.filter((c) => c.kind === subtab)}
           />
         </>
       )}
