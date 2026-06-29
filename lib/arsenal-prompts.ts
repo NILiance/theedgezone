@@ -106,6 +106,13 @@ export function effectClause(effect?: string | null): string {
     : ''
 }
 
+/** Optional dominant-background-colour instruction for prompt-built assets. */
+export function bgColorClause(bgColor?: string | null): string {
+  const c = (bgColor ?? '').trim()
+  if (!c) return ''
+  return `\n\nBACKGROUND COLOR: make ${c} the dominant background colour of the design, with the rest of the brand palette layered on top.`
+}
+
 /** A full-bleed effect BACKGROUND (no logo/text) for compositing behind avatars. */
 export function effectBackgroundPrompt(effect: string, colors: string): string {
   const f = EFFECT_FRAGMENTS[effect] ?? 'a dynamic abstract energy texture'

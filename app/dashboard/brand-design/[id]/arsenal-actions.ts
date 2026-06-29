@@ -7,6 +7,8 @@ import { generateArsenalImage } from '@/lib/gemini-image'
 import { slugify } from '@/lib/provisioning'
 import {
   type ArsenalContext,
+  effectClause,
+  bgColorClause,
   businessCardPrompt,
   emailSignaturePrompt,
   virtualBackgroundPrompt,
@@ -197,13 +199,23 @@ export async function generateArsenalAsset(
     presentation: { w: 1920, h: 1080 }, // 16:9 slide
   }
 
+  // Append effect + background-colour clauses for prompt-built assets. Skip the
+  // effect for categories whose prompt already embeds it (avoid double-adding).
+  const PROMPT_HANDLES_EFFECT = new Set(['presentation', 'social_media', 'icon_generator', 'game_day'])
+  let finalPrompt = built.prompt
+  if (effect && effect !== 'none' && !PROMPT_HANDLES_EFFECT.has(category)) {
+    finalPrompt += effectClause(effect)
+  }
+  const bgColorPick = String(form.get('bg_color') ?? '')
+  if (bgColorPick) finalPrompt += bgColorClause(bgColorPick)
+
   let result
   try {
     const userName = (brand.brand_name ?? profile?.display_name ?? 'Athlete').trim()
     const brandSlug = slugify(brand.brand_name ?? `brand-${brand.id.slice(0, 8)}`)
     result = await generateArsenalImage({
       brandId,
-      prompt: built.prompt,
+      prompt: finalPrompt,
       category,
       referenceImageUrl: brand.final_logo_url,
       filenameHint: option || category,
@@ -229,6 +241,7 @@ export async function generateArsenalAsset(
       style: styleOpt,
       sport: sportOverride || null,
       effect: effect !== 'none' ? effect : null,
+      bgColor: bgColorPick || null,
       opponent: String(form.get('opponent') ?? '') || null,
       customText: String(form.get('custom_text') ?? '') || null,
       prompt: result.prompt,

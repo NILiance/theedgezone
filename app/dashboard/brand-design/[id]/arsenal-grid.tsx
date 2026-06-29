@@ -45,6 +45,8 @@ interface CategoryDef {
   variant?: 'uniforms' | 'logo_on_photo'
   /** When true, the generator shows a visual-effects picker (color burst, etc.). */
   effects?: boolean
+  /** When true, the generator shows an optional custom background-color control. */
+  bgColor?: boolean
 }
 
 const FEATURED: CategoryDef[] = [
@@ -111,6 +113,7 @@ const STANDARD: CategoryDef[] = [
     color: '#e67e22',
     blurb: 'Templates for IG, TikTok, YouTube banner, LinkedIn, Twitch, more.',
     effects: true,
+    bgColor: true,
     optionLabel: 'Platform',
     options: [
       { val: 'instagram', name: 'Instagram Post (1:1)' },
@@ -130,6 +133,8 @@ const STANDARD: CategoryDef[] = [
     icon: '💼',
     color: '#3498db',
     blurb: 'Premium 3.5×2 card with logo, name, contact info and socials.',
+    effects: true,
+    bgColor: true,
   },
   {
     id: 'email_signature_image',
@@ -137,6 +142,8 @@ const STANDARD: CategoryDef[] = [
     icon: '✉️',
     color: '#2ecc71',
     blurb: '600×200 horizontal signature graphic for Gmail / Outlook.',
+    effects: true,
+    bgColor: true,
   },
   {
     id: 'virtual_background',
@@ -177,6 +184,8 @@ const STANDARD: CategoryDef[] = [
     icon: '📄',
     color: '#3498db',
     blurb: 'A4 letterhead header — logo top-left, contact right-aligned.',
+    effects: true,
+    bgColor: true,
   },
   {
     id: 'presentation',
@@ -185,6 +194,7 @@ const STANDARD: CategoryDef[] = [
     color: '#9b59b6',
     blurb: '16:9 title slide ready to drop into Keynote / Google Slides.',
     effects: true,
+    bgColor: true,
   },
   {
     id: 'thank_you_card',
@@ -192,6 +202,8 @@ const STANDARD: CategoryDef[] = [
     icon: '💌',
     color: '#e91e63',
     blurb: 'Vertical 5×7 card with logo, bold "THANK YOU", brand accents.',
+    effects: true,
+    bgColor: true,
   },
   {
     id: 'media_kit',
@@ -199,6 +211,8 @@ const STANDARD: CategoryDef[] = [
     icon: '📋',
     color: '#00BCD4',
     blurb: 'Magazine-style press kit cover — name, "MEDIA KIT" header, socials.',
+    effects: true,
+    bgColor: true,
   },
   {
     id: 'icon_generator',
@@ -207,6 +221,7 @@ const STANDARD: CategoryDef[] = [
     color: '#1abc9c',
     blurb: 'App icons, favicons, chat avatars, watch faces — same logo, every surface.',
     effects: true,
+    bgColor: true,
     optionLabel: 'Surface',
     options: [
       { val: 'app_icon', name: 'iOS / Android App Icon' },
@@ -431,6 +446,8 @@ function StandardCategoryCard({
   const [option, setOption] = useState(def.options?.[0]?.val ?? '')
   const [notes, setNotes] = useState('')
   const [effect, setEffect] = useState('none')
+  const [useBg, setUseBg] = useState(false)
+  const [bgColor, setBgColor] = useState('#101418')
   const url = state.url
   useRefreshOnNewUrl(url)
   return (
@@ -445,6 +462,7 @@ function StandardCategoryCard({
       <input type="hidden" name="option" value={option} />
       <input type="hidden" name="notes" value={notes} />
       {def.effects && <input type="hidden" name="effect" value={effect} />}
+      {def.bgColor && <input type="hidden" name="bg_color" value={useBg ? bgColor : ''} />}
       <CategoryHeader def={def} />
 
       {def.effects && (
@@ -463,6 +481,31 @@ function StandardCategoryCard({
               </option>
             ))}
           </select>
+        </label>
+      )}
+
+      {def.bgColor && (
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Background Color
+          </span>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={useBg}
+              onChange={(e) => setUseBg(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            <span className="text-[10px] text-muted-foreground">{useBg ? 'Custom' : 'Brand colors'}</span>
+            {useBg && (
+              <input
+                type="color"
+                value={bgColor}
+                onChange={(e) => setBgColor(e.target.value)}
+                className="h-7 w-12 cursor-pointer rounded border border-border bg-background"
+              />
+            )}
+          </div>
         </label>
       )}
 
