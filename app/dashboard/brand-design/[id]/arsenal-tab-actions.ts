@@ -204,13 +204,13 @@ export async function generateTradingCardAction(
       .png()
       .toBuffer()
 
-    // Editable from the card editor — fall back to the brand row.
+    // Editable from the card editor. Only the name falls back to the brand row
+    // (a card needs one); position/sport + school are shown ONLY if the talent
+    // fills them in, so a blank field stays blank.
     const fName = String(form.get('name') ?? '').trim()
-    const fSub = String(form.get('subline') ?? '').trim()
-    const fSchool = String(form.get('school') ?? '').trim()
+    const subline = String(form.get('subline') ?? '').trim()
+    const school = String(form.get('school') ?? '').trim()
     const name = (fName || brand.brand_name || 'ATHLETE').toUpperCase()
-    const subline = fSub || [brand.athletic_position, brand.sport].filter(Boolean).join(' · ')
-    const school = fSchool || brand.school || ''
     const handle = String(form.get('handle') ?? '').trim()
     const website = String(form.get('website') ?? '').trim()
 
