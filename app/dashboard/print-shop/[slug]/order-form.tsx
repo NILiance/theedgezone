@@ -202,7 +202,12 @@ export function OrderForm({
           <div>
             <span className="block text-[11px] text-muted-foreground">Logo</span>
             <div className="mt-1">
-              <AssetPicker value={logoUrl} onChange={setLogoUrl} accept="image/*" />
+              <AssetPicker
+                value={logoUrl}
+                onChange={setLogoUrl}
+                accept="image/*"
+                allowGenerate={false}
+              />
             </div>
           </div>
           <div className="flex items-start">

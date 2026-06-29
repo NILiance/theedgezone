@@ -19,6 +19,9 @@ interface Props {
   siteId?: string
   placeholder?: string
   accept?: string
+  /** Show the "Generate image" option. Off for places like print proofs where
+   *  you only want to pick/upload an existing logo. Default on. */
+  allowGenerate?: boolean
 }
 
 /**
@@ -28,7 +31,14 @@ interface Props {
  *   so you can reuse assets without re-uploading.
  * - Paste URL remains under the advanced toggle for external images.
  */
-export function AssetPicker({ value, onChange, siteId, placeholder, accept = 'image/*,video/*' }: Props) {
+export function AssetPicker({
+  value,
+  onChange,
+  siteId,
+  placeholder,
+  accept = 'image/*,video/*',
+  allowGenerate = true,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -118,15 +128,17 @@ export function AssetPicker({ value, onChange, siteId, placeholder, accept = 'im
                 >
                   Browse uploads
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setGenerateOpen(true)}
-                  disabled={isPending}
-                >
-                  Generate
-                </Button>
+                {allowGenerate && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setGenerateOpen(true)}
+                    disabled={isPending}
+                  >
+                    Generate
+                  </Button>
+                )}
                 <Button
                   type="button"
                   size="sm"
@@ -169,17 +181,19 @@ export function AssetPicker({ value, onChange, siteId, placeholder, accept = 'im
             <Button type="button" size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setBrowseOpen(true) }}>
               Browse uploads
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation()
-                setGenerateOpen(true)
-              }}
-            >
-              Generate from description
-            </Button>
+            {allowGenerate && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setGenerateOpen(true)
+                }}
+              >
+                Generate from description
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"
