@@ -48,6 +48,8 @@ export interface CardData {
   logoScale?: number
   /** Optional colour for the career-stats numbers (defaults to the text colour). */
   statColor?: string
+  /** When true, the name is omitted from the back face. */
+  hideBackName?: boolean
 }
 
 type Node = { type: string; props: Record<string, unknown> }
@@ -66,7 +68,7 @@ function front(d: CardData, p: CardPalette): Node {
   if (d.school) kids.push(box({ fontSize: 16, color: '#bdbdbd', marginTop: 2 }, d.school))
   kids.push(image(d.photoDataUrl, { width: 700, height: 700, objectFit: 'cover', borderRadius: 14, marginTop: 18 }))
   if (d.tagline) kids.push(box({ fontSize: 30, color: p.text, marginTop: 18, textAlign: 'center' }, `"${d.tagline}"`))
-  kids.push(box({ position: 'absolute', bottom: 28, right: 36, fontSize: 14, color: p.accent, opacity: 0.65 }, `${new Date().getFullYear()}`))
+  kids.push(box({ position: 'absolute', bottom: 26, right: 36, fontSize: 24, color: p.accent, opacity: 0.7 }, `${new Date().getFullYear()}`))
   if (d.bgImageDataUrl)
     kids.unshift(image(d.bgImageDataUrl, { position: 'absolute', top: 0, left: 0, width: W, height: H, objectFit: 'cover' }))
   return box(
@@ -83,7 +85,8 @@ function back(d: CardData, p: CardPalette): Node {
     const ls = Math.max(120, Math.min(560, Math.round(220 * (d.logoScale ?? 1))))
     kids.push(image(d.logoDataUrl, { width: ls, height: ls, objectFit: 'contain', marginTop: 64 }))
   }
-  kids.push(box({ fontSize: 44, color: p.text, marginTop: 18, textAlign: 'center' }, d.name.toUpperCase()))
+  if (!d.hideBackName)
+    kids.push(box({ fontSize: 44, color: p.text, marginTop: 18, textAlign: 'center' }, d.name.toUpperCase()))
   if (d.subline) kids.push(box({ fontSize: 22, color: p.accent, marginTop: 8 }, d.subline.toUpperCase()))
   if (d.school) kids.push(box({ fontSize: 16, color: '#bdbdbd', marginTop: 4 }, d.school))
 
@@ -94,7 +97,7 @@ function back(d: CardData, p: CardPalette): Node {
     const statRows = stats.slice(0, 8).map((s) =>
       box({ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', width: W - 200, marginTop: 16 }, [
         box({ fontSize: 44, color: d.statColor ?? p.text, lineHeight: 1.1, width: 150, textAlign: 'right' }, s.value || '—'),
-        box({ fontSize: 22, color: p.accent, opacity: 0.85, marginLeft: 18, lineHeight: 1.1 }, (s.label || '').toUpperCase()),
+        box({ fontSize: 27, color: p.accent, opacity: 0.85, marginLeft: 18, lineHeight: 1.1 }, (s.label || '').toUpperCase()),
       ])
     )
     kids.push(box({ flexDirection: 'column', alignItems: 'center', width: W - 120, marginTop: 6 }, statRows))

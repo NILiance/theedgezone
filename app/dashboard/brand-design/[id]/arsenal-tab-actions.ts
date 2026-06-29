@@ -282,8 +282,9 @@ export async function generateTradingCardAction(
     const logoScale = Math.max(0.5, Math.min(2.5, Number(form.get('logo_scale') ?? 1) || 1))
     const statColorRaw = String(form.get('stat_color') ?? '')
     const statColor = isHexColor(statColorRaw) ? statColorRaw : undefined
+    const hideBackName = String(form.get('hide_back_name') ?? '') === '1'
     let png = await renderTradingCard(
-      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl, logoScale, statColor },
+      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl, logoScale, statColor, hideBackName },
       { bg: p.bg, border: p.border, accent: p.accent, text: p.text },
       sharp
     )

@@ -76,6 +76,7 @@ export function TradingCardTab({
   const [logoStyle, setLogoStyle] = useState<'transparent' | 'regular'>('transparent')
   const [logoScale, setLogoScale] = useState(1)
   const [statColor, setStatColor] = useState('#ffffff')
+  const [showBackName, setShowBackName] = useState(true)
   const [flipped, setFlipped] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
   const [stats, setStats] = useState<Stat[]>([{ label: '', value: '' }])
@@ -155,6 +156,7 @@ export function TradingCardTab({
           <input type="hidden" name="logo_style" value={logoStyle} />
           <input type="hidden" name="logo_scale" value={logoScale} />
           <input type="hidden" name="stat_color" value={statColor} />
+          <input type="hidden" name="hide_back_name" value={showBackName ? '' : '1'} />
           <input type="hidden" name="bg_color" value={bg} />
           <input type="hidden" name="accent_color" value={accent} />
           <input type="hidden" name="name" value={f.name} />
@@ -209,6 +211,15 @@ export function TradingCardTab({
               />
             </label>
           </div>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={showBackName}
+              onChange={(e) => setShowBackName(e.target.checked)}
+              className="h-3.5 w-3.5"
+            />
+            Show name on back
+          </label>
 
           {/* Multiple stats → rendered on the back, one per line */}
           <div>
@@ -348,6 +359,7 @@ export function TradingCardTab({
             effect={effect}
             logoScale={logoScale}
             statColor={statColor}
+            showBackName={showBackName}
           />
           <button
             type="button"
@@ -386,6 +398,7 @@ function CardFlip({
   effect,
   logoScale,
   statColor,
+  showBackName,
 }: {
   flipped: boolean
   palette: Palette
@@ -396,6 +409,7 @@ function CardFlip({
   effect: string
   logoScale: number
   statColor: string
+  showBackName: boolean
 }) {
   const year = new Date().getFullYear()
   return (
@@ -421,7 +435,7 @@ function CardFlip({
               )}
             </div>
             {f.tagline && <p className="mt-1 text-center text-xs font-bold italic" style={{ color: palette.accent }}>&ldquo;{f.tagline}&rdquo;</p>}
-            <p className="mt-auto text-right text-[7px]" style={{ color: palette.accent, opacity: 0.6 }}>{year}</p>
+            <p className="mt-auto text-right text-[10px]" style={{ color: palette.accent, opacity: 0.7 }}>{year}</p>
           </CardShell>
         </div>
         {/* Back */}
@@ -437,14 +451,16 @@ function CardFlip({
                   style={{ width: 64 * logoScale, height: 64 * logoScale }}
                 />
               ) : null}
-              <p className="text-display text-center text-base font-black leading-none" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
+              {showBackName && (
+                <p className="text-display text-center text-base font-black leading-none" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
+              )}
               {f.subline && <p className="text-center text-[9px] font-bold uppercase tracking-widest" style={{ color: palette.accent }}>{f.subline}</p>}
               {stats.length > 0 && (
                 <div className="mt-1 flex w-full flex-col items-center gap-1">
                   {stats.slice(0, 8).map((s, i) => (
                     <div key={i} className="flex w-full max-w-full items-baseline justify-center gap-1.5 leading-tight">
                       <span className="shrink-0 text-xs font-black" style={{ color: statColor }}>{s.value || '—'}</span>
-                      <span className="min-w-0 truncate text-[8px] uppercase tracking-wider" style={{ color: palette.accent }}>{s.label}</span>
+                      <span className="min-w-0 truncate text-[10px] uppercase tracking-wider" style={{ color: palette.accent }}>{s.label}</span>
                     </div>
                   ))}
                 </div>
