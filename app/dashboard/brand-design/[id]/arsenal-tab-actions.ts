@@ -270,8 +270,11 @@ export async function generateTradingCardAction(
     const statColorRaw = String(form.get('stat_color') ?? '')
     const statColor = isHexColor(statColorRaw) ? statColorRaw : undefined
     const hideBackName = String(form.get('hide_back_name') ?? '') === '1'
+    const backBgRaw = String(form.get('back_bg_color') ?? '')
+    const backBg = isHexColor(backBgRaw) ? backBgRaw : p.bg
+    const backText = readableText(backBg)
     let png = await renderTradingCard(
-      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl, logoScale, statColor, hideBackName },
+      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl, logoScale, statColor, hideBackName, backBg, backText },
       { bg: p.bg, border: p.border, accent: p.accent, text: p.text },
       sharp
     )

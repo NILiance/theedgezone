@@ -50,6 +50,10 @@ export interface CardData {
   statColor?: string
   /** When true, the name is omitted from the back face. */
   hideBackName?: boolean
+  /** Optional separate background colour for the back face. */
+  backBg?: string
+  /** Readable text colour for the back face (paired with backBg). */
+  backText?: string
 }
 
 type Node = { type: string; props: Record<string, unknown> }
@@ -78,6 +82,8 @@ function front(d: CardData, p: CardPalette): Node {
 }
 
 function back(d: CardData, p: CardPalette): Node {
+  const backBg = d.backBg ?? p.bg
+  const txt = d.backText ?? p.text
   const kids: unknown[] = [
     box({ position: 'absolute', top: 18, left: 18, width: W - 36, height: H - 36, border: `6px solid ${p.border}`, borderRadius: 22 }),
   ]
@@ -86,7 +92,7 @@ function back(d: CardData, p: CardPalette): Node {
     kids.push(image(d.logoDataUrl, { width: ls, height: ls, objectFit: 'contain', marginTop: 64 }))
   }
   if (!d.hideBackName)
-    kids.push(box({ fontSize: 44, color: p.text, marginTop: 18, textAlign: 'center' }, d.name.toUpperCase()))
+    kids.push(box({ fontSize: 44, color: txt, marginTop: 18, textAlign: 'center' }, d.name.toUpperCase()))
   if (d.subline) kids.push(box({ fontSize: 22, color: p.accent, marginTop: 8 }, d.subline.toUpperCase()))
   if (d.school) kids.push(box({ fontSize: 16, color: '#bdbdbd', marginTop: 4 }, d.school))
 
@@ -96,22 +102,22 @@ function back(d: CardData, p: CardPalette): Node {
     // One stat per line — value column then label, stacked vertically.
     const statRows = stats.slice(0, 8).map((s) =>
       box({ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', width: W - 200, marginTop: 16 }, [
-        box({ fontSize: 44, color: d.statColor ?? p.text, lineHeight: 1.1, width: 150, textAlign: 'right' }, s.value || '—'),
+        box({ fontSize: 44, color: d.statColor ?? txt, lineHeight: 1.1, width: 150, textAlign: 'right' }, s.value || '—'),
         box({ fontSize: 27, color: p.accent, opacity: 0.85, marginLeft: 18, lineHeight: 1.1 }, (s.label || '').toUpperCase()),
       ])
     )
     kids.push(box({ flexDirection: 'column', alignItems: 'center', width: W - 120, marginTop: 6 }, statRows))
   }
 
-  if (d.tagline) kids.push(box({ fontSize: 24, color: p.text, marginTop: 30, textAlign: 'center', opacity: 0.92 }, `"${d.tagline}"`))
+  if (d.tagline) kids.push(box({ fontSize: 24, color: txt, marginTop: 30, textAlign: 'center', opacity: 0.92 }, `"${d.tagline}"`))
   const contact: unknown[] = []
   if (d.handle) contact.push(box({ fontSize: 24, color: p.accent }, d.handle))
-  if (d.website) contact.push(box({ fontSize: 20, color: p.text, marginTop: 8 }, d.website))
+  if (d.website) contact.push(box({ fontSize: 20, color: txt, marginTop: 8 }, d.website))
   if (contact.length) kids.push(box({ flexDirection: 'column', alignItems: 'center', marginTop: 40 }, contact))
   if (d.bgImageDataUrl)
     kids.unshift(image(d.bgImageDataUrl, { position: 'absolute', top: 0, left: 0, width: W, height: H, objectFit: 'cover' }))
   return box(
-    { width: W, height: H, flexDirection: 'column', alignItems: 'center', background: p.bg, padding: 36, position: 'relative', fontFamily: 'Anton' },
+    { width: W, height: H, flexDirection: 'column', alignItems: 'center', background: backBg, padding: 36, position: 'relative', fontFamily: 'Anton' },
     kids
   )
 }
