@@ -75,6 +75,7 @@ export function TradingCardTab({
   const [effect, setEffect] = useState('none')
   const [logoStyle, setLogoStyle] = useState<'transparent' | 'regular'>('transparent')
   const [logoScale, setLogoScale] = useState(1)
+  const [statColor, setStatColor] = useState('#ffffff')
   const [flipped, setFlipped] = useState(false)
   const [photo, setPhoto] = useState<string | null>(null)
   const [stats, setStats] = useState<Stat[]>([{ label: '', value: '' }])
@@ -153,6 +154,7 @@ export function TradingCardTab({
           <input type="hidden" name="effect" value={effect} />
           <input type="hidden" name="logo_style" value={logoStyle} />
           <input type="hidden" name="logo_scale" value={logoScale} />
+          <input type="hidden" name="stat_color" value={statColor} />
           <input type="hidden" name="bg_color" value={bg} />
           <input type="hidden" name="accent_color" value={accent} />
           <input type="hidden" name="name" value={f.name} />
@@ -199,7 +201,7 @@ export function TradingCardTab({
               <input
                 type="range"
                 min={0.5}
-                max={1.7}
+                max={2.5}
                 step={0.05}
                 value={logoScale}
                 onChange={(e) => setLogoScale(Number(e.target.value))}
@@ -210,21 +212,21 @@ export function TradingCardTab({
 
           {/* Multiple stats → rendered on the back, one per line */}
           <div>
-            <span className={labelCls}>Stats (on the back — value + label)</span>
+            <span className={labelCls}>Stats (on the back — name + value)</span>
             <div className="mt-1 grid gap-2">
               {stats.map((s, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input
-                    value={s.value}
-                    onChange={(e) => setStat(i, 'value', e.target.value)}
-                    placeholder="24.5"
-                    className={`${inputCls} w-24 shrink-0`}
-                  />
-                  <input
                     value={s.label}
                     onChange={(e) => setStat(i, 'label', e.target.value)}
-                    placeholder="Points per game"
-                    className={inputCls}
+                    placeholder="Stat name (e.g. Career Yards)"
+                    className="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  <input
+                    value={s.value}
+                    onChange={(e) => setStat(i, 'value', e.target.value)}
+                    placeholder="1500"
+                    className="w-24 shrink-0 rounded-md border border-border bg-background px-3 py-2 text-sm"
                   />
                   <button
                     type="button"
@@ -275,6 +277,15 @@ export function TradingCardTab({
               />
             </label>
           </div>
+          <label className="block">
+            <span className={labelCls}>Stats number color</span>
+            <input
+              type="color"
+              value={statColor}
+              onChange={(e) => setStatColor(e.target.value)}
+              className="mt-1 h-9 w-24 cursor-pointer rounded-md border border-border bg-background p-1"
+            />
+          </label>
           <div>
             <span className={labelCls}>Quick palette</span>
             <div className="mt-1 flex flex-wrap gap-2">
@@ -336,6 +347,7 @@ export function TradingCardTab({
             stats={cleanStats}
             effect={effect}
             logoScale={logoScale}
+            statColor={statColor}
           />
           <button
             type="button"
@@ -373,6 +385,7 @@ function CardFlip({
   stats,
   effect,
   logoScale,
+  statColor,
 }: {
   flipped: boolean
   palette: Palette
@@ -382,6 +395,7 @@ function CardFlip({
   stats: Stat[]
   effect: string
   logoScale: number
+  statColor: string
 }) {
   const year = new Date().getFullYear()
   return (
@@ -413,24 +427,24 @@ function CardFlip({
         {/* Back */}
         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
           <CardShell palette={palette} effect={effect}>
-            <div className="flex flex-1 flex-col items-center justify-center gap-1.5">
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={logoUrl}
                   alt=""
-                  className="object-contain"
-                  style={{ width: 56 * logoScale, height: 56 * logoScale }}
+                  className="max-h-full object-contain"
+                  style={{ width: 64 * logoScale, height: 64 * logoScale }}
                 />
               ) : null}
               <p className="text-display text-center text-base font-black leading-none" style={{ color: palette.text }}>{(f.name || 'YOUR NAME').toUpperCase()}</p>
               {f.subline && <p className="text-center text-[9px] font-bold uppercase tracking-widest" style={{ color: palette.accent }}>{f.subline}</p>}
               {stats.length > 0 && (
-                <div className="mt-1 flex w-full flex-col items-center gap-0.5">
+                <div className="mt-1 flex w-full flex-col items-center gap-1">
                   {stats.slice(0, 8).map((s, i) => (
-                    <div key={i} className="flex w-full items-baseline justify-center gap-1.5">
-                      <span className="w-10 text-right text-xs font-black leading-none" style={{ color: palette.text }}>{s.value || '—'}</span>
-                      <span className="text-[7px] uppercase tracking-wider" style={{ color: palette.accent }}>{s.label}</span>
+                    <div key={i} className="flex w-full max-w-full items-baseline justify-center gap-1.5 leading-tight">
+                      <span className="shrink-0 text-xs font-black" style={{ color: statColor }}>{s.value || '—'}</span>
+                      <span className="min-w-0 truncate text-[8px] uppercase tracking-wider" style={{ color: palette.accent }}>{s.label}</span>
                     </div>
                   ))}
                 </div>
@@ -459,7 +473,7 @@ function CardShell({
 }) {
   return (
     <div
-      className="flex h-full w-full flex-col gap-1 rounded-xl p-3"
+      className="flex h-full w-full flex-col gap-1 overflow-hidden rounded-xl p-3"
       style={{
         background: effect !== 'none' ? effectCss(effect, palette.accent, palette.bg) : palette.bg,
         border: `3px solid ${palette.border}`,

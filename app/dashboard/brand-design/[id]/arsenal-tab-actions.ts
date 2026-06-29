@@ -243,7 +243,19 @@ export async function generateTradingCardAction(
     if (logoForCard) {
       try {
         const lr = await fetch(logoForCard)
-        if (lr.ok) logoDataUrl = `data:image/png;base64,${Buffer.from(await lr.arrayBuffer()).toString('base64')}`
+        if (lr.ok) {
+          const raw = Buffer.from(await lr.arrayBuffer())
+          // Trim the surrounding whitespace / transparent padding so the mark
+          // fills the space — the raw logo often carries a wide margin.
+          const lb = Buffer.from(
+            await sharp(raw)
+              .trim()
+              .png()
+              .toBuffer()
+              .catch(() => raw)
+          )
+          logoDataUrl = `data:image/png;base64,${lb.toString('base64')}`
+        }
       } catch {
         /* logo optional on the back */
       }
@@ -267,9 +279,11 @@ export async function generateTradingCardAction(
         /* fall back to the solid background */
       }
     }
-    const logoScale = Math.max(0.5, Math.min(1.7, Number(form.get('logo_scale') ?? 1) || 1))
+    const logoScale = Math.max(0.5, Math.min(2.5, Number(form.get('logo_scale') ?? 1) || 1))
+    const statColorRaw = String(form.get('stat_color') ?? '')
+    const statColor = isHexColor(statColorRaw) ? statColorRaw : undefined
     let png = await renderTradingCard(
-      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl, logoScale },
+      { name, subline, school, stats, tagline, handle, website, photoDataUrl, logoDataUrl, bgImageDataUrl, logoScale, statColor },
       { bg: p.bg, border: p.border, accent: p.accent, text: p.text },
       sharp
     )

@@ -46,6 +46,8 @@ export interface CardData {
   bgImageDataUrl?: string
   /** Back-logo scale multiplier (1 = default 220px). */
   logoScale?: number
+  /** Optional colour for the career-stats numbers (defaults to the text colour). */
+  statColor?: string
 }
 
 type Node = { type: string; props: Record<string, unknown> }
@@ -78,7 +80,7 @@ function back(d: CardData, p: CardPalette): Node {
     box({ position: 'absolute', top: 18, left: 18, width: W - 36, height: H - 36, border: `6px solid ${p.border}`, borderRadius: 22 }),
   ]
   if (d.logoDataUrl) {
-    const ls = Math.max(120, Math.min(380, Math.round(220 * (d.logoScale ?? 1))))
+    const ls = Math.max(120, Math.min(560, Math.round(220 * (d.logoScale ?? 1))))
     kids.push(image(d.logoDataUrl, { width: ls, height: ls, objectFit: 'contain', marginTop: 64 }))
   }
   kids.push(box({ fontSize: 44, color: p.text, marginTop: 18, textAlign: 'center' }, d.name.toUpperCase()))
@@ -90,9 +92,9 @@ function back(d: CardData, p: CardPalette): Node {
     kids.push(box({ fontSize: 18, color: p.accent, marginTop: 30, letterSpacing: 3 }, 'CAREER STATS'))
     // One stat per line — value column then label, stacked vertically.
     const statRows = stats.slice(0, 8).map((s) =>
-      box({ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', width: W - 200, marginTop: 14 }, [
-        box({ fontSize: 44, color: p.text, lineHeight: 1, width: 150, textAlign: 'right' }, s.value || '—'),
-        box({ fontSize: 22, color: p.accent, opacity: 0.85, marginLeft: 18, lineHeight: 1 }, (s.label || '').toUpperCase()),
+      box({ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', width: W - 200, marginTop: 16 }, [
+        box({ fontSize: 44, color: d.statColor ?? p.text, lineHeight: 1.1, width: 150, textAlign: 'right' }, s.value || '—'),
+        box({ fontSize: 22, color: p.accent, opacity: 0.85, marginLeft: 18, lineHeight: 1.1 }, (s.label || '').toUpperCase()),
       ])
     )
     kids.push(box({ flexDirection: 'column', alignItems: 'center', width: W - 120, marginTop: 6 }, statRows))
@@ -102,7 +104,7 @@ function back(d: CardData, p: CardPalette): Node {
   const contact: unknown[] = []
   if (d.handle) contact.push(box({ fontSize: 24, color: p.accent }, d.handle))
   if (d.website) contact.push(box({ fontSize: 20, color: p.text, marginTop: 8 }, d.website))
-  if (contact.length) kids.push(box({ flexDirection: 'column', alignItems: 'center', position: 'absolute', bottom: 56, left: 0, width: W }, contact))
+  if (contact.length) kids.push(box({ flexDirection: 'column', alignItems: 'center', marginTop: 40 }, contact))
   if (d.bgImageDataUrl)
     kids.unshift(image(d.bgImageDataUrl, { position: 'absolute', top: 0, left: 0, width: W, height: H, objectFit: 'cover' }))
   return box(
