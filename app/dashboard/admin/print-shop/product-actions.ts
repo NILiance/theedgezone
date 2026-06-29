@@ -89,6 +89,60 @@ export async function upsertPrintProduct(form: FormData): Promise<void> {
   revalidatePath('/dashboard/admin/print-shop/products')
 }
 
+/**
+ * Import a synced supplier-catalog product (e.g. an S&S Activewear apparel
+ * blank) into the Print Shop as a print_product — copying its name, image,
+ * price and description. Admin only. Requires the supplier to be connected +
+ * synced under /dashboard/admin/suppliers.
+ */
+export async function importSupplierToPrintShop(form: FormData): Promise<void> {
+  await requireAdmin()
+  const supabase = createServiceClient()
+  if (!supabase) throw new Error('Service role key missing')
+  const spId = String(form.get('supplier_product_id') ?? '').trim()
+  if (!spId) throw new Error('Missing supplier product id')
+
+  const { data: sp } = await supabase
+    .from('supplier_products')
+    .select(
+      'name, description, supplier_sku, suggested_msrp_cents, base_price_cents, wholesale_price_cents, primary_image_url'
+    )
+    .eq('id', spId)
+    .single()
+  if (!sp) throw new Error('Supplier product not found')
+
+  let slug = slugify(String(sp.name))
+  const { data: clash } = await supabase
+    .from('print_products')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle()
+  if (clash) {
+    const suffix = String(sp.supplier_sku ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 6)
+    slug = `${slug}-${suffix || Math.floor(Math.random() * 9000 + 1000)}`
+  }
+
+  const price =
+    Number(sp.suggested_msrp_cents) || Number(sp.base_price_cents) || Number(sp.wholesale_price_cents) || 1999
+
+  const { error } = await supabase.from('print_products').insert({
+    name: String(sp.name),
+    slug,
+    description: (sp.description as string | null) ?? null,
+    category: 'apparel',
+    base_price_cents: Math.max(1, Math.round(price)),
+    cover_image_url: (sp.primary_image_url as string | null) ?? null,
+    active: true,
+    position: 0,
+    updated_at: new Date().toISOString(),
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath('/dashboard/admin/print-shop/products')
+}
+
 /** Delete a product (admin only). */
 export async function deletePrintProduct(form: FormData): Promise<void> {
   await requireAdmin()

@@ -1,7 +1,11 @@
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
-import { upsertPrintProduct, deletePrintProduct } from '../product-actions'
+import {
+  upsertPrintProduct,
+  deletePrintProduct,
+  importSupplierToPrintShop,
+} from '../product-actions'
 import { ProductLogoPlacer } from '../product-logo-placer'
 
 export const metadata = { title: 'Print Products' }
@@ -38,8 +42,14 @@ const input =
 const label =
   'text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground'
 
-export default async function AdminPrintProductsPage() {
+export default async function AdminPrintProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
   await requireAdmin()
+  const { q } = await searchParams
+  const search = (q ?? '').trim()
   const supabase = createServiceClient()
   if (!supabase) {
     return (
@@ -54,6 +64,26 @@ export default async function AdminPrintProductsPage() {
     .order('position', { ascending: true })
     .order('name', { ascending: true })
   const products = (data ?? []) as Product[]
+
+  // Supplier catalog (e.g. S&S Activewear) — synced via /dashboard/admin/suppliers.
+  let catQuery = supabase
+    .from('supplier_products')
+    .select('id, supplier_code, supplier_sku, name, brand, suggested_msrp_cents, base_price_cents, primary_image_url')
+    .eq('active', true)
+    .order('name', { ascending: true })
+    .limit(48)
+  if (search) catQuery = catQuery.ilike('name', `%${search}%`)
+  const { data: catalogData } = await catQuery
+  const catalog = (catalogData ?? []) as Array<{
+    id: string
+    supplier_code: string
+    supplier_sku: string
+    name: string
+    brand: string | null
+    suggested_msrp_cents: number | null
+    base_price_cents: number | null
+    primary_image_url: string | null
+  }>
 
   return (
     <div className="space-y-6">
@@ -80,6 +110,62 @@ export default async function AdminPrintProductsPage() {
           + New product
         </summary>
         <ProductForm />
+      </details>
+
+      {/* Import from supplier catalog (S&S Activewear) */}
+      <details className="rounded-[var(--radius)] border border-accent/40 bg-panel/40 p-4">
+        <summary className="text-display cursor-pointer text-sm font-bold text-accent">
+          🛍 Import from supplier catalog (S&amp;S Activewear)
+        </summary>
+        <form className="mt-3 flex flex-wrap gap-2">
+          <input
+            name="q"
+            defaultValue={search}
+            placeholder="Search apparel by name…"
+            className={`${input} max-w-xs`}
+          />
+          <button
+            type="submit"
+            className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+          >
+            Search
+          </button>
+        </form>
+        {catalog.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No supplier products found. Connect + sync a supplier (e.g. S&amp;S Activewear) under{' '}
+            <code className="font-mono">/dashboard/admin/suppliers</code>, then refresh.
+          </p>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {catalog.map((sp) => (
+              <form
+                key={sp.id}
+                action={importSupplierToPrintShop}
+                className="flex flex-col rounded-[var(--radius-sm)] border border-border bg-background/40 p-2 text-center"
+              >
+                <input type="hidden" name="supplier_product_id" value={sp.id} />
+                <div className="aspect-square overflow-hidden rounded bg-panel-elevated">
+                  {sp.primary_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={sp.primary_image_url} alt="" className="h-full w-full object-contain" />
+                  ) : null}
+                </div>
+                <p className="mt-1 line-clamp-2 text-[11px] font-bold">{sp.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {sp.brand ?? sp.supplier_code} · $
+                  {((sp.suggested_msrp_cents || sp.base_price_cents || 0) / 100).toFixed(2)}
+                </p>
+                <button
+                  type="submit"
+                  className="text-display mt-auto w-full rounded-[var(--radius-sm)] bg-primary px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"
+                >
+                  + Add to Print Shop
+                </button>
+              </form>
+            ))}
+          </div>
+        )}
       </details>
 
       {/* Existing */}
