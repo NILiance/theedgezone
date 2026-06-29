@@ -9,6 +9,7 @@ import {
   type ArsenalContext,
   effectClause,
   bgColorClause,
+  logoSizeClause,
   businessCardPrompt,
   emailSignaturePrompt,
   virtualBackgroundPrompt,
@@ -208,6 +209,8 @@ export async function generateArsenalAsset(
   }
   const bgColorPick = String(form.get('bg_color') ?? '')
   if (bgColorPick) finalPrompt += bgColorClause(bgColorPick)
+  const logoSizePick = String(form.get('logo_size') ?? '')
+  if (logoSizePick) finalPrompt += logoSizeClause(logoSizePick)
 
   let result
   try {
@@ -242,6 +245,7 @@ export async function generateArsenalAsset(
       sport: sportOverride || null,
       effect: effect !== 'none' ? effect : null,
       bgColor: bgColorPick || null,
+      logoSize: logoSizePick || null,
       opponent: String(form.get('opponent') ?? '') || null,
       customText: String(form.get('custom_text') ?? '') || null,
       prompt: result.prompt,

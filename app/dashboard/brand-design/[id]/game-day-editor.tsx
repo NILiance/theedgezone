@@ -32,6 +32,7 @@ export function GameDayEditor({ brandId, hasFinal }: { brandId: string; hasFinal
   const [opponentIcon, setOpponentIcon] = useState('shield')
   const [customText, setCustomText] = useState('')
   const [effect, setEffect] = useState('none')
+  const [logoSize, setLogoSize] = useState('')
   const router = useRouter()
   const lastUrl = useRef<string | undefined>(undefined)
 
@@ -74,6 +75,7 @@ export function GameDayEditor({ brandId, hasFinal }: { brandId: string; hasFinal
         <input type="hidden" name="opponent" value={opponent} />
         <input type="hidden" name="opponent_icon" value={opponentIcon} />
         <input type="hidden" name="custom_text" value={customText} />
+        <input type="hidden" name="logo_size" value={logoSize} />
 
         <label className="block">
           <span className={labelCls}>Type</span>
@@ -140,6 +142,20 @@ export function GameDayEditor({ brandId, hasFinal }: { brandId: string; hasFinal
                 {eff.name}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className={labelCls}>Logo Size</span>
+          <select
+            value={logoSize}
+            onChange={(e) => setLogoSize(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Default</option>
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
           </select>
         </label>
 

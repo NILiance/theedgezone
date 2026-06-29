@@ -106,6 +106,20 @@ export function effectClause(effect?: string | null): string {
     : ''
 }
 
+/** Optional logo-size hint for prompt-built assets (small / medium / large). */
+export function logoSizeClause(size?: string | null): string {
+  switch ((size ?? '').trim()) {
+    case 'small':
+      return '\n\nLOGO SIZE: render the logo SMALL and understated — a subtle mark occupying roughly 12–18% of the composition.'
+    case 'medium':
+      return '\n\nLOGO SIZE: render the logo at a MEDIUM, balanced size — clearly visible at roughly 25–35% of the composition.'
+    case 'large':
+      return '\n\nLOGO SIZE: render the logo LARGE and prominent — the hero element occupying roughly 40–55% of the composition.'
+    default:
+      return ''
+  }
+}
+
 /** Optional dominant-background-colour instruction for prompt-built assets. */
 export function bgColorClause(bgColor?: string | null): string {
   const c = (bgColor ?? '').trim()

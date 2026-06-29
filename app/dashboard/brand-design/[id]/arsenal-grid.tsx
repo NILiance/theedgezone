@@ -448,6 +448,7 @@ function StandardCategoryCard({
   const [effect, setEffect] = useState('none')
   const [useBg, setUseBg] = useState(false)
   const [bgColor, setBgColor] = useState('#101418')
+  const [logoSize, setLogoSize] = useState('')
   const url = state.url
   useRefreshOnNewUrl(url)
   return (
@@ -463,6 +464,7 @@ function StandardCategoryCard({
       <input type="hidden" name="notes" value={notes} />
       {def.effects && <input type="hidden" name="effect" value={effect} />}
       {def.bgColor && <input type="hidden" name="bg_color" value={useBg ? bgColor : ''} />}
+      {def.bgColor && <input type="hidden" name="logo_size" value={logoSize} />}
       <CategoryHeader def={def} />
 
       {def.effects && (
@@ -506,6 +508,24 @@ function StandardCategoryCard({
               />
             )}
           </div>
+        </label>
+      )}
+
+      {def.bgColor && (
+        <label className="block">
+          <span className="text-display block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Logo Size
+          </span>
+          <select
+            value={logoSize}
+            onChange={(e) => setLogoSize(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs"
+          >
+            <option value="">Default</option>
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+          </select>
         </label>
       )}
 
