@@ -5,7 +5,7 @@ import { createPrintOrder, generatePrintProof, type PrintOrderState } from '../a
 import { AssetPicker } from '@/components/site/editor/asset-picker'
 
 type Variant = { label: string; price_cents: number }
-type Option = { key: string; label: string; values: string[] }
+type Option = { key: string; label: string; values: string[]; images?: Record<string, string> }
 
 export function OrderForm({
   productId,
@@ -35,6 +35,11 @@ export function OrderForm({
   const [quantity, setQuantity] = useState<number>(1)
   const [artwork, setArtwork] = useState('')
 
+  // Live color preview — the color option carries a per-color product photo map.
+  const colorOption = useMemo(() => options.find((o) => o.key === 'color'), [options])
+  const [selectedColor, setSelectedColor] = useState(colorOption?.values[0] ?? '')
+  const previewImage = (selectedColor && colorOption?.images?.[selectedColor]) || coverUrl
+
   // Proof generator
   const [logoUrl, setLogoUrl] = useState(brandLogoUrl)
   const [knockout, setKnockout] = useState(true)
@@ -45,7 +50,7 @@ export function OrderForm({
   const runProof = async () => {
     setProofErr(null)
     setProof(null)
-    if (!coverUrl) {
+    if (!previewImage) {
       setProofErr('This product has no image to print on.')
       return
     }
@@ -56,7 +61,7 @@ export function OrderForm({
     setProofBusy(true)
     try {
       const res = await generatePrintProof({
-        blank_url: coverUrl,
+        blank_url: previewImage,
         logo_url: logoUrl,
         placement: 'center',
         size_pct: Math.round(logoScale * 100),
@@ -99,6 +104,38 @@ export function OrderForm({
       <input type="hidden" name="product_id" value={productId} />
       <p className="text-eyebrow text-primary">Order {productName}</p>
 
+      {/* Live preview — product photo (swaps by color) with the logo overlaid at
+          the admin's per-product placement. */}
+      {(previewImage || logoUrl) && (
+        <div className="mx-auto w-full max-w-xs">
+          <div className="relative aspect-square overflow-hidden rounded-[var(--radius)] border border-border bg-panel-elevated">
+            {previewImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewImage} alt="" className="h-full w-full object-contain" />
+            )}
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt=""
+                className="pointer-events-none absolute object-contain"
+                style={{
+                  left: `${logoX * 100}%`,
+                  top: `${logoY * 100}%`,
+                  width: `${logoScale * 100}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+              />
+            )}
+          </div>
+          {colorOption && selectedColor && (
+            <p className="mt-1 text-center text-[11px] text-muted-foreground">
+              {selectedColor} · live preview
+            </p>
+          )}
+        </div>
+      )}
+
       {variants.length > 0 && (
         <label className="block text-sm">
           <span className="text-xs uppercase tracking-widest text-muted-foreground">Variant</span>
@@ -117,22 +154,27 @@ export function OrderForm({
         </label>
       )}
 
-      {options.map((opt) => (
-        <label key={opt.key} className="block text-sm">
-          <span className="text-xs uppercase tracking-widest text-muted-foreground">{opt.label}</span>
-          <select
-            name={`opt_${opt.key}`}
-            defaultValue={opt.values[0] ?? ''}
-            className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2"
-          >
-            {opt.values.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
-      ))}
+      {options.map((opt) => {
+        const isColor = opt.key === 'color'
+        return (
+          <label key={opt.key} className="block text-sm">
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">{opt.label}</span>
+            <select
+              name={`opt_${opt.key}`}
+              value={isColor ? selectedColor : undefined}
+              defaultValue={isColor ? undefined : opt.values[0] ?? ''}
+              onChange={isColor ? (e) => setSelectedColor(e.target.value) : undefined}
+              className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2"
+            >
+              {opt.values.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+        )
+      })}
 
       <label className="block text-sm">
         <span className="text-xs uppercase tracking-widest text-muted-foreground">Quantity</span>

@@ -130,7 +130,7 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
   const { data: sp } = await supabase
     .from('supplier_products')
     .select(
-      'name, description, supplier_sku, suggested_msrp_cents, base_price_cents, wholesale_price_cents, primary_image_url, color_options, size_options'
+      'name, description, supplier_sku, suggested_msrp_cents, base_price_cents, wholesale_price_cents, primary_image_url, color_options, size_options, attributes'
     )
     .eq('id', spId)
     .single()
@@ -156,8 +156,18 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
   // Carry the supplier's colour + size options into the order-form dropdowns.
   const colors = optionValues((sp as Record<string, unknown>).color_options)
   const sizes = optionValues((sp as Record<string, unknown>).size_options)
-  const options: Array<{ key: string; label: string; values: string[] }> = []
-  if (colors.length) options.push({ key: 'color', label: 'Color', values: colors })
+  // Per-color product photos (captured at sync) → live color preview on the product page.
+  const colorImages =
+    ((sp as Record<string, unknown>).attributes as { colorImages?: Record<string, string> } | null)
+      ?.colorImages ?? {}
+  const options: Array<{
+    key: string
+    label: string
+    values: string[]
+    images?: Record<string, string>
+  }> = []
+  if (colors.length)
+    options.push({ key: 'color', label: 'Color', values: colors, images: colorImages })
   if (sizes.length) options.push({ key: 'size', label: 'Size', values: sizes })
 
   const { error } = await supabase.from('print_products').insert({

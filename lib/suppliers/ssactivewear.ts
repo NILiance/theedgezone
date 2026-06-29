@@ -259,7 +259,10 @@ function normalizeAddress(
 }
 
 function groupSsRows(rows: SsRawProduct[]): SupplierProduct[] {
-  const byStyle = new Map<string, SupplierProduct & { _seenSkus: Set<string> }>()
+  const byStyle = new Map<
+    string,
+    SupplierProduct & { _seenSkus: Set<string>; _colorImages: Record<string, string> }
+  >()
   for (const r of rows) {
     const styleKey = String(r.styleId ?? r.partNumber ?? r.sku ?? '')
     if (!styleKey) continue
@@ -283,10 +286,15 @@ function groupSsRows(rows: SsRawProduct[]): SupplierProduct[] {
         variants: [],
         inventoryTotal: 0,
         _seenSkus: new Set(),
+        _colorImages: {},
       }
       byStyle.set(styleKey, agg)
     }
     if (r.colorName && !agg.colorOptions!.includes(r.colorName)) agg.colorOptions!.push(r.colorName)
+    if (r.colorName && r.colorFrontImage && !agg._colorImages[r.colorName]) {
+      const u = ssImageUrl(r.colorFrontImage)
+      if (u) agg._colorImages[r.colorName] = u
+    }
     if (r.sizeName && !agg.sizeOptions!.includes(r.sizeName)) agg.sizeOptions!.push(r.sizeName)
     if (r.sku && !agg._seenSkus.has(r.sku)) {
       agg._seenSkus.add(r.sku)
@@ -300,9 +308,9 @@ function groupSsRows(rows: SsRawProduct[]): SupplierProduct[] {
       agg.inventoryTotal! += r.qty ?? 0
     }
   }
-  return Array.from(byStyle.values()).map(({ _seenSkus: _unused, ...rest }) => {
-    void _unused
-    return rest
+  return Array.from(byStyle.values()).map(({ _seenSkus: _u, _colorImages, ...rest }) => {
+    void _u
+    return { ...rest, attributes: { ...(rest.attributes ?? {}), colorImages: _colorImages } }
   })
 }
 

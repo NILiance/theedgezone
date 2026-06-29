@@ -24,7 +24,13 @@ export default async function PrintProductPage({ params }: PageProps) {
   if (!product) notFound()
 
   const variants = (product.variants as Array<{ label: string; price_cents: number }>) ?? []
-  const options = (product.options as Array<{ key: string; label: string; values: string[] }>) ?? []
+  const options =
+    (product.options as Array<{
+      key: string
+      label: string
+      values: string[]
+      images?: Record<string, string>
+    }>) ?? []
   // Admin per-product logo placement (0–1 fractions) — used for the proof.
   const logoX = Number((product as { logo_x?: number | null }).logo_x ?? 0.5)
   const logoY = Number((product as { logo_y?: number | null }).logo_y ?? 0.5)
@@ -64,19 +70,7 @@ export default async function PrintProductPage({ params }: PageProps) {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-        <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40">
-          <div className="aspect-square bg-panel-elevated">
-            {product.cover_image_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={product.cover_image_url}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            )}
-          </div>
-        </div>
+      <div className="mx-auto max-w-2xl">
         <OrderForm
           productId={product.id}
           productName={product.name}
