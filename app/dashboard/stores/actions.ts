@@ -8,6 +8,40 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { provisionStore } from '@/lib/provisioning'
 import { composeMockup } from '@/lib/store-mockup'
 import { dispatchStoreOrder } from '@/lib/store-fulfillment'
+import { normalizeSections, type StoreSection, type StoreTheme } from '@/lib/store-sections'
+
+/**
+ * Save the storefront design — theme fonts + ordered content sections. Owner
+ * only. Revalidates the manager + the public storefront.
+ */
+export async function saveStoreDesign(input: {
+  store_id: string
+  theme: StoreTheme
+  sections: StoreSection[]
+}): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser()
+  const supabase = await createClient()
+  const { data: store } = await supabase
+    .from('stores')
+    .select('id, user_id, slug')
+    .eq('id', input.store_id)
+    .maybeSingle()
+  if (!store || store.user_id !== user.id) return { ok: false, error: 'Store not found' }
+
+  const theme = {
+    heading_font: input.theme?.heading_font || null,
+    body_font: input.theme?.body_font || null,
+  }
+  const sections = normalizeSections(input.sections)
+  const { error } = await supabase
+    .from('stores')
+    .update({ theme, sections, updated_at: new Date().toISOString() })
+    .eq('id', input.store_id)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath(`/dashboard/stores/${input.store_id}`)
+  revalidatePath(`/store/${store.slug}`)
+  return { ok: true }
+}
 
 function slugify(s: string): string {
   return s

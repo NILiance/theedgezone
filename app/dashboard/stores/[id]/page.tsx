@@ -3,6 +3,8 @@ import { requireUser } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { StoreManagerClient } from './client'
+import { StoreDesignEditor } from './design-editor'
+import { normalizeSections } from '@/lib/store-sections'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -172,6 +174,22 @@ export default async function StoreManagerPage({ params }: PageProps) {
           cost_cents: number | null
           platform_fee_cents: number | null
         }>}
+      />
+
+      <StoreDesignEditor
+        storeId={store.id}
+        theme={
+          ((store as { theme?: { heading_font?: string; body_font?: string } }).theme ?? {}) as {
+            heading_font?: string
+            body_font?: string
+          }
+        }
+        sections={normalizeSections((store as { sections?: unknown }).sections)}
+        products={(products ?? []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          primary_image_url: (p as { primary_image_url?: string | null }).primary_image_url ?? null,
+        }))}
       />
     </div>
   )

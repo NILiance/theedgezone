@@ -1,7 +1,13 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { StoreCheckoutButton } from './checkout-button'
+import { StorefrontSections, type StorefrontProduct } from './storefront-sections'
+import {
+  normalizeSections,
+  fontStack,
+  googleFontsHref,
+  type StoreTheme,
+} from '@/lib/store-sections'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -48,7 +54,7 @@ export default async function PublicStorePage({ params, searchParams }: PageProp
   const { data: store } = await supabase
     .from('stores')
     .select(
-      'id, slug, name, tagline, description, hero_image_url, logo_url, primary_color, secondary_color, status, user_id'
+      'id, slug, name, tagline, description, hero_image_url, logo_url, primary_color, secondary_color, status, user_id, theme, sections'
     )
     .eq('slug', slug)
     .maybeSingle()
@@ -70,25 +76,37 @@ export default async function PublicStorePage({ params, searchParams }: PageProp
     .order('position', { ascending: true })
     .order('created_at', { ascending: false })
 
+  const theme = ((store as { theme?: unknown }).theme ?? {}) as StoreTheme
+  let sections = normalizeSections((store as { sections?: unknown }).sections)
+  // Always surface the catalog unless the talent already placed a products or
+  // featured section.
+  if (!sections.some((s) => s.type === 'products' || s.type === 'featured')) {
+    sections = [...sections, { id: '_products', type: 'products' }]
+  }
+  const headingStack = fontStack(theme.heading_font)
+  const bodyStack = fontStack(theme.body_font)
+  const fontsHref = googleFontsHref(theme)
+  const storeLite = {
+    id: store.id,
+    primary_color: store.primary_color,
+    secondary_color: store.secondary_color,
+  }
+
   return (
-    <main className="min-h-screen" style={{ background: store.secondary_color }}>
+    <main
+      className="nilstore min-h-screen"
+      style={{ background: store.secondary_color, fontFamily: bodyStack }}
+    >
+      {fontsHref && <link rel="stylesheet" href={fontsHref} />}
+      <style>{`.nilstore h1,.nilstore h2,.nilstore h3{font-family:${headingStack};}`}</style>
       {isPreview && (
         <div className="bg-accent text-accent-foreground px-4 py-2 text-center text-xs font-bold uppercase tracking-widest">
           Preview · {store.status} · not visible to the public
         </div>
       )}
-      <section
-        className="relative px-6 py-16 text-center"
-        style={{ color: '#fff' }}
-      >
+      <section className="relative px-6 py-16 text-center" style={{ color: '#fff' }}>
         {store.hero_image_url && (
-          <Image
-            src={store.hero_image_url}
-            alt=""
-            fill
-            className="object-cover opacity-30"
-            unoptimized
-          />
+          <Image src={store.hero_image_url} alt="" fill className="object-cover opacity-30" unoptimized />
         )}
         <div className="relative mx-auto max-w-3xl">
           {store.logo_url && (
@@ -101,10 +119,7 @@ export default async function PublicStorePage({ params, searchParams }: PageProp
               unoptimized
             />
           )}
-          <h1
-            className="text-display text-5xl font-black tracking-tight sm:text-6xl"
-            style={{ color: '#fff' }}
-          >
+          <h1 className="text-5xl font-black tracking-tight sm:text-6xl" style={{ color: '#fff' }}>
             {store.name}
           </h1>
           {store.tagline && (
@@ -115,90 +130,11 @@ export default async function PublicStorePage({ params, searchParams }: PageProp
         </div>
       </section>
 
-      <section
-        className="px-6 py-16"
-        style={{ background: '#fff', color: '#0a0a0a' }}
-      >
-        <div className="mx-auto max-w-6xl">
-          {(products ?? []).length === 0 ? (
-            <p className="rounded-md border border-neutral-200 px-6 py-12 text-center text-sm text-neutral-500">
-              No products listed yet. Check back soon.
-            </p>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {(products ?? []).map((p) => (
-                <article
-                  key={p.id}
-                  className="overflow-hidden rounded-md border border-neutral-200 bg-white"
-                >
-                  {p.primary_image_url ? (
-                    <Image
-                      src={p.primary_image_url}
-                      alt={p.name}
-                      width={600}
-                      height={600}
-                      className="aspect-square w-full object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="flex aspect-square items-center justify-center bg-neutral-100 text-xs text-neutral-500">
-                      No image
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <h3 className="text-lg font-bold">{p.name}</h3>
-                    {p.description && (
-                      <p className="mt-1 line-clamp-2 text-sm text-neutral-600">
-                        {p.description}
-                      </p>
-                    )}
-                    <div className="mt-3 flex items-baseline gap-2">
-                      <p
-                        className="text-xl font-black"
-                        style={{ color: store.primary_color }}
-                      >
-                        ${(p.price_cents / 100).toFixed(2)}
-                      </p>
-                      {p.compare_at_cents && p.compare_at_cents > p.price_cents && (
-                        <p className="text-sm text-neutral-500 line-through">
-                          ${(p.compare_at_cents / 100).toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                    {typeof p.inventory === 'number' && p.inventory <= 0 ? (
-                      <p className="mt-3 text-xs uppercase tracking-widest text-neutral-500">
-                        Sold out
-                      </p>
-                    ) : (
-                      <div className="mt-3">
-                        <StoreCheckoutButton
-                          storeId={store.id}
-                          productId={p.id}
-                          basePriceCents={p.price_cents}
-                          currency={p.currency}
-                          variants={
-                            Array.isArray((p as { variants?: unknown }).variants)
-                              ? ((p as { variants: unknown[] }).variants as Array<{
-                                  size?: string
-                                  color?: string
-                                  sku?: string
-                                  price_cents?: number | null
-                                  inventory?: number | null
-                                }>)
-                              : []
-                          }
-                          buttonColor={store.primary_color}
-                          buttonText={store.secondary_color}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      <StorefrontSections
+        sections={sections}
+        store={storeLite}
+        products={(products ?? []) as StorefrontProduct[]}
+      />
 
       <footer
         className="border-t border-neutral-200 px-6 py-6 text-center text-xs"
