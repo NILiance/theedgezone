@@ -114,21 +114,29 @@ export default async function AdminPrintOrdersPage() {
                 )}
                 {Array.isArray(o.artwork_urls) && o.artwork_urls.length > 0 && (
                   <div>
-                    <p className="text-eyebrow text-muted-foreground">Artwork</p>
-                    <ul className="mt-1 space-y-1">
+                    <p className="text-eyebrow text-muted-foreground">Proof / artwork</p>
+                    <div className="mt-1 flex flex-wrap gap-3">
                       {(o.artwork_urls as string[]).map((url, i) => (
-                        <li key={i}>
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            {url}
-                          </a>
-                        </li>
+                        <a
+                          key={i}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="group flex flex-col items-center gap-1"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt={`Artwork ${i + 1}`}
+                            className="h-28 w-28 rounded-[var(--radius-sm)] border border-border bg-panel-elevated object-contain group-hover:border-primary"
+                          />
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-primary group-hover:underline">
+                            Download
+                          </span>
+                        </a>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
                 {o.notes && (

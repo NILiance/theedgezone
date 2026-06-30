@@ -33,7 +33,6 @@ export function OrderForm({
   const [state, action, pending] = useActionState<PrintOrderState, FormData>(createPrintOrder, {})
   const [variant, setVariant] = useState<string>(variants[0]?.label ?? '')
   const [quantity, setQuantity] = useState<number>(1)
-  const [artwork, setArtwork] = useState('')
 
   // Live color preview — the color option carries a per-color product photo map.
   const colorOption = useMemo(() => options.find((o) => o.key === 'color'), [options])
@@ -77,10 +76,6 @@ export function OrderForm({
       setProofBusy(false)
     }
   }
-  const addProofToArtwork = (url: string) => {
-    setArtwork((a) => (a.trim() ? `${a.trim()}\n${url}` : url))
-    setProof(null)
-  }
 
   const unitPrice = useMemo(() => {
     const v = variants.find((x) => x.label === variant)
@@ -102,6 +97,13 @@ export function OrderForm({
   return (
     <form action={action} className="space-y-5 rounded-[var(--radius)] border border-border bg-panel/40 p-5">
       <input type="hidden" name="product_id" value={productId} />
+      {/* The generated proof IS the order's artwork — no manual URLs. If the
+          talent skips "Generate proof", createPrintOrder renders it server-side
+          from these inputs + the product's placement. */}
+      <input type="hidden" name="proof_url" value={proof ?? ''} />
+      <input type="hidden" name="logo_url" value={logoUrl} />
+      <input type="hidden" name="blank_url" value={previewImage} />
+      <input type="hidden" name="knockout_white" value={knockout ? '1' : '0'} />
       <p className="text-eyebrow text-primary">Order {productName}</p>
 
       {/* Live preview — product photo (swaps by color) with the logo overlaid at
@@ -163,7 +165,14 @@ export function OrderForm({
               name={`opt_${opt.key}`}
               value={isColor ? selectedColor : undefined}
               defaultValue={isColor ? undefined : opt.values[0] ?? ''}
-              onChange={isColor ? (e) => setSelectedColor(e.target.value) : undefined}
+              onChange={
+                isColor
+                  ? (e) => {
+                      setSelectedColor(e.target.value)
+                      setProof(null) // stale proof was for the old color
+                    }
+                  : undefined
+              }
               className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2"
             >
               {opt.values.map((v) => (
@@ -195,8 +204,9 @@ export function OrderForm({
           Generate a proof
         </p>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Preview your logo on this product — it&rsquo;s placed at the position + size set for this
-          product. Then add the proof to your artwork.
+          Preview your logo on this product — placed at the position + size set for this product.
+          This exact proof is sent with your order. (Optional — if you skip it, we generate it
+          automatically at checkout.)
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div>
@@ -204,7 +214,10 @@ export function OrderForm({
             <div className="mt-1">
               <AssetPicker
                 value={logoUrl}
-                onChange={setLogoUrl}
+                onChange={(u) => {
+                  setLogoUrl(u)
+                  setProof(null)
+                }}
                 accept="image/*"
                 allowGenerate={false}
               />
@@ -215,7 +228,10 @@ export function OrderForm({
               <input
                 type="checkbox"
                 checked={knockout}
-                onChange={(e) => setKnockout(e.target.checked)}
+                onChange={(e) => {
+                  setKnockout(e.target.checked)
+                  setProof(null)
+                }}
                 className="h-3.5 w-3.5 accent-primary"
               />
               Remove white background from the logo
@@ -241,30 +257,12 @@ export function OrderForm({
               alt="Proof"
               className="h-36 w-36 rounded-[var(--radius-sm)] border border-border object-contain"
             />
-            <button
-              type="button"
-              onClick={() => addProofToArtwork(proof)}
-              className="text-display rounded-[var(--radius-sm)] bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-foreground"
-            >
-              Add to artwork
-            </button>
+            <p className="text-display rounded-[var(--radius-sm)] border border-success/40 bg-success/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-success">
+              ✓ Proof attached to your order
+            </p>
           </div>
         )}
       </div>
-
-      <label className="block text-sm">
-        <span className="text-xs uppercase tracking-widest text-muted-foreground">
-          Artwork URLs (one per line)
-        </span>
-        <textarea
-          name="artwork_urls"
-          rows={3}
-          value={artwork}
-          onChange={(e) => setArtwork(e.target.value)}
-          placeholder="https://… (PDF, PNG, AI, EPS) — or generate a proof above"
-          className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 font-mono text-xs"
-        />
-      </label>
 
       <fieldset className="space-y-2">
         <legend className="text-xs uppercase tracking-widest text-muted-foreground">Ship to</legend>
