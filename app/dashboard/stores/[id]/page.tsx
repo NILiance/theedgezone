@@ -65,11 +65,12 @@ export default async function StoreManagerPage({ params }: PageProps) {
             <p className="text-eyebrow text-accent">Store</p>
             <h1 className="text-display mt-1 text-3xl font-black tracking-tight">{store.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              <code>/store/{store.slug}</code> ·{' '}
+              <code className="text-foreground">
+                {store.slug}.{process.env.NEXT_PUBLIC_STORE_ROOT_DOMAIN ?? 'nilstores.com'}
+              </code>{' '}
+              ·{' '}
               <span
-                className={
-                  store.status === 'open' ? 'text-success' : 'text-muted-foreground'
-                }
+                className={store.status === 'open' ? 'text-success' : 'text-muted-foreground'}
               >
                 {store.status}
               </span>

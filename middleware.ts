@@ -11,6 +11,7 @@ const SUBDOMAIN_SUFFIXES: Array<{ suffix: string; target: string }> = [
   { suffix: '.mytalentsite.com', target: 'site' },
   { suffix: '.talentepk.com', target: 'epk' },
   { suffix: '.podcastfortalent.com', target: 'podcast' },
+  { suffix: '.nilstores.com', target: 'store' },
 ]
 
 /**
@@ -26,6 +27,8 @@ const PRIMARY_HOSTS = new Set([
   'www.talentepk.com',
   'podcastfortalent.com',
   'www.podcastfortalent.com',
+  'nilstores.com',
+  'www.nilstores.com',
   'localhost:3000',
   '127.0.0.1:3000',
 ])
