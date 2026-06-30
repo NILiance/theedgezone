@@ -761,6 +761,57 @@ async function handlePrintOrderCompleted(
   } catch (err) {
     console.error('[stripe-webhook] print fulfillment dispatch failed', err)
   }
+
+  // Talent order-confirmation email — best-effort, never block the 200.
+  try {
+    const { data: order } = await supabase
+      .from('print_orders')
+      .select(
+        'product_id, quantity, variant_label, amount_cents, artwork_urls, ship_to_name, ship_to_street, ship_to_city, ship_to_state, ship_to_postal, user_id'
+      )
+      .eq('id', orderId)
+      .maybeSingle()
+    if (order) {
+      const [{ data: product }, { data: profile }, { data: userRes }] = await Promise.all([
+        supabase.from('print_products').select('name, lead_time_days').eq('id', order.product_id).maybeSingle(),
+        supabase.from('profiles').select('display_name').eq('id', order.user_id).maybeSingle(),
+        supabase.auth.admin.getUserById(order.user_id),
+      ])
+      const email = userRes?.user?.email ?? session.customer_details?.email ?? null
+      if (email) {
+        const name = (profile as { display_name?: string } | null)?.display_name ?? 'there'
+        const productName = (product as { name?: string } | null)?.name ?? 'your item'
+        const lead = (product as { lead_time_days?: number } | null)?.lead_time_days ?? null
+        const proof =
+          Array.isArray(order.artwork_urls) && order.artwork_urls.length
+            ? (order.artwork_urls[0] as string)
+            : null
+        const addr = [
+          order.ship_to_name,
+          order.ship_to_street,
+          [order.ship_to_city, order.ship_to_state, order.ship_to_postal].filter(Boolean).join(', '),
+        ]
+          .filter(Boolean)
+          .join('<br>')
+        void sendEmail({
+          to: email,
+          subject: `Order confirmed — ${productName}`,
+          templateKey: 'print_order_confirmation',
+          html: `<h2 style="color:#C8A84E;">Order confirmed</h2>
+<p>Thanks ${name}! Your order for <strong>${order.quantity} × ${productName}${
+            order.variant_label ? ` (${order.variant_label})` : ''
+          }</strong> is confirmed and headed into production${lead ? ` — about ${lead} business days` : ''}.</p>
+<p><strong>Total:</strong> $${((order.amount_cents ?? 0) / 100).toFixed(2)}</p>
+<p><strong>Ships to:</strong><br>${addr || '(address on file)'}</p>
+${proof ? `<p><a href="${proof}" style="color:#C8A84E;">View your printed design</a></p><img src="${proof}" alt="Your design" style="max-width:280px;border:1px solid #ddd;border-radius:6px;" />` : ''}
+<p style="margin-top:16px;">We&rsquo;ll email you tracking as soon as it ships.</p>`,
+          metadata: { order_id: orderId, user_id: order.user_id },
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[stripe-webhook] print order confirmation email failed', err)
+  }
 }
 
 /**
