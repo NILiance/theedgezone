@@ -74,8 +74,14 @@ export async function createUser(formData: FormData): Promise<CreateUserResult> 
     // ignore
   }
   try {
-    const { createNilianceUser } = await import('@/lib/niliance')
-    void createNilianceUser({ userId, email, displayName: displayName || null, userType })
+    const { enqueueSyncEvent } = await import('@/lib/sharetribe-sync')
+    void enqueueSyncEvent({
+      eventType: 'claude.user.upserted',
+      entityType: 'user',
+      entityId: userId,
+      userId,
+      payload: { email, displayName: displayName || null, userType },
+    })
   } catch {
     // ignore
   }

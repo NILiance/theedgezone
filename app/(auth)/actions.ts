@@ -7,7 +7,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import { sendEmail } from '@/lib/resend'
 import { welcomeEmail } from '@/lib/emails/welcome'
-import { createNilianceUser } from '@/lib/niliance'
+import { enqueueSyncEvent } from '@/lib/sharetribe-sync'
 
 export type AuthState = { error?: string; success?: string } | undefined
 
@@ -93,11 +93,16 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
       metadata: { user_id: data.user.id },
     })
 
-    void createNilianceUser({
+    void enqueueSyncEvent({
+      eventType: 'claude.user.upserted',
+      entityType: 'user',
+      entityId: data.user.id,
       userId: data.user.id,
-      email: parsed.data.email,
-      displayName: parsed.data.display_name,
-      userType: parsed.data.user_type,
+      payload: {
+        email: parsed.data.email,
+        displayName: parsed.data.display_name,
+        userType: parsed.data.user_type,
+      },
     })
   }
 
