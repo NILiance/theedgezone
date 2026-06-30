@@ -238,15 +238,16 @@ const GROUPS: IntegrationGroup[] = [
     name: 'Subdomain routing',
     module: 'Sites, EPKs, Podcasts, Stores',
     summary:
-      'Middleware rewrites *.mytalentsite.com (sites), *.talentepk.com (EPKs), *.podcastfortalent.com (podcasts), and *.nilstores.com (stores) to the right tenant.',
+      'Middleware rewrites *.mytalentsite.com (sites), *.talentepk.com (EPKs), *.podcastfortalent.com (podcasts), *.nilstores.com (stores), and *.appsfortalent.com (apps) to the right tenant.',
     steps: [
-      'Point DNS for *.mytalentsite.com, *.talentepk.com, *.podcastfortalent.com, and *.nilstores.com at Vercel (CNAME → cname.vercel-dns.com).',
+      'Point DNS for *.mytalentsite.com, *.talentepk.com, *.podcastfortalent.com, *.nilstores.com, and *.appsfortalent.com at Vercel (CNAME → cname.vercel-dns.com).',
       'Add the apex domains in Vercel → Project → Domains.',
     ],
     keys: [
       { label: 'Sites root', env: 'NEXT_PUBLIC_SITES_ROOT_DOMAIN' },
       { label: 'EPK root', env: 'NEXT_PUBLIC_EPK_ROOT_DOMAIN' },
       { label: 'Store root', env: 'NEXT_PUBLIC_STORE_ROOT_DOMAIN' },
+      { label: 'Apps root', env: 'NEXT_PUBLIC_APPS_ROOT_DOMAIN' },
     ],
   },
 ]

@@ -12,6 +12,7 @@ const SUBDOMAIN_SUFFIXES: Array<{ suffix: string; target: string }> = [
   { suffix: '.talentepk.com', target: 'epk' },
   { suffix: '.podcastfortalent.com', target: 'podcast' },
   { suffix: '.nilstores.com', target: 'store' },
+  { suffix: '.appsfortalent.com', target: 'a' },
 ]
 
 /**
@@ -29,6 +30,8 @@ const PRIMARY_HOSTS = new Set([
   'www.podcastfortalent.com',
   'nilstores.com',
   'www.nilstores.com',
+  'appsfortalent.com',
+  'www.appsfortalent.com',
   'localhost:3000',
   '127.0.0.1:3000',
 ])
@@ -45,6 +48,10 @@ export async function middleware(request: NextRequest) {
     if (host.endsWith(suffix) && rawHost !== suffix.slice(1)) {
       const slug = host.slice(0, -suffix.length).replace(/[^a-z0-9-]/g, '')
       if (slug && !RESERVED_SUBDOMAINS.has(slug)) {
+        // Don't double-prefix a path that already targets the route — e.g. the
+        // app PWA links to its own absolute /a/{slug}/app.webmanifest. Serve
+        // those as-is (the route resolves the slug).
+        if (url.pathname.startsWith(`/${target}/`)) break
         url.pathname = `/${target}/${slug}${url.pathname === '/' ? '' : url.pathname}`
         return NextResponse.rewrite(url)
       }

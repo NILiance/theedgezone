@@ -67,6 +67,17 @@ export default async function AppConfigPage({ params }: PageProps) {
             <p className="text-eyebrow text-accent">App config</p>
             <h1 className="text-display mt-1 text-3xl font-black tracking-tight">{app.name}</h1>
             {app.tagline && <p className="text-sm text-muted-foreground">{app.tagline}</p>}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Live at{' '}
+              <a
+                href={`https://${app.slug}.${process.env.NEXT_PUBLIC_APPS_ROOT_DOMAIN ?? 'appsfortalent.com'}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-foreground hover:text-primary"
+              >
+                {app.slug}.{process.env.NEXT_PUBLIC_APPS_ROOT_DOMAIN ?? 'appsfortalent.com'}
+              </a>
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <a href={`/a/${app.id}`} target="_blank" rel="noopener noreferrer">

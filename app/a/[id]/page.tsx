@@ -20,13 +20,20 @@ interface AppRow {
   settings: unknown
 }
 
-async function loadApp(id: string): Promise<AppRow | null> {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function loadApp(idOrSlug: string): Promise<AppRow | null> {
   const supabase = createServiceClient()
   if (!supabase) return null
+  // Path-served (/a/{uuid}) uses the id; subdomain ({slug}.appsfortalent.com)
+  // resolves by slug.
+  const col = UUID_RE.test(idOrSlug) ? 'id' : 'slug'
   const { data } = await supabase
     .from('talent_apps')
     .select('id, name, icon_url, primary_color, secondary_color, theme_mode, screens, settings')
-    .eq('id', id)
+    .eq(col, idOrSlug)
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
   return (data as AppRow | null) ?? null
 }

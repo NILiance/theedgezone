@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 /** Per-app PWA manifest so the live app is installable ("Add to Home Screen"). */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
+  const col = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? 'id' : 'slug'
   const supabase = createServiceClient()
   let name = 'App'
   let icon: string | null = null
@@ -15,7 +16,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const { data } = await supabase
       .from('talent_apps')
       .select('name, icon_url, primary_color, secondary_color, theme_mode, settings')
-      .eq('id', id)
+      .eq(col, id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
     if (data) {
       name = data.name
