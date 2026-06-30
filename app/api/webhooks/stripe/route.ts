@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { createServiceClient } from '@/lib/supabase/server'
 import { provisionOrder } from '@/lib/provisioning'
 import { dispatchStoreOrder } from '@/lib/store-fulfillment'
+import { dispatchPrintOrder, getPrintFulfillmentSettings } from '@/lib/print-fulfillment'
 import { sendEmail } from '@/lib/resend'
 
 export const runtime = 'nodejs' // raw body needed for signature verification
@@ -248,6 +249,13 @@ async function handleCheckoutCompleted(
   // email the proof-before-printing confirmation.
   if (metadata.kind === 'trading_card') {
     await handleTradingCardOrder(supabase, session)
+    return
+  }
+
+  // Print Shop order — mark paid, then auto-dispatch to fulfillment (or hold for
+  // admin approval) per print_fulfillment_settings.
+  if (metadata.kind === 'print_order') {
+    await handlePrintOrderCompleted(supabase, session)
     return
   }
 
@@ -703,6 +711,55 @@ ${existing.card_url ? `<p><strong>Card design:</strong> <a href="${existing.card
     })
   } catch (err) {
     console.error('[stripe-webhook] trading-card emails failed', err)
+  }
+}
+
+/**
+ * Print Shop order completed. Flips the draft order to paid, then either
+ * auto-dispatches it to fulfillment (email partner / webhook) or parks it in a
+ * "ready" queue for admin approval — controlled by print_fulfillment_settings.
+ * Idempotent on the order's draft status.
+ */
+async function handlePrintOrderCompleted(
+  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  session: Stripe.Checkout.Session
+) {
+  const metadata = session.metadata ?? {}
+  const orderId =
+    (typeof metadata.order_id === 'string' && metadata.order_id) ||
+    (typeof metadata.print_order_id === 'string' && metadata.print_order_id) ||
+    ''
+  if (!orderId) return
+
+  const { data: existing } = await supabase
+    .from('print_orders')
+    .select('id, status')
+    .eq('id', orderId)
+    .maybeSingle()
+  if (!existing || existing.status !== 'draft') return // idempotent
+
+  await supabase
+    .from('print_orders')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+
+  // Auto-send now, or queue for admin approval. Best-effort — never block the 200.
+  try {
+    const settings = await getPrintFulfillmentSettings(supabase)
+    if (settings.auto_send) {
+      await dispatchPrintOrder(supabase, orderId)
+    } else {
+      await supabase
+        .from('print_orders')
+        .update({ fulfillment_status: 'ready' })
+        .eq('id', orderId)
+    }
+  } catch (err) {
+    console.error('[stripe-webhook] print fulfillment dispatch failed', err)
   }
 }
 

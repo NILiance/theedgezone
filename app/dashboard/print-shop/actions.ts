@@ -234,7 +234,8 @@ export async function createPrintOrder(
     success_url: `${siteUrl}/dashboard/print-shop/${product.slug}/success?order=${order.id}`,
     cancel_url: `${siteUrl}/dashboard/print-shop/${product.slug}`,
     metadata: {
-      print_order_id: order.id,
+      kind: 'print_order',
+      order_id: order.id,
       user_id: user.id,
     },
   })

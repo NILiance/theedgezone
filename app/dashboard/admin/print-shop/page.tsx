@@ -2,7 +2,11 @@ import Link from 'next/link'
 import { requireAdmin } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/server'
 import { formatEasternDate } from '@/lib/format-date'
-import { updatePrintOrderStatus } from './actions'
+import {
+  updatePrintOrderStatus,
+  savePrintFulfillmentSettings,
+  sendPrintOrderToFulfillment,
+} from './actions'
 
 export const metadata = { title: 'Print Orders' }
 
@@ -18,11 +22,24 @@ export default async function AdminPrintOrdersPage() {
   }
   const { data: orders } = await supabase
     .from('print_orders')
-    .select(
-      'id, user_id, product_id, variant_label, options, quantity, amount_cents, artwork_urls, ship_to_name, ship_to_street, ship_to_city, ship_to_state, ship_to_postal, status, tracking_number, carrier, notes, created_at, paid_at, shipped_at'
-    )
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(200)
+
+  // Fulfillment config (singleton row).
+  const { data: fsettings } = await supabase
+    .from('print_fulfillment_settings')
+    .select('*')
+    .eq('id', 1)
+    .maybeSingle()
+  const fs = (fsettings ?? {}) as {
+    auto_send?: boolean
+    email_enabled?: boolean
+    webhook_enabled?: boolean
+    partner_email?: string | null
+    webhook_url?: string | null
+    webhook_auth_header?: string | null
+  }
 
   const userIds = Array.from(new Set((orders ?? []).map((o) => o.user_id)))
   const productIds = Array.from(new Set((orders ?? []).map((o) => o.product_id)))
@@ -53,6 +70,96 @@ export default async function AdminPrintOrdersPage() {
           Mark orders as in production / shipped / delivered and attach tracking when available.
         </p>
       </div>
+
+      {/* Fulfillment settings */}
+      <details className="rounded-[var(--radius)] border border-primary/40 bg-panel/40 p-4">
+        <summary className="text-display cursor-pointer text-sm font-bold text-primary">
+          ⚙ Fulfillment settings — {fs.auto_send ? 'auto-send ON' : 'manual approval'} ·{' '}
+          {[fs.email_enabled ?? true ? 'email' : null, fs.webhook_enabled ? 'webhook' : null]
+            .filter(Boolean)
+            .join(' + ') || 'no channel'}
+        </summary>
+        <form action={savePrintFulfillmentSettings} className="mt-4 space-y-4">
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              name="auto_send"
+              defaultChecked={Boolean(fs.auto_send)}
+              className="mt-1 h-4 w-4"
+            />
+            <span>
+              <span className="text-display font-bold">Auto-send on payment</span>
+              <span className="block text-xs text-muted-foreground">
+                On = dispatch the instant Stripe confirms payment. Off = paid orders wait in a
+                &ldquo;Ready to send&rdquo; state below for you to review the proof + ship-to and
+                send.
+              </span>
+            </span>
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="email_enabled"
+                  defaultChecked={fs.email_enabled ?? true}
+                  className="h-4 w-4"
+                />
+                <span className="text-display font-bold">Email a print partner</span>
+              </label>
+              <label className="mt-2 block text-xs">
+                <span className="text-muted-foreground">Partner email</span>
+                <input
+                  name="partner_email"
+                  type="email"
+                  defaultValue={fs.partner_email ?? ''}
+                  placeholder="orders@yourdecorator.com"
+                  className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-border bg-background/40 p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="webhook_enabled"
+                  defaultChecked={Boolean(fs.webhook_enabled)}
+                  className="h-4 w-4"
+                />
+                <span className="text-display font-bold">POST to a webhook / API</span>
+              </label>
+              <label className="mt-2 block text-xs">
+                <span className="text-muted-foreground">Webhook URL</span>
+                <input
+                  name="webhook_url"
+                  type="url"
+                  defaultValue={fs.webhook_url ?? ''}
+                  placeholder="https://…/print-intake"
+                  className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm font-mono"
+                />
+              </label>
+              <label className="mt-2 block text-xs">
+                <span className="text-muted-foreground">Authorization header (optional)</span>
+                <input
+                  name="webhook_auth_header"
+                  defaultValue={fs.webhook_auth_header ?? ''}
+                  placeholder="Bearer …"
+                  className="mt-1 w-full rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm font-mono"
+                />
+              </label>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="text-display rounded-[var(--radius-sm)] bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+          >
+            Save settings
+          </button>
+        </form>
+      </details>
 
       <div className="space-y-3">
         {(orders ?? []).map((o) => {
@@ -145,6 +252,53 @@ export default async function AdminPrintOrdersPage() {
                     <p className="mt-1 whitespace-pre-line text-muted-foreground">{o.notes}</p>
                   </div>
                 )}
+                {/* Fulfillment handoff */}
+                {(() => {
+                  const fstatus =
+                    (o as { fulfillment_status?: string }).fulfillment_status ?? 'pending'
+                  const fchannel = (o as { fulfillment_channel?: string | null }).fulfillment_channel
+                  const ferror = (o as { fulfillment_error?: string | null }).fulfillment_error
+                  const fsent = (o as { fulfillment_sent_at?: string | null }).fulfillment_sent_at
+                  const ftone =
+                    fstatus === 'sent'
+                      ? 'bg-success/20 text-success'
+                      : fstatus === 'failed'
+                      ? 'bg-destructive/20 text-destructive'
+                      : fstatus === 'ready'
+                      ? 'bg-accent/20 text-accent'
+                      : 'bg-panel-elevated text-muted-foreground'
+                  const isPaid = o.status !== 'draft' && o.status !== 'cancelled'
+                  return (
+                    <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-sm)] border border-border bg-background/40 p-3">
+                      <div className="min-w-0">
+                        <p className="text-eyebrow text-muted-foreground">Fulfillment</p>
+                        <p className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                          <span
+                            className={`text-display rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${ftone}`}
+                          >
+                            {fstatus}
+                          </span>
+                          {fchannel && <span className="text-muted-foreground">via {fchannel}</span>}
+                          {fsent && (
+                            <span className="text-muted-foreground">· {formatEasternDate(fsent)}</span>
+                          )}
+                        </p>
+                        {ferror && <p className="mt-1 text-[11px] text-destructive">{ferror}</p>}
+                      </div>
+                      {isPaid && (
+                        <form action={sendPrintOrderToFulfillment} className="ml-auto">
+                          <input type="hidden" name="order_id" value={o.id} />
+                          <button
+                            type="submit"
+                            className="text-display rounded-[var(--radius-sm)] bg-primary px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+                          >
+                            {fstatus === 'sent' ? 'Resend to fulfillment' : 'Send to fulfillment'}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )
+                })()}
                 <form
                   action={updatePrintOrderStatus}
                   className="grid gap-3 rounded-[var(--radius-sm)] border border-border bg-background/40 p-3 sm:grid-cols-4"
