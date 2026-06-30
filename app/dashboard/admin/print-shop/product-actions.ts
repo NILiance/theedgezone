@@ -17,6 +17,18 @@ const CATEGORIES = [
 ]
 
 /**
+ * Revalidate every surface a product (and its logo placement) appears on — the
+ * admin manager, the talent catalog + item pages, and the brand-design Print
+ * Shop tab — so a saved placement/price shows up everywhere, not just in admin.
+ */
+function revalidatePrintShop() {
+  revalidatePath('/dashboard/admin/print-shop/products')
+  revalidatePath('/dashboard/print-shop')
+  revalidatePath('/dashboard/print-shop/[slug]', 'page')
+  revalidatePath('/dashboard/brand-design/[id]', 'page')
+}
+
+/**
  * Create or update a Print Shop product (admin only). Handles an optional cover
  * image upload. Pricing is entered in dollars and stored as cents.
  */
@@ -92,7 +104,7 @@ export async function upsertPrintProduct(form: FormData): Promise<void> {
     res = await write(rest)
   }
   if (res.error) throw new Error(res.error.message)
-  revalidatePath('/dashboard/admin/print-shop/products')
+  revalidatePrintShop()
 }
 
 /** Normalize a supplier color/size option list (strings or objects) into a
@@ -202,7 +214,7 @@ export async function importSupplierToPrintShop(form: FormData): Promise<void> {
     ;({ error } = await supabase.from('print_products').insert(rest))
   }
   if (error) throw new Error(error.message)
-  revalidatePath('/dashboard/admin/print-shop/products')
+  revalidatePrintShop()
 }
 
 /** Delete a product (admin only). */
@@ -215,5 +227,5 @@ export async function deletePrintProduct(form: FormData): Promise<void> {
     const { error } = await supabase.from('print_products').delete().eq('id', id)
     if (error) throw new Error(error.message)
   }
-  revalidatePath('/dashboard/admin/print-shop/products')
+  revalidatePrintShop()
 }
