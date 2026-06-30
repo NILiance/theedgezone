@@ -206,7 +206,7 @@ export async function provisionEpk(
     .maybeSingle()
 
   const baseName = profile?.display_name ?? 'me'
-  let slug = slugify(baseName)
+  let slug = slugify(baseName).replace(/-/g, '')
   if (!slug) slug = 'epk'
 
   const { data: existing } = await supabase
@@ -216,8 +216,8 @@ export async function provisionEpk(
   const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
   if (existingSlugs.has(slug)) {
     let suffix = (existing?.length ?? 0) + 1
-    while (existingSlugs.has(`${slug}-${suffix}`)) suffix += 1
-    slug = `${slug}-${suffix}`
+    while (existingSlugs.has(`${slug}${suffix}`)) suffix += 1
+    slug = `${slug}${suffix}`
   }
 
   const { data: epk, error } = await supabase
@@ -316,7 +316,7 @@ export async function provisionTalentApp(
     .maybeSingle()
 
   const baseName = profile?.display_name ?? 'app'
-  let slug = slugify(baseName)
+  let slug = slugify(baseName).replace(/-/g, '')
   if (!slug) slug = 'app'
 
   const { data: existing } = await supabase
@@ -326,8 +326,8 @@ export async function provisionTalentApp(
   const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
   if (existingSlugs.has(slug)) {
     let suffix = (existing?.length ?? 0) + 1
-    while (existingSlugs.has(`${slug}-${suffix}`)) suffix += 1
-    slug = `${slug}-${suffix}`
+    while (existingSlugs.has(`${slug}${suffix}`)) suffix += 1
+    slug = `${slug}${suffix}`
   }
 
   const startingScreens = [
@@ -412,7 +412,7 @@ export async function provisionStore(
     .maybeSingle()
 
   const baseName = profile?.display_name ?? 'shop'
-  let slug = slugify(baseName)
+  let slug = slugify(baseName).replace(/-/g, '')
   if (!slug) slug = 'shop'
 
   const { data: existing } = await supabase
@@ -422,8 +422,8 @@ export async function provisionStore(
   const existingSlugs = new Set((existing ?? []).map((s) => s.slug))
   if (existingSlugs.has(slug)) {
     let suffix = (existing?.length ?? 0) + 1
-    while (existingSlugs.has(`${slug}-${suffix}`)) suffix += 1
-    slug = `${slug}-${suffix}`
+    while (existingSlugs.has(`${slug}${suffix}`)) suffix += 1
+    slug = `${slug}${suffix}`
   }
 
   const { data: store, error } = await supabase

@@ -20,6 +20,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: 'Platform Management',
     items: [
       { label: 'Platform', href: '/dashboard/admin/branding' },
+      { label: 'Landing Pages', href: '/dashboard/admin/landing' },
       { label: 'Integrations', href: '/dashboard/admin/integrations' },
       { label: 'NILiance', href: '/dashboard/admin/niliance' },
       { label: 'Pricing', href: '/dashboard/admin/pricing' },

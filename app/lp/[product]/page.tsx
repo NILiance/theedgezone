@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { createServiceClient } from '@/lib/supabase/server'
 import {
   Globe,
   LayoutTemplate,
@@ -285,14 +286,32 @@ function HeroVisual({ lp }: { lp: Landing }) {
   )
 }
 
+async function loadLandingSettings() {
+  const supabase = createServiceClient()
+  if (!supabase) return null
+  const { data } = await supabase.from('landing_settings').select('*').eq('id', 1).maybeSingle()
+  return (data ?? null) as {
+    accent_color?: string | null
+    logo_url?: string | null
+    footer_text?: string | null
+    show_logo?: boolean
+  } | null
+}
+
 export default async function ProductLandingPage({
   params,
 }: {
   params: Promise<{ product: string }>
 }) {
   const { product } = await params
-  const lp = LANDINGS[product]
-  if (!lp) notFound()
+  const base = LANDINGS[product]
+  if (!base) notFound()
+  // Admin branding overrides (color + logo + footer); accent falls back to the
+  // per-product hue.
+  const settings = await loadLandingSettings()
+  const lp = { ...base, hue: settings?.accent_color || base.hue }
+  const logoUrl = settings?.show_logo === false ? null : settings?.logo_url || null
+  const footerText = settings?.footer_text || 'Brought to you by The Edge Zone'
   const signUp = `${SITE}/sign-up?ref=${lp.product}`
 
   return (
@@ -301,7 +320,12 @@ export default async function ProductLandingPage({
       <header className="sticky top-0 z-10 border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="text-display flex items-center gap-2 text-sm font-black uppercase tracking-widest">
-            <lp.Icon className="h-4 w-4" style={{ color: lp.hue }} />
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="h-7 w-auto object-contain" />
+            ) : (
+              <lp.Icon className="h-4 w-4" style={{ color: lp.hue }} />
+            )}
             {lp.domain}
           </span>
           <div className="flex items-center gap-4">
@@ -468,9 +492,8 @@ export default async function ProductLandingPage({
       </section>
 
       <footer className="border-t border-border px-6 py-8 text-center text-xs text-muted-foreground">
-        Powered by{' '}
-        <a href={SITE} className="text-primary hover:underline">
-          Edge Zone
+        <a href={SITE} className="hover:text-primary">
+          {footerText}
         </a>
       </footer>
     </main>
