@@ -36,6 +36,7 @@ const signUpSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   display_name: z.string().min(1, 'Display name required').max(80),
   user_type: z.enum(['talent', 'brand']).default('talent'),
+  signup_ref: z.string().max(40).optional(),
 })
 
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -44,15 +45,23 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     password: formData.get('password'),
     display_name: formData.get('display_name'),
     user_type: formData.get('user_type') ?? 'talent',
+    signup_ref: formData.get('signup_ref') ?? undefined,
   })
   if (!parsed.success) return { error: parsed.error.errors[0].message }
+
+  // Which product domain / landing drove this signup (the ?ref= CTA).
+  const ref = parsed.data.signup_ref?.replace(/[^a-z0-9_-]/gi, '').slice(0, 40) || null
 
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { display_name: parsed.data.display_name, user_type: parsed.data.user_type },
+      data: {
+        display_name: parsed.data.display_name,
+        user_type: parsed.data.user_type,
+        ...(ref ? { signup_ref: ref } : {}),
+      },
       emailRedirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     },
   })
@@ -69,6 +78,10 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
         .from('profiles')
         .update({ user_type: parsed.data.user_type })
         .eq('id', data.user.id)
+      if (ref) {
+        // Best-effort — column added by 20260629170000_profiles_signup_ref.
+        void svc.from('profiles').update({ signup_ref: ref }).eq('id', data.user.id)
+      }
     }
 
     const { subject, html } = welcomeEmail({ display_name: parsed.data.display_name })

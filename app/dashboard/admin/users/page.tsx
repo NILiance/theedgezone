@@ -39,7 +39,7 @@ export default async function UsersAdminPage({ searchParams }: PageProps) {
   const [{ data: profiles }, { data: roles }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, display_name, user_type, sport, school, points')
+      .select('*')
       .in('id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']),
     supabase
       .from('user_roles')
@@ -59,6 +59,8 @@ export default async function UsersAdminPage({ searchParams }: PageProps) {
     email: u.email ?? '',
     display_name: profilesById.get(u.id)?.display_name ?? null,
     user_type: profilesById.get(u.id)?.user_type ?? null,
+    signup_ref:
+      (profilesById.get(u.id) as { signup_ref?: string | null } | undefined)?.signup_ref ?? null,
     sport: profilesById.get(u.id)?.sport ?? null,
     school: profilesById.get(u.id)?.school ?? null,
     points: profilesById.get(u.id)?.points ?? 0,

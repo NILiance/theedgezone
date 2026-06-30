@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export function SignUpForm() {
+export function SignUpForm({ signupRef }: { signupRef?: string }) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(signUp, undefined)
 
   if (state?.success) {
@@ -42,6 +42,7 @@ export function SignUpForm() {
         <CardDescription>Start building on Edge Zone.</CardDescription>
       </CardHeader>
       <form action={formAction}>
+        {signupRef && <input type="hidden" name="signup_ref" value={signupRef} />}
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>I&rsquo;m signing up as</Label>

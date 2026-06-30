@@ -18,6 +18,7 @@ interface Row {
   email: string
   display_name: string | null
   user_type: string | null
+  signup_ref: string | null
   sport: string | null
   school: string | null
   points: number
@@ -337,6 +338,9 @@ function UserRow({ user }: { user: Row }) {
             {user.sport}
             {user.school && ` · ${user.school}`}
           </p>
+        )}
+        {user.signup_ref && (
+          <p className="text-[10px] uppercase tracking-widest text-primary">via {user.signup_ref}</p>
         )}
       </td>
       <td className="px-3 py-2">
