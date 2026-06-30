@@ -38,10 +38,32 @@ const PRIMARY_HOSTS = new Set([
 
 const RESERVED_SUBDOMAINS = new Set(['www', 'mail', 'cpanel', 'webmail', 'whm', 'ftp', 'ns1', 'ns2'])
 
+/** Product apex domains → the dedicated sales landing rendered at their root. */
+const APEX_LANDINGS: Record<string, string> = {
+  'mytalentsite.com': 'sites',
+  'www.mytalentsite.com': 'sites',
+  'talentepk.com': 'epk',
+  'www.talentepk.com': 'epk',
+  'podcastfortalent.com': 'podcast',
+  'www.podcastfortalent.com': 'podcast',
+  'nilstores.com': 'stores',
+  'www.nilstores.com': 'stores',
+  'appsfortalent.com': 'apps',
+  'www.appsfortalent.com': 'apps',
+}
+
 export async function middleware(request: NextRequest) {
   const rawHost = (request.headers.get('host') ?? '').toLowerCase()
   const host = rawHost.split(':')[0] // strip port for matching
   const url = request.nextUrl.clone()
+
+  // 0. Product apex domains → dedicated sales landing at the root only. Other
+  //    paths (e.g. /sign-up redirects) pass through.
+  const landing = APEX_LANDINGS[host]
+  if (landing && url.pathname === '/') {
+    url.pathname = `/lp/${landing}`
+    return NextResponse.rewrite(url)
+  }
 
   // 1. Subdomain routing — known suffixes
   for (const { suffix, target } of SUBDOMAIN_SUFFIXES) {

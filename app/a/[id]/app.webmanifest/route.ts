@@ -5,9 +5,13 @@ import { resolveAppTheme } from '@/lib/app-theme'
 export const dynamic = 'force-dynamic'
 
 /** Per-app PWA manifest so the live app is installable ("Add to Home Screen"). */
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
   const col = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? 'id' : 'slug'
+  // On {slug}.appsfortalent.com the app is served at the clean root, so the PWA
+  // launches at '/'; at /a/{id} (dashboard preview) it's scoped to that path.
+  const onSubdomain = (req.headers.get('host') ?? '').toLowerCase().endsWith('.appsfortalent.com')
+  const base = onSubdomain ? '/' : `/a/${id}`
   const supabase = createServiceClient()
   let name = 'App'
   let icon: string | null = null
@@ -36,8 +40,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const manifest = {
     name,
     short_name: name.slice(0, 12),
-    start_url: `/a/${id}`,
-    scope: `/a/${id}`,
+    start_url: base,
+    scope: base,
     display: 'standalone',
     orientation: 'portrait',
     background_color: bg,

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/server'
 import { resolveAppTheme } from '@/lib/app-theme'
@@ -42,9 +43,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const app = await loadApp(id)
   if (!app) return { title: 'App' }
+  // On {slug}.appsfortalent.com the PWA lives at the clean root, so the manifest
+  // is served from `/app.webmanifest`; when previewed at /a/{id} it's nested.
+  const host = (await headers()).get('host') ?? ''
+  const onSubdomain = host.toLowerCase().endsWith('.appsfortalent.com')
   return {
     title: app.name,
-    manifest: `/a/${id}/app.webmanifest`,
+    manifest: onSubdomain ? '/app.webmanifest' : `/a/${id}/app.webmanifest`,
     appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: app.name },
     icons: app.icon_url ? { icon: app.icon_url, apple: app.icon_url } : undefined,
   }
