@@ -1384,10 +1384,10 @@ async function PrintShopView({
               href={`/dashboard/print-shop/${p.slug}?brand=${brandId}`}
               className="group block overflow-hidden rounded-[var(--radius)] border border-border bg-panel/40 transition hover:border-primary/40"
             >
-              <div className="relative aspect-square bg-panel-elevated">
+              <div className="relative bg-panel-elevated">
                 {p.cover_image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.cover_image_url} alt="" className="h-full w-full object-contain" />
+                  <img src={p.cover_image_url} alt="" className="block w-full" />
                 )}
                 {overlayLogo && p.cover_image_url && (
                   // eslint-disable-next-line @next/next/no-img-element

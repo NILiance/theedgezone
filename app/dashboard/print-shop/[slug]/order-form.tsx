@@ -105,9 +105,9 @@ export function OrderForm({
       <p className="text-eyebrow text-primary">Order {productName}</p>
 
       {/* Live preview — product photo (swaps by color) with the logo overlaid at
-          the admin's per-product placement. Uses the image's NATURAL aspect
-          ratio (block w-full, no crop) so logo_x/y map to the exact same spot
-          the admin set in the placer. */}
+          the admin's per-product placement. NATURAL aspect (block w-full, no
+          crop) so logo_x/y/scale match the placer, the catalogs, AND the Sharp
+          proof (which composites against the real image pixels) — every view 1:1. */}
       {previewImage && (
         <div className="mx-auto w-full max-w-xs">
           <div className="relative overflow-hidden rounded-[var(--radius)] border border-border bg-panel-elevated">
