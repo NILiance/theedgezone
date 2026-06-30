@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/server'
 import { StoreManagerClient } from './client'
 import { StoreDesignEditor } from './design-editor'
+import { DomainManager } from '@/components/dashboard/domain-manager'
 import { normalizeSections } from '@/lib/store-sections'
 
 interface PageProps {
@@ -174,6 +175,13 @@ export default async function StoreManagerPage({ params }: PageProps) {
           cost_cents: number | null
           platform_fee_cents: number | null
         }>}
+      />
+
+      <DomainManager
+        targetType="store"
+        entityId={store.id}
+        slug={store.slug}
+        subdomain={`${store.slug}.${process.env.NEXT_PUBLIC_STORE_ROOT_DOMAIN ?? 'nilstores.com'}`}
       />
 
       <StoreDesignEditor

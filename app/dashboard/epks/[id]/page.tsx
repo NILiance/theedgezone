@@ -8,6 +8,7 @@ import { EpkBlockEditor } from './block-editor-wrapper'
 import { EpkSettingsForm } from './settings-form'
 import { EpkTemplatePicker } from './template-picker'
 import { SharePanel } from './share-panel'
+import { DomainManager } from '@/components/dashboard/domain-manager'
 import { addEpkBlock, publishEpk, unpublishEpk } from '../actions'
 import type { SiteBlock } from '@/components/site/block-renderer'
 
@@ -113,6 +114,13 @@ export default async function EpkEditorPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      <DomainManager
+        targetType="epk"
+        entityId={epk.id}
+        slug={epk.slug}
+        subdomain={`${epk.slug}.talentepk.com`}
+      />
 
       <EpkTemplatePicker epkId={epk.id} current={(epk.template_id as string | null) ?? null} />
 

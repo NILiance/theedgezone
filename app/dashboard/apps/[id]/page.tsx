@@ -6,6 +6,7 @@ import { formatEastern } from '@/lib/format-date'
 import { resolveAppTheme } from '@/lib/app-theme'
 import type { AppScreen, NavItem } from '@/lib/app-screens'
 import { AppConfigClient } from './client'
+import { DomainManager } from '@/components/dashboard/domain-manager'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -116,6 +117,13 @@ export default async function AppConfigPage({ params }: PageProps) {
           </p>
         )}
       </div>
+
+      <DomainManager
+        targetType="a"
+        entityId={app.id}
+        slug={app.slug}
+        subdomain={`${app.slug}.${process.env.NEXT_PUBLIC_APPS_ROOT_DOMAIN ?? 'appsfortalent.com'}`}
+      />
 
       <AppConfigClient
         app={{

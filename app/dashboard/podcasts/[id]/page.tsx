@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { PodcastEditor } from './editor'
+import { DomainManager } from '@/components/dashboard/domain-manager'
 
 export const metadata = { title: 'Podcast editor' }
 // Transcription (Gemini) runs as a server action on this route — give it room.
@@ -46,6 +47,12 @@ export default async function PodcastEditorPage({
           {podcast.title}
         </h1>
       </div>
+      <DomainManager
+        targetType="podcast"
+        entityId={podcast.id}
+        slug={(podcast as { slug: string }).slug}
+        subdomain={`${(podcast as { slug: string }).slug}.podcastfortalent.com`}
+      />
       <PodcastEditor podcast={podcast} episodes={episodes ?? []} />
     </div>
   )
