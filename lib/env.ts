@@ -30,6 +30,10 @@ const envSchema = z.object({
   // Cron auth (Vercel-cron Bearer token)
   CRON_SECRET: z.string().optional(),
 
+  // Pre-launch site lock — when set, middleware gates the whole site behind a
+  // password screen until unlocked. Unset to open the site to the public.
+  SITE_LOCK_PASSWORD: z.string().optional(),
+
   // Integrations
   // .trim() guards against a trailing newline/space pasted into the Vercel env
   // var, which the Anthropic SDK would otherwise send and get a 401 invalid
@@ -82,6 +86,7 @@ if (isServer) {
     VERCEL_TEAM_ID: process.env.VERCEL_TEAM_ID,
     VERCEL_ACCESS_TOKEN: process.env.VERCEL_ACCESS_TOKEN,
     CRON_SECRET: process.env.CRON_SECRET,
+    SITE_LOCK_PASSWORD: process.env.SITE_LOCK_PASSWORD,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     IDEOGRAM_API_KEY: process.env.IDEOGRAM_API_KEY,

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { updateSession } from '@/lib/supabase/middleware'
 import { env } from '@/lib/env'
+import { SITE_LOCK_COOKIE, isSystemPath, siteLockEnabled, siteLockToken } from '@/lib/site-lock'
 
 /**
  * Host suffixes we own. A request to `<slug>.<suffix>` is rewritten
@@ -56,6 +57,25 @@ export async function middleware(request: NextRequest) {
   const rawHost = (request.headers.get('host') ?? '').toLowerCase()
   const host = rawHost.split(':')[0] // strip port for matching
   const url = request.nextUrl.clone()
+
+  // System paths — the lock screen, the unlock endpoint, and machine callbacks.
+  // Never gated and never host-rewritten; they must resolve to their real route.
+  if (isSystemPath(url.pathname)) {
+    return NextResponse.next()
+  }
+
+  // Pre-launch password lock. When SITE_LOCK_PASSWORD is set, every page across
+  // all hosts is gated behind /site-locked until the visitor enters the password
+  // (which grants a signed unlock cookie).
+  if (siteLockEnabled) {
+    const token = request.cookies.get(SITE_LOCK_COOKIE)?.value
+    if (token !== (await siteLockToken())) {
+      const gate = request.nextUrl.clone()
+      gate.pathname = '/site-locked'
+      gate.search = ''
+      return NextResponse.rewrite(gate)
+    }
+  }
 
   // 0. Product apex domains → dedicated sales landing at the root only. Other
   //    paths (e.g. /sign-up redirects) pass through.
