@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
 import { Lock } from 'lucide-react'
-import { siteLockEnabled } from '@/lib/site-lock'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +12,6 @@ export default async function SiteLockedPage({
 }: {
   searchParams: Promise<{ error?: string }>
 }) {
-  if (!siteLockEnabled) redirect('/')
   const { error } = await searchParams
 
   return (

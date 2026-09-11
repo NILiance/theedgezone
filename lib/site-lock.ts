@@ -5,32 +5,36 @@
  * screen (/site-locked) until the visitor unlocks with the password. Unset the
  * env var to open the site to the public.
  *
+ * The enable flag and password are read PER REQUEST (not memoized at module
+ * load) so the Edge middleware and the Node route/page always agree on the
+ * current value — a mismatch there would bounce the lock screen in a loop.
+ *
  * Machine endpoints (Stripe webhooks, cron, Phyllo callbacks) and the lock
- * screen / unlock endpoint itself bypass the gate — they must always resolve.
- * Edge-safe (used from middleware) and Node-safe (used from the unlock route).
+ * screen / unlock endpoint bypass the gate — they must always resolve.
  */
-import { env } from '@/lib/env'
-
 export const SITE_LOCK_COOKIE = 'ez_site_unlock'
 const SALT = 'edgezone-site-lock::v1'
 
-export const sitePassword = (env.SITE_LOCK_PASSWORD ?? '').trim()
-export const siteLockEnabled = sitePassword.length > 0
+/** The configured lock password (empty string when unset). */
+export function sitePassword(): string {
+  return (process.env.SITE_LOCK_PASSWORD ?? '').trim()
+}
 
-let cachedToken: string | null = null
+/** True when the site lock is active. */
+export function siteLockEnabled(): boolean {
+  return sitePassword().length > 0
+}
 
 /**
  * Opaque unlock token = SHA-256(password + salt). Stored as the cookie value on
  * success so the plaintext password never lands in the browser's cookie jar.
  */
 export async function siteLockToken(): Promise<string> {
-  if (cachedToken) return cachedToken
-  const bytes = new TextEncoder().encode(sitePassword + SALT)
+  const bytes = new TextEncoder().encode(sitePassword() + SALT)
   const digest = await crypto.subtle.digest('SHA-256', bytes)
-  cachedToken = Array.from(new Uint8Array(digest))
+  return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
-  return cachedToken
 }
 
 /**

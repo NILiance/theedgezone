@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const form = await request.formData()
   const password = String(form.get('password') ?? '')
 
-  if (!siteLockEnabled || password !== sitePassword) {
+  if (!siteLockEnabled() || password !== sitePassword()) {
     return NextResponse.redirect(new URL('/site-locked?error=1', request.url), 303)
   }
 

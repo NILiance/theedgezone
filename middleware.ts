@@ -67,13 +67,15 @@ export async function middleware(request: NextRequest) {
   // Pre-launch password lock. When SITE_LOCK_PASSWORD is set, every page across
   // all hosts is gated behind /site-locked until the visitor enters the password
   // (which grants a signed unlock cookie).
-  if (siteLockEnabled) {
+  if (siteLockEnabled()) {
     const token = request.cookies.get(SITE_LOCK_COOKIE)?.value
     if (token !== (await siteLockToken())) {
       const gate = request.nextUrl.clone()
       gate.pathname = '/site-locked'
       gate.search = ''
-      return NextResponse.rewrite(gate)
+      const res = NextResponse.rewrite(gate)
+      res.headers.set('x-ez-lock', 'gate')
+      return res
     }
   }
 
@@ -110,7 +112,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Supabase session refresh (passes through unchanged response otherwise)
-  return updateSession(request)
+  const res = await updateSession(request)
+  // Diagnostic: reveals the Edge middleware's view of the lock so we can tell a
+  // "not gating" state apart from an unlocked one. Reveals only on/off state.
+  res.headers.set('x-ez-lock', siteLockEnabled() ? 'unlocked' : 'disabled')
+  return res
 }
 
 async function lookupCustomDomain(request: NextRequest, host: string) {
